@@ -39,8 +39,8 @@ import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
-import com.example.hello.ui.home.components.DockMotionConfig
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
+import com.example.hello.ui.navigation.tabSlideTransitionSpec
 import com.example.hello.ui.theme.HelloTheme
 
 @Composable
@@ -77,13 +77,10 @@ fun MainAppShell(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Animated Screen Switching (instantaneous snappy switch with zero perceptible delay)
+            // Directional Slide Screen Transition: Home -> People slides in from Right, People -> Home slides in from Left
             AnimatedContent(
                 targetState = homeUiState.selectedNavTab,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(DockMotionConfig.SCREEN_FADE_DURATION_MS)) togetherWith
-                            fadeOut(animationSpec = tween(DockMotionConfig.SCREEN_FADE_DURATION_MS))
-                },
+                transitionSpec = { tabSlideTransitionSpec() },
                 label = "MainTabTransition",
                 modifier = Modifier.fillMaxSize()
             ) { targetTab ->
