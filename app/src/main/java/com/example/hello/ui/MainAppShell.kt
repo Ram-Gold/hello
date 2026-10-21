@@ -39,6 +39,7 @@ import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
+import com.example.hello.ui.home.components.DockMotionConfig
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.theme.HelloTheme
 
@@ -76,11 +77,12 @@ fun MainAppShell(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Animated Screen Switching
+            // Animated Screen Switching (instantaneous snappy switch with zero perceptible delay)
             AnimatedContent(
                 targetState = homeUiState.selectedNavTab,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(180))
+                    fadeIn(animationSpec = tween(DockMotionConfig.SCREEN_FADE_DURATION_MS)) togetherWith
+                            fadeOut(animationSpec = tween(DockMotionConfig.SCREEN_FADE_DURATION_MS))
                 },
                 label = "MainTabTransition",
                 modifier = Modifier.fillMaxSize()
