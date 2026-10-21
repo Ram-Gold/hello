@@ -1,31 +1,31 @@
 package com.example.hello.ui.home.components
 
-import androidx.compose.foundation.background
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.hello.ui.theme.HelloTheme
 
 @Composable
 fun HomeTopBar(
-    userName: String,
     onSettingsClick: () -> Unit,
+    onDrawerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -35,28 +35,7 @@ fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "Hello, $userName",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "👋",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-            Text(
-                text = "Cultivate your circle today",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
+        // Left: Settings (positioned where profile would be)
         IconButton(
             onClick = onSettingsClick,
             colors = IconButtonDefaults.iconButtonColors(
@@ -73,5 +52,45 @@ fun HomeTopBar(
                 modifier = Modifier.size(22.dp)
             )
         }
+
+        // Right: Drawer button
+        IconButton(
+            onClick = onDrawerClick,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Menu,
+                contentDescription = "Open Drawer",
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Preview(name = "HomeTopBar Light", showBackground = true)
+@Composable
+fun HomeTopBarLightPreview() {
+    HelloTheme(darkTheme = false) {
+        HomeTopBar(
+            onSettingsClick = {},
+            onDrawerClick = {}
+        )
+    }
+}
+
+@Preview(name = "HomeTopBar Dark", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun HomeTopBarDarkPreview() {
+    HelloTheme(darkTheme = true) {
+        HomeTopBar(
+            onSettingsClick = {},
+            onDrawerClick = {}
+        )
     }
 }

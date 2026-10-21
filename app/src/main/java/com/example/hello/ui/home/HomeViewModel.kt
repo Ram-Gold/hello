@@ -133,6 +133,12 @@ class HomeViewModel : ViewModel() {
             is HomeUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }
             }
+            is HomeUiEvent.OnOpenDrawer -> {
+                _uiState.update { it.copy(isDrawerOpen = true) }
+            }
+            is HomeUiEvent.OnCloseDrawer -> {
+                _uiState.update { it.copy(isDrawerOpen = false) }
+            }
         }
     }
 

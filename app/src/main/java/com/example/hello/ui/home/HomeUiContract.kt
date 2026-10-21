@@ -19,7 +19,8 @@ data class HomeUiState(
     val expandedAccordion: AccordionType? = null,
     val isSpeedDialOpen: Boolean = false,
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,
-    val userMessage: String? = null
+    val userMessage: String? = null,
+    val isDrawerOpen: Boolean = false
 )
 
 sealed interface HomeUiEvent {
@@ -38,4 +39,6 @@ sealed interface HomeUiEvent {
     data class OnNavTabSelect(val tab: HomeNavTab) : HomeUiEvent
     data object OnSettingsClick : HomeUiEvent
     data object OnDismissUserMessage : HomeUiEvent
+    data object OnOpenDrawer : HomeUiEvent
+    data object OnCloseDrawer : HomeUiEvent
 }

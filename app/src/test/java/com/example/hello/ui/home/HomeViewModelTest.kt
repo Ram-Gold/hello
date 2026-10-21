@@ -36,6 +36,18 @@ class HomeViewModelTest {
         assertFalse(state.isSpeedDialOpen)
         assertNull(state.expandedAccordion)
         assertEquals(HomeNavTab.HOME, state.selectedNavTab)
+        assertFalse(state.isDrawerOpen)
+    }
+
+    @Test
+    fun onOpenDrawer_and_onCloseDrawer_updatesDrawerState() {
+        assertFalse(viewModel.uiState.value.isDrawerOpen)
+
+        viewModel.onEvent(HomeUiEvent.OnOpenDrawer)
+        assertTrue(viewModel.uiState.value.isDrawerOpen)
+
+        viewModel.onEvent(HomeUiEvent.OnCloseDrawer)
+        assertFalse(viewModel.uiState.value.isDrawerOpen)
     }
 
     @Test
