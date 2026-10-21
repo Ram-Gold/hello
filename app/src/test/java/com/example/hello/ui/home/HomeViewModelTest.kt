@@ -70,6 +70,25 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun onUpdateCircleConfig_persistsPerGroupConfigurationChanges() {
+        val workConfig = viewModel.uiState.value.circleConfigs[Circle.WORK]
+        assertNotNull(workConfig)
+        assertEquals(7, workConfig?.cadenceDays)
+        assertTrue(workConfig?.isCadenceAlertEnabled == true)
+
+        val updatedConfig = workConfig!!.copy(
+            cadenceDays = 21,
+            isCadenceAlertEnabled = false
+        )
+        viewModel.onEvent(HomeUiEvent.OnUpdateCircleConfig(updatedConfig))
+
+        val currentWorkConfig = viewModel.uiState.value.circleConfigs[Circle.WORK]
+        assertEquals(21, currentWorkConfig?.cadenceDays)
+        assertFalse(currentWorkConfig?.isCadenceAlertEnabled == true)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Work configuration") == true)
+    }
+
+    @Test
     fun onCardTypeSelect_switchesActiveCard() {
         viewModel.onEvent(HomeUiEvent.OnCardTypeSelect(CardType.SOCIAL))
         assertEquals(CardType.SOCIAL, viewModel.uiState.value.activeCardType)
