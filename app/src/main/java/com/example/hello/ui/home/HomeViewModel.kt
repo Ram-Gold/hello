@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.hello.domain.model.AccordionType
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
+import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.MyCardData
@@ -148,6 +149,14 @@ class HomeViewModel : ViewModel() {
                     )
                 }
             }
+            is HomeUiEvent.OnUpdateCircleConfig -> {
+                _uiState.update { state ->
+                    state.copy(
+                        circleConfigs = state.circleConfigs + (event.config.circle to event.config),
+                        userMessage = "Updated ${event.config.circle.displayName} configuration"
+                    )
+                }
+            }
         }
     }
 
@@ -230,6 +239,33 @@ class HomeViewModel : ViewModel() {
                 )
             )
 
+            val initialConfigs = mapOf(
+                Circle.WORK to CircleGroupConfig(
+                    circle = Circle.WORK,
+                    cadenceDays = 7,
+                    defaultCardType = CardType.WORK,
+                    isCadenceAlertEnabled = true
+                ),
+                Circle.FRIENDS to CircleGroupConfig(
+                    circle = Circle.FRIENDS,
+                    cadenceDays = 14,
+                    defaultCardType = CardType.SOCIAL,
+                    isCadenceAlertEnabled = true
+                ),
+                Circle.FAMILY to CircleGroupConfig(
+                    circle = Circle.FAMILY,
+                    cadenceDays = 7,
+                    defaultCardType = CardType.SOCIAL,
+                    isCadenceAlertEnabled = true
+                ),
+                Circle.UNI to CircleGroupConfig(
+                    circle = Circle.UNI,
+                    cadenceDays = 30,
+                    defaultCardType = CardType.SOCIAL,
+                    isCadenceAlertEnabled = true
+                )
+            )
+
             return HomeUiState(
                 userName = "Alex",
                 activeCardType = CardType.WORK,
@@ -242,7 +278,10 @@ class HomeViewModel : ViewModel() {
                 recentContacts = contacts,
                 expandedAccordion = null,
                 isSpeedDialOpen = false,
-                selectedNavTab = HomeNavTab.HOME
+                selectedNavTab = HomeNavTab.HOME,
+                isDrawerOpen = false,
+                selectedCircle = null,
+                circleConfigs = initialConfigs
             )
         }
     }

@@ -3,6 +3,7 @@ package com.example.hello.ui.home
 import com.example.hello.domain.model.AccordionType
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
+import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.MyCardData
@@ -21,7 +22,8 @@ data class HomeUiState(
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,
     val userMessage: String? = null,
     val isDrawerOpen: Boolean = false,
-    val selectedCircle: Circle? = null
+    val selectedCircle: Circle? = null,
+    val circleConfigs: Map<Circle, CircleGroupConfig> = emptyMap()
 )
 
 sealed interface HomeUiEvent {
@@ -43,4 +45,5 @@ sealed interface HomeUiEvent {
     data object OnOpenDrawer : HomeUiEvent
     data object OnCloseDrawer : HomeUiEvent
     data class OnSelectCircle(val circle: Circle?) : HomeUiEvent
+    data class OnUpdateCircleConfig(val config: CircleGroupConfig) : HomeUiEvent
 }

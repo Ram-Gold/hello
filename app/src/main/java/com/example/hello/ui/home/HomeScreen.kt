@@ -103,8 +103,12 @@ fun HomeScreen(
             ) {
                 GroupDrawerContent(
                     selectedCircle = uiState.selectedCircle,
+                    circleConfigs = uiState.circleConfigs,
                     onSelectCircle = { circle ->
                         onEvent(HomeUiEvent.OnSelectCircle(circle))
+                    },
+                    onUpdateCircleConfig = { config ->
+                        onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
                     },
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
@@ -145,7 +149,8 @@ fun HomeScreen(
                         onDrawerClick = {
                             coroutineScope.launch { drawerState.open() }
                             onEvent(HomeUiEvent.OnOpenDrawer)
-                        }
+                        },
+                        activeCircle = uiState.selectedCircle
                     )
 
                 // 2. Greeting Column (under the top bar)
