@@ -93,7 +93,7 @@ fun HomeScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                // 1. Top Bar (Settings on Left & Drawer on Right)
+                // 1. Top Bar (Drawer on Left & Settings on Right)
                 HomeTopBar(
                     onSettingsClick = { onEvent(HomeUiEvent.OnSettingsClick) },
                     onDrawerClick = { onEvent(HomeUiEvent.OnOpenDrawer) }

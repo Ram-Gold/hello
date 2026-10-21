@@ -35,25 +35,7 @@ fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Settings (positioned where profile would be)
-        IconButton(
-            onClick = onSettingsClick,
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Settings,
-                contentDescription = "Settings",
-                modifier = Modifier.size(22.dp)
-            )
-        }
-
-        // Right: Drawer button
+        // Left: Hamburger / Drawer button
         IconButton(
             onClick = onDrawerClick,
             colors = IconButtonDefaults.iconButtonColors(
@@ -67,6 +49,24 @@ fun HomeTopBar(
             Icon(
                 imageVector = Icons.Outlined.Menu,
                 contentDescription = "Open Drawer",
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        // Right: Settings button
+        IconButton(
+            onClick = onSettingsClick,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = "Settings",
                 modifier = Modifier.size(22.dp)
             )
         }
