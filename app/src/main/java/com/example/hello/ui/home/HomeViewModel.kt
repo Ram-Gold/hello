@@ -139,6 +139,15 @@ class HomeViewModel : ViewModel() {
             is HomeUiEvent.OnCloseDrawer -> {
                 _uiState.update { it.copy(isDrawerOpen = false) }
             }
+            is HomeUiEvent.OnSelectCircle -> {
+                _uiState.update { state ->
+                    state.copy(
+                        selectedCircle = event.circle,
+                        isDrawerOpen = false,
+                        userMessage = event.circle?.let { "Switched to ${it.displayName} Circle" } ?: "Showing All Circles"
+                    )
+                }
+            }
         }
     }
 

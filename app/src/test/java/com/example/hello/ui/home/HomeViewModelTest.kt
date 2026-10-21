@@ -37,6 +37,7 @@ class HomeViewModelTest {
         assertNull(state.expandedAccordion)
         assertEquals(HomeNavTab.HOME, state.selectedNavTab)
         assertFalse(state.isDrawerOpen)
+        assertNull(state.selectedCircle)
     }
 
     @Test
@@ -47,6 +48,24 @@ class HomeViewModelTest {
         assertTrue(viewModel.uiState.value.isDrawerOpen)
 
         viewModel.onEvent(HomeUiEvent.OnCloseDrawer)
+        assertFalse(viewModel.uiState.value.isDrawerOpen)
+    }
+
+    @Test
+    fun onSelectCircle_updatesActiveCircle_and_closesDrawer() {
+        assertNull(viewModel.uiState.value.selectedCircle)
+
+        viewModel.onEvent(HomeUiEvent.OnOpenDrawer)
+        assertTrue(viewModel.uiState.value.isDrawerOpen)
+
+        viewModel.onEvent(HomeUiEvent.OnSelectCircle(Circle.WORK))
+        assertEquals(Circle.WORK, viewModel.uiState.value.selectedCircle)
+        assertFalse(viewModel.uiState.value.isDrawerOpen)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Work") == true)
+
+        // Select All Circles (null)
+        viewModel.onEvent(HomeUiEvent.OnSelectCircle(null))
+        assertNull(viewModel.uiState.value.selectedCircle)
         assertFalse(viewModel.uiState.value.isDrawerOpen)
     }
 

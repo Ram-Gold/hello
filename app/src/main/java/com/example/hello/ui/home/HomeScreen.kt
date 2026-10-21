@@ -22,14 +22,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,7 +43,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.HomeNavTab
+import com.example.hello.domain.model.UpcomingAlert
 import com.example.hello.ui.home.components.FullScreenCardDialog
+import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.home.components.HomeTopBar
 import com.example.hello.ui.home.components.MyCardWidget
@@ -46,6 +53,7 @@ import com.example.hello.ui.home.components.RecentActionsAccordion
 import com.example.hello.ui.home.components.RecentEncountersSection
 import com.example.hello.ui.home.components.UpcomingFeedSection
 import com.example.hello.ui.theme.HelloTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -57,8 +65,25 @@ fun HomeScreen(
 ) {
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
     val activeCard = uiState.myCards[uiState.activeCardType]
         ?: uiState.myCards.values.firstOrNull()
+
+    // Synchronize UI state drawer open/closed with Material 3 DrawerState
+    LaunchedEffect(uiState.isDrawerOpen) {
+        if (uiState.isDrawerOpen && drawerState.isClosed) {
+            drawerState.open()
+        } else if (!uiState.isDrawerOpen && drawerState.isOpen) {
+            drawerState.close()
+        }
+    }
+
+    LaunchedEffect(drawerState.isOpen) {
+        if (drawerState.isOpen != uiState.isDrawerOpen) {
+            if (drawerState.isOpen) onEvent(HomeUiEvent.OnOpenDrawer) else onEvent(HomeUiEvent.OnCloseDrawer)
+        }
+    }
 
     // Display feedback messages via Snackbar
     LaunchedEffect(uiState.userMessage) {
@@ -68,36 +93,60 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = {
-            Box {
-                SnackbarHost(hostState = snackbarHostState)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = true,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerTonalElevation = 2.dp
+            ) {
+                GroupDrawerContent(
+                    selectedCircle = uiState.selectedCircle,
+                    onSelectCircle = { circle ->
+                        onEvent(HomeUiEvent.OnSelectCircle(circle))
+                    },
+                    onCloseDrawer = {
+                        coroutineScope.launch { drawerState.close() }
+                        onEvent(HomeUiEvent.OnCloseDrawer)
+                    }
+                )
             }
         }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Main Vertically Scrollable Content
-            Column(
+    ) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = {
+                Box {
+                    SnackbarHost(hostState = snackbarHostState)
+                }
+            }
+        ) { innerPadding ->
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(
-                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2,
-                        bottom = 120.dp
-                    ),
-                verticalArrangement = Arrangement.spacedBy(22.dp)
+                    .padding(innerPadding)
             ) {
-                // 1. Top Bar (Drawer on Left & Settings on Right)
-                HomeTopBar(
-                    onSettingsClick = { onEvent(HomeUiEvent.OnSettingsClick) },
-                    onDrawerClick = { onEvent(HomeUiEvent.OnOpenDrawer) }
-                )
+                // Main Vertically Scrollable Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2,
+                            bottom = 120.dp
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(22.dp)
+                ) {
+                    // 1. Top Bar (Drawer on Left & Settings on Right)
+                    HomeTopBar(
+                        onSettingsClick = { onEvent(HomeUiEvent.OnSettingsClick) },
+                        onDrawerClick = {
+                            coroutineScope.launch { drawerState.open() }
+                            onEvent(HomeUiEvent.OnOpenDrawer)
+                        }
+                    )
 
                 // 2. Greeting Column (under the top bar)
                 Column(
@@ -136,9 +185,30 @@ fun HomeScreen(
                     )
                 }
 
+                // Filter feed and contacts when a specific circle is active
+                val filteredContacts = remember(uiState.recentContacts, uiState.selectedCircle) {
+                    if (uiState.selectedCircle == null) {
+                        uiState.recentContacts
+                    } else {
+                        uiState.recentContacts.filter { it.circles.contains(uiState.selectedCircle) }
+                    }
+                }
+                val filteredAlerts = remember(uiState.upcomingAlerts, uiState.selectedCircle) {
+                    if (uiState.selectedCircle == null) {
+                        uiState.upcomingAlerts
+                    } else {
+                        uiState.upcomingAlerts.filter { alert ->
+                            when (alert) {
+                                is UpcomingAlert.BirthdayAlert -> alert.circle == null || alert.circle == uiState.selectedCircle
+                                else -> true
+                            }
+                        }
+                    }
+                }
+
                 // 3. "Upcoming" Feed (Horizontal Alert Carousel)
                 UpcomingFeedSection(
-                    alerts = uiState.upcomingAlerts,
+                    alerts = filteredAlerts,
                     onReminderDone = { onEvent(HomeUiEvent.OnReminderDone(it)) },
                     onReminderSnooze = { onEvent(HomeUiEvent.OnReminderSnooze(it)) }
                 )
@@ -159,7 +229,7 @@ fun HomeScreen(
 
                 // 5. Recent Encounters List
                 RecentEncountersSection(
-                    contacts = uiState.recentContacts,
+                    contacts = filteredContacts,
                     onContactClick = { onEvent(HomeUiEvent.OnContactClick(it)) },
                     onNavigateToPeople = onNavigateToPeople
                 )
@@ -211,6 +281,7 @@ fun HomeScreen(
             }
         }
     }
+}
 }
 
 // -------------------------------------------------------------

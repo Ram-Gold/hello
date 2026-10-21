@@ -20,7 +20,8 @@ data class HomeUiState(
     val isSpeedDialOpen: Boolean = false,
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,
     val userMessage: String? = null,
-    val isDrawerOpen: Boolean = false
+    val isDrawerOpen: Boolean = false,
+    val selectedCircle: Circle? = null
 )
 
 sealed interface HomeUiEvent {
@@ -41,4 +42,5 @@ sealed interface HomeUiEvent {
     data object OnDismissUserMessage : HomeUiEvent
     data object OnOpenDrawer : HomeUiEvent
     data object OnCloseDrawer : HomeUiEvent
+    data class OnSelectCircle(val circle: Circle?) : HomeUiEvent
 }
