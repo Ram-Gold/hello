@@ -12,6 +12,13 @@ enum class Circle(val displayName: String) {
     UNI("Uni")
 }
 
+data class CircleGroupConfig(
+    val circle: Circle,
+    val cadenceDays: Int = 14,
+    val defaultCardType: CardType = CardType.WORK,
+    val isCadenceAlertEnabled: Boolean = true
+)
+
 sealed interface UpcomingAlert {
     val id: String
     val contactName: String
