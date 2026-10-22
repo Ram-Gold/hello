@@ -5,11 +5,17 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.IntOffset
 import com.example.hello.domain.model.HomeNavTab
+
+object NavigationTransitionConfig {
+    const val SCREEN_TRANSITION_DURATION_MS = 50
+    const val USE_CONTAINER_SLIDE = false
+}
 
 enum class NavigationTabDirection {
     FORWARD,  // Target tab is to the right in dock order (enters from right edge to center)
@@ -39,6 +45,14 @@ private val TabFadeSpringSpec = spring<Float>(
 fun AnimatedContentTransitionScope<HomeNavTab>.tabSlideTransitionSpec(): ContentTransform {
     val direction = resolveTabSlideDirection(initialState, targetState)
 
+    if (direction == NavigationTabDirection.NONE) {
+        return EnterTransition.None togetherWith ExitTransition.None
+    }
+
+    if (!NavigationTransitionConfig.USE_CONTAINER_SLIDE) {
+        return createSnappyCrossfade()
+    }
+
     return when (direction) {
         NavigationTabDirection.FORWARD -> {
             // Home -> People: Target enters from right moving left; initial exits to left
@@ -53,6 +67,15 @@ fun AnimatedContentTransitionScope<HomeNavTab>.tabSlideTransitionSpec(): Content
             EnterTransition.None togetherWith ExitTransition.None
         }
     }
+}
+
+private fun createSnappyCrossfade(): ContentTransform {
+    val fadeSpec = tween<Float>(
+        durationMillis = NavigationTransitionConfig.SCREEN_TRANSITION_DURATION_MS
+    )
+    return fadeIn(animationSpec = fadeSpec).togetherWith(
+        fadeOut(animationSpec = fadeSpec)
+    )
 }
 
 private fun AnimatedContentTransitionScope<HomeNavTab>.createDirectionalSlide(
