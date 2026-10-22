@@ -30,7 +30,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.ui.contacts.ContactsScreen
@@ -39,7 +44,12 @@ import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
-import com.example.hello.ui.navigation.tabSlideTransitionSpec
+import com.example.hello.ui.navigation.HomeRoute
+import com.example.hello.ui.navigation.PeopleRoute
+import com.example.hello.ui.navigation.navigateToRootTab
+import com.example.hello.ui.navigation.resolveRouteSlideDirection
+import com.example.hello.ui.navigation.sharedAxisEnterTransition
+import com.example.hello.ui.navigation.sharedAxisExitTransition
 import com.example.hello.ui.theme.HelloTheme
 
 @Composable
@@ -50,6 +60,10 @@ fun MainAppShell(
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val contactsUiState by contactsViewModel.uiState.collectAsState()
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: HomeRoute.ROUTE_NAME
+    val activeTab = if (currentRoute == PeopleRoute.ROUTE_NAME) HomeNavTab.PEOPLE else HomeNavTab.HOME
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Surface feedback messages
@@ -76,33 +90,52 @@ fun MainAppShell(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Directional Slide Screen Transition: Home -> People slides in from Right, People -> Home slides in from Left
-            AnimatedContent(
-                targetState = homeUiState.selectedNavTab,
-                transitionSpec = { tabSlideTransitionSpec() },
-                label = "MainTabTransition",
-                modifier = Modifier.fillMaxSize()
-            ) { targetTab ->
-                when (targetTab) {
-                    HomeNavTab.HOME -> {
-                        HomeScreen(
-                            uiState = homeUiState,
-                            onEvent = homeViewModel::onEvent,
-                            showBottomDock = false,
-                            onNavigateToPeople = {
-                                homeViewModel.onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.PEOPLE))
-                            }
-                        )
+            // Single NavHost with route-aware shared-axis horizontal transitions & hardware clipping
+            NavHost(
+                navController = navController,
+                startDestination = HomeRoute.ROUTE_NAME,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { clip = true }
+            ) {
+                composable(
+                    route = HomeRoute.ROUTE_NAME,
+                    enterTransition = {
+                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
+                        sharedAxisEnterTransition(dir)
+                    },
+                    exitTransition = {
+                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
+                        sharedAxisExitTransition(dir)
                     }
-                    HomeNavTab.PEOPLE -> {
-                        ContactsScreen(
-                            uiState = contactsUiState,
-                            onEvent = contactsViewModel::onEvent,
-                            onNavigateToHome = {
-                                homeViewModel.onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.HOME))
-                            }
-                        )
+                ) {
+                    HomeScreen(
+                        uiState = homeUiState,
+                        onEvent = homeViewModel::onEvent,
+                        showBottomDock = false,
+                        onNavigateToPeople = {
+                            navController.navigateToRootTab(PeopleRoute.ROUTE_NAME)
+                        }
+                    )
+                }
+                composable(
+                    route = PeopleRoute.ROUTE_NAME,
+                    enterTransition = {
+                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
+                        sharedAxisEnterTransition(dir)
+                    },
+                    exitTransition = {
+                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
+                        sharedAxisExitTransition(dir)
                     }
+                ) {
+                    ContactsScreen(
+                        uiState = contactsUiState,
+                        onEvent = contactsViewModel::onEvent,
+                        onNavigateToHome = {
+                            navController.navigateToRootTab(HomeRoute.ROUTE_NAME)
+                        }
+                    )
                 }
             }
 
@@ -127,9 +160,13 @@ fun MainAppShell(
 
             // Shared Floating Bottom Navigation Dock & Companion Quick-Add FAB
             HomeFloatingBottomDock(
-                selectedTab = homeUiState.selectedNavTab,
+                selectedTab = activeTab,
                 onTabSelect = { tab ->
-                    homeViewModel.onEvent(HomeUiEvent.OnNavTabSelect(tab))
+                    val target = when (tab) {
+                        HomeNavTab.HOME -> HomeRoute.ROUTE_NAME
+                        HomeNavTab.PEOPLE -> PeopleRoute.ROUTE_NAME
+                    }
+                    navController.navigateToRootTab(target)
                 },
                 isSpeedDialOpen = homeUiState.isSpeedDialOpen,
                 onToggleSpeedDial = { homeViewModel.onEvent(HomeUiEvent.OnToggleSpeedDial) },
