@@ -49,7 +49,6 @@ import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.home.components.HomeTopBar
 import com.example.hello.ui.home.components.MyCardWidget
-import com.example.hello.ui.home.components.RecentActionsAccordion
 import com.example.hello.ui.home.components.RecentEncountersSection
 import com.example.hello.ui.home.components.UpcomingFeedSection
 import com.example.hello.ui.theme.HelloTheme
@@ -218,21 +217,7 @@ fun HomeScreen(
                     onReminderSnooze = { onEvent(HomeUiEvent.OnReminderSnooze(it)) }
                 )
 
-                // 4. Stacked Accordion Action Buttons ("Add Contact" / "Update Contact")
-                RecentActionsAccordion(
-                    expandedType = uiState.expandedAccordion,
-                    onToggle = { onEvent(HomeUiEvent.OnToggleAccordion(it)) },
-                    recentContacts = uiState.recentContacts,
-                    onAddContactSubmit = { name, circles, notes ->
-                        onEvent(HomeUiEvent.OnQuickAddContact(name, circles, notes))
-                    },
-                    onUpdateContactSubmit = { id, notes ->
-                        onEvent(HomeUiEvent.OnQuickUpdateContact(id, notes))
-                    },
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-
-                // 5. Recent Encounters List
+                // 4. Recent Encounters List
                 RecentEncountersSection(
                     contacts = filteredContacts,
                     onContactClick = { onEvent(HomeUiEvent.OnContactClick(it)) },

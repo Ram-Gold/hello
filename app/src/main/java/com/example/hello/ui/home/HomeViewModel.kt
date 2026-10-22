@@ -1,7 +1,6 @@
 package com.example.hello.ui.home
 
 import androidx.lifecycle.ViewModel
-import com.example.hello.domain.model.AccordionType
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
@@ -47,18 +46,6 @@ class HomeViewModel : ViewModel() {
                     )
                 }
             }
-            is HomeUiEvent.OnToggleAccordion -> {
-                _uiState.update { state ->
-                    val nextAccordion = if (state.expandedAccordion == event.type) null else event.type
-                    state.copy(
-                        expandedAccordion = nextAccordion,
-                        isSpeedDialOpen = false
-                    )
-                }
-            }
-            is HomeUiEvent.OnCloseAccordion -> {
-                _uiState.update { it.copy(expandedAccordion = null) }
-            }
             is HomeUiEvent.OnQuickAddContact -> {
                 val newContact = ContactSummary(
                     id = UUID.randomUUID().toString(),
@@ -77,7 +64,6 @@ class HomeViewModel : ViewModel() {
                 _uiState.update { state ->
                     state.copy(
                         recentContacts = listOf(newContact) + state.recentContacts,
-                        expandedAccordion = null,
                         userMessage = "Added ${newContact.name} to contacts! 🤝"
                     )
                 }
@@ -96,7 +82,6 @@ class HomeViewModel : ViewModel() {
                     }
                     state.copy(
                         recentContacts = updatedList,
-                        expandedAccordion = null,
                         userMessage = "Contact updated! 📝"
                     )
                 }
@@ -114,14 +99,14 @@ class HomeViewModel : ViewModel() {
             }
             is HomeUiEvent.OnSpeedDialAction -> {
                 _uiState.update { state ->
-                    val targetAccordion = when (event.action) {
-                        SpeedDialAction.NEW_CONTACT -> AccordionType.ADD_CONTACT
-                        SpeedDialAction.LOG_ENCOUNTER -> AccordionType.UPDATE_CONTACT
+                    val actionMessage = when (event.action) {
+                        SpeedDialAction.NEW_CONTACT -> "Quick Add Contact"
+                        SpeedDialAction.LOG_ENCOUNTER -> "Log Encounter"
                     }
                     state.copy(
                         selectedNavTab = HomeNavTab.HOME,
                         isSpeedDialOpen = false,
-                        expandedAccordion = targetAccordion
+                        userMessage = actionMessage
                     )
                 }
             }
@@ -276,7 +261,6 @@ class HomeViewModel : ViewModel() {
                 isQrExpanded = false,
                 upcomingAlerts = upcoming,
                 recentContacts = contacts,
-                expandedAccordion = null,
                 isSpeedDialOpen = false,
                 selectedNavTab = HomeNavTab.HOME,
                 isDrawerOpen = false,

@@ -1,6 +1,5 @@
 package com.example.hello.ui.home
 
-import com.example.hello.domain.model.AccordionType
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.HomeNavTab
@@ -34,7 +33,7 @@ class HomeViewModelTest {
         assertEquals(4, state.recentContacts.size)
         assertFalse(state.isQrExpanded)
         assertFalse(state.isSpeedDialOpen)
-        assertNull(state.expandedAccordion)
+        assertNull(state.userMessage)
         assertEquals(HomeNavTab.HOME, state.selectedNavTab)
         assertFalse(state.isDrawerOpen)
         assertNull(state.selectedCircle)
@@ -133,24 +132,9 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onToggleAccordion_switchesAndCollapses() {
-        viewModel.onEvent(HomeUiEvent.OnToggleAccordion(AccordionType.ADD_CONTACT))
-        assertEquals(AccordionType.ADD_CONTACT, viewModel.uiState.value.expandedAccordion)
-
-        // Switching to UPDATE_CONTACT
-        viewModel.onEvent(HomeUiEvent.OnToggleAccordion(AccordionType.UPDATE_CONTACT))
-        assertEquals(AccordionType.UPDATE_CONTACT, viewModel.uiState.value.expandedAccordion)
-
-        // Tapping same accordion closes it
-        viewModel.onEvent(HomeUiEvent.OnToggleAccordion(AccordionType.UPDATE_CONTACT))
-        assertNull(viewModel.uiState.value.expandedAccordion)
-    }
-
-    @Test
-    fun onQuickAddContact_prependsNewContactAndClosesAccordion() {
+    fun onQuickAddContact_prependsNewContact() {
         val initialCount = viewModel.uiState.value.recentContacts.size
 
-        viewModel.onEvent(HomeUiEvent.OnToggleAccordion(AccordionType.ADD_CONTACT))
         viewModel.onEvent(
             HomeUiEvent.OnQuickAddContact(
                 name = "Taylor Swift",
@@ -161,7 +145,6 @@ class HomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(initialCount + 1, state.recentContacts.size)
-        assertNull(state.expandedAccordion)
 
         val added = state.recentContacts.first()
         assertEquals("Taylor Swift", added.name)
@@ -198,16 +181,17 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onSpeedDialAction_opensCorrespondingAccordionAndClosesSpeedDial() {
+    fun onSpeedDialAction_closesSpeedDialAndSetsUserMessage() {
         viewModel.onEvent(HomeUiEvent.OnToggleSpeedDial)
         viewModel.onEvent(HomeUiEvent.OnSpeedDialAction(SpeedDialAction.NEW_CONTACT))
 
         assertFalse(viewModel.uiState.value.isSpeedDialOpen)
-        assertEquals(AccordionType.ADD_CONTACT, viewModel.uiState.value.expandedAccordion)
+        assertEquals("Quick Add Contact", viewModel.uiState.value.userMessage)
+        assertEquals(HomeNavTab.HOME, viewModel.uiState.value.selectedNavTab)
 
         viewModel.onEvent(HomeUiEvent.OnSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER))
         assertFalse(viewModel.uiState.value.isSpeedDialOpen)
-        assertEquals(AccordionType.UPDATE_CONTACT, viewModel.uiState.value.expandedAccordion)
+        assertEquals("Log Encounter", viewModel.uiState.value.userMessage)
     }
 
     @Test

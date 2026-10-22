@@ -69,11 +69,6 @@ enum class HomeNavTab(val label: String) {
     PEOPLE("People")
 }
 
-enum class AccordionType {
-    ADD_CONTACT,
-    UPDATE_CONTACT
-}
-
 enum class SpeedDialAction {
     NEW_CONTACT,
     LOG_ENCOUNTER

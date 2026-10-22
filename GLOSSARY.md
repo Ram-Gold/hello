@@ -10,11 +10,23 @@ _Avoid_: Person, Connection, Client, Account
 
 **Circle**:
 A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context.
-_Avoid_: Group, Tag, Category, Folder
+_Avoid_: Group, Category, Folder
+
+**Tag**:
+A lightweight freeform label attached to Contacts to support cross-cutting categorization and ad-hoc filtering.
+_Avoid_: Category, Label, Folder
 
 **Encounter**:
 A recorded interaction or meeting between the user and a Contact, preserving context, notes, and recency.
 _Avoid_: Interaction, Touchpoint, Meeting, Event
+
+**Place**:
+A named physical venue or location where Encounters take place.
+_Avoid_: Venue, Location, Spot
+
+**FollowUp**:
+An actionable stay-in-touch reminder or task tied to a Contact, with a scheduled due date and completion state.
+_Avoid_: Task, To-do, Ping
 
 **Cadence**:
 A target stay-in-touch frequency established for a Contact or Circle to trigger proactive reconnection reminders when overdue.

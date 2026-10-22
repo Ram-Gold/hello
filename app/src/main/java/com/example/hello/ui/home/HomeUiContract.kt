@@ -1,6 +1,5 @@
 package com.example.hello.ui.home
 
-import com.example.hello.domain.model.AccordionType
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
@@ -17,7 +16,6 @@ data class HomeUiState(
     val isQrExpanded: Boolean = false,
     val upcomingAlerts: List<UpcomingAlert> = emptyList(),
     val recentContacts: List<ContactSummary> = emptyList(),
-    val expandedAccordion: AccordionType? = null,
     val isSpeedDialOpen: Boolean = false,
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,
     val userMessage: String? = null,
@@ -31,8 +29,6 @@ sealed interface HomeUiEvent {
     data class OnExpandQr(val expanded: Boolean) : HomeUiEvent
     data class OnReminderDone(val alertId: String) : HomeUiEvent
     data class OnReminderSnooze(val alertId: String) : HomeUiEvent
-    data class OnToggleAccordion(val type: AccordionType) : HomeUiEvent
-    data object OnCloseAccordion : HomeUiEvent
     data class OnQuickAddContact(val name: String, val circles: Set<Circle>, val initialNote: String) : HomeUiEvent
     data class OnQuickUpdateContact(val contactId: String, val note: String) : HomeUiEvent
     data class OnContactClick(val contactId: String) : HomeUiEvent
