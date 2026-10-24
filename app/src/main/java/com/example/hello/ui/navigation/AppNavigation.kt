@@ -2,15 +2,13 @@ package com.example.hello.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.example.hello.ui.theme.MotionTokens
 
 data object HomeRoute {
     const val ROUTE_NAME = "home"
@@ -21,7 +19,10 @@ data object PeopleRoute {
 }
 
 object SharedAxisMotionConfig {
-    const val SLIDE_DURATION_MS = 120
+    const val SLIDE_DURATION_MS = MotionTokens.SCREEN_SLIDE_DURATION_MS
+    const val SLIDE_OFFSET_DIVISOR = MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR
+    const val SLIDE_SPRING_STIFFNESS = MotionTokens.SCREEN_SLIDE_SPRING_STIFFNESS
+    const val SLIDE_SPRING_DAMPING = MotionTokens.SCREEN_SLIDE_SPRING_DAMPING
     const val ENABLE_HARDWARE_LAYER_CLIP = true
 }
 
@@ -60,40 +61,40 @@ fun resolveRouteSlideDirection(fromRoute: String?, toRoute: String?): Navigation
 }
 
 fun sharedAxisEnterTransition(direction: NavigationTabDirection): EnterTransition {
-    val tweenSpec = tween<IntOffset>(
-        durationMillis = SharedAxisMotionConfig.SLIDE_DURATION_MS,
-        easing = FastOutSlowInEasing
-    )
-    val fadeSpec = tween<Float>(durationMillis = SharedAxisMotionConfig.SLIDE_DURATION_MS)
+    val slideSpec = MotionTokens.screenSlideSpec()
+    val fadeSpec = MotionTokens.screenFadeSpec()
+    val divisor = SharedAxisMotionConfig.SLIDE_OFFSET_DIVISOR
 
     return when (direction) {
         NavigationTabDirection.FORWARD -> {
-            slideInHorizontally(animationSpec = tweenSpec, initialOffsetX = { it }) +
-                fadeIn(animationSpec = fadeSpec)
+            // Home -> People: People enters from subtle 25% right offset to center
+            slideInHorizontally(animationSpec = slideSpec, initialOffsetX = { it / divisor }) +
+                fadeIn(animationSpec = fadeSpec, initialAlpha = 0f)
         }
         NavigationTabDirection.BACKWARD -> {
-            slideInHorizontally(animationSpec = tweenSpec, initialOffsetX = { -it }) +
-                fadeIn(animationSpec = fadeSpec)
+            // People -> Home: Home enters from subtle 25% left offset to center
+            slideInHorizontally(animationSpec = slideSpec, initialOffsetX = { -it / divisor }) +
+                fadeIn(animationSpec = fadeSpec, initialAlpha = 0f)
         }
         NavigationTabDirection.NONE -> EnterTransition.None
     }
 }
 
 fun sharedAxisExitTransition(direction: NavigationTabDirection): ExitTransition {
-    val tweenSpec = tween<IntOffset>(
-        durationMillis = SharedAxisMotionConfig.SLIDE_DURATION_MS,
-        easing = FastOutSlowInEasing
-    )
-    val fadeSpec = tween<Float>(durationMillis = SharedAxisMotionConfig.SLIDE_DURATION_MS)
+    val slideSpec = MotionTokens.screenSlideSpec()
+    val fadeSpec = MotionTokens.screenFadeSpec()
+    val divisor = SharedAxisMotionConfig.SLIDE_OFFSET_DIVISOR
 
     return when (direction) {
         NavigationTabDirection.FORWARD -> {
-            slideOutHorizontally(animationSpec = tweenSpec, targetOffsetX = { -it }) +
-                fadeOut(animationSpec = fadeSpec)
+            // Home -> People: Home exits from center to subtle 25% left offset
+            slideOutHorizontally(animationSpec = slideSpec, targetOffsetX = { -it / divisor }) +
+                fadeOut(animationSpec = fadeSpec, targetAlpha = 0f)
         }
         NavigationTabDirection.BACKWARD -> {
-            slideOutHorizontally(animationSpec = tweenSpec, targetOffsetX = { it }) +
-                fadeOut(animationSpec = fadeSpec)
+            // People -> Home: People exits from center to subtle 25% right offset
+            slideOutHorizontally(animationSpec = slideSpec, targetOffsetX = { it / divisor }) +
+                fadeOut(animationSpec = fadeSpec, targetAlpha = 0f)
         }
         NavigationTabDirection.NONE -> ExitTransition.None
     }

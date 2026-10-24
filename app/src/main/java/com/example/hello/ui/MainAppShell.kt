@@ -1,12 +1,10 @@
 package com.example.hello.ui
 
 import android.content.res.Configuration
-import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,6 +14,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -23,60 +23,94 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.ui.contacts.ContactsScreen
+import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
-import com.example.hello.ui.navigation.HomeRoute
-import com.example.hello.ui.navigation.PeopleRoute
-import com.example.hello.ui.navigation.navigateToRootTab
-import com.example.hello.ui.navigation.resolveRouteSlideDirection
-import com.example.hello.ui.navigation.sharedAxisEnterTransition
-import com.example.hello.ui.navigation.sharedAxisExitTransition
+import com.example.hello.ui.quickaction.QuickActionSheetHost
+import com.example.hello.ui.quickaction.QuickActionUiEvent
+import com.example.hello.ui.quickaction.QuickActionViewModel
 import com.example.hello.ui.theme.HelloTheme
+import com.example.hello.ui.theme.MotionTokens
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainAppShell(
     homeViewModel: HomeViewModel = remember { HomeViewModel() },
     contactsViewModel: ContactsViewModel = remember { ContactsViewModel() },
+    quickActionViewModel: QuickActionViewModel = remember { QuickActionViewModel() },
     modifier: Modifier = Modifier
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val contactsUiState by contactsViewModel.uiState.collectAsState()
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: HomeRoute.ROUTE_NAME
-    val activeTab = if (currentRoute == PeopleRoute.ROUTE_NAME) HomeNavTab.PEOPLE else HomeNavTab.HOME
+    val quickActionUiState by quickActionViewModel.uiState.collectAsState()
+    val repoContacts by quickActionViewModel.repository.contacts.collectAsState()
+    val repoRecentContacts by quickActionViewModel.repository.recentContacts.collectAsState()
+    val repoUpcomingAlerts by quickActionViewModel.repository.upcomingAlerts.collectAsState()
+
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Single source of truth: PagerState is the sole authority for active page and tab state
+    val pagerState = rememberPagerState(initialPage = 0) { 2 }
+    val activeTab by remember {
+        derivedStateOf {
+            if (pagerState.targetPage == 0) HomeNavTab.HOME else HomeNavTab.PEOPLE
+        }
+    }
+
+    // Predictive / System Back on People (page 1) smoothly slides back to Home (page 0)
+    BackHandler(enabled = pagerState.currentPage == 1 || pagerState.targetPage == 1) {
+        scope.launch {
+            pagerState.animateScrollToPage(
+                page = 0,
+                animationSpec = MotionTokens.tabTransitionTween()
+            )
+        }
+    }
+
+    // Synchronize shared ContactRepository streams with Home and People ViewModels
+    LaunchedEffect(repoRecentContacts, repoUpcomingAlerts) {
+        homeViewModel.syncRepositoryData(
+            recentContacts = repoRecentContacts,
+            upcomingAlerts = repoUpcomingAlerts
+        )
+    }
+    LaunchedEffect(repoContacts) {
+        contactsViewModel.syncContacts(repoContacts)
+    }
 
     // Surface feedback messages
     LaunchedEffect(contactsUiState.userMessage) {
         contactsUiState.userMessage?.let {
             snackbarHostState.showSnackbar(it)
-            contactsViewModel.onEvent(com.example.hello.ui.contacts.ContactsUiEvent.OnDismissUserMessage)
+            contactsViewModel.onEvent(ContactsUiEvent.OnDismissUserMessage)
         }
     }
     LaunchedEffect(homeUiState.userMessage) {
         homeUiState.userMessage?.let {
             snackbarHostState.showSnackbar(it)
             homeViewModel.onEvent(HomeUiEvent.OnDismissUserMessage)
+        }
+    }
+    LaunchedEffect(quickActionUiState.userMessage) {
+        quickActionUiState.userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
         }
     }
 
@@ -90,56 +124,45 @@ fun MainAppShell(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Single NavHost with route-aware shared-axis horizontal transitions & hardware clipping
-            NavHost(
-                navController = navController,
-                startDestination = HomeRoute.ROUTE_NAME,
+            // HorizontalPager provides fluid directional screen transitions driven by PagerState
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = false,
+                beyondViewportPageCount = 1,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { clip = true }
-            ) {
-                composable(
-                    route = HomeRoute.ROUTE_NAME,
-                    enterTransition = {
-                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
-                        sharedAxisEnterTransition(dir)
-                    },
-                    exitTransition = {
-                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
-                        sharedAxisExitTransition(dir)
-                    }
-                ) {
-                    HomeScreen(
+            ) { page ->
+                when (page) {
+                    0 -> HomeScreen(
                         uiState = homeUiState,
                         onEvent = homeViewModel::onEvent,
                         showBottomDock = false,
                         onNavigateToPeople = {
-                            navController.navigateToRootTab(PeopleRoute.ROUTE_NAME)
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = 1,
+                                    animationSpec = MotionTokens.tabTransitionTween()
+                                )
+                            }
                         }
                     )
-                }
-                composable(
-                    route = PeopleRoute.ROUTE_NAME,
-                    enterTransition = {
-                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
-                        sharedAxisEnterTransition(dir)
-                    },
-                    exitTransition = {
-                        val dir = resolveRouteSlideDirection(initialState.destination.route, targetState.destination.route)
-                        sharedAxisExitTransition(dir)
-                    }
-                ) {
-                    ContactsScreen(
+                    1 -> ContactsScreen(
                         uiState = contactsUiState,
                         onEvent = contactsViewModel::onEvent,
                         onNavigateToHome = {
-                            navController.navigateToRootTab(HomeRoute.ROUTE_NAME)
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = 0,
+                                    animationSpec = MotionTokens.tabTransitionTween()
+                                )
+                            }
                         }
                     )
                 }
             }
 
-            // Scrim to dismiss Speed Dial when tapping outside
+            // Scrim to dismiss the 2-button Speed Dial column when tapping outside
             AnimatedVisibility(
                 visible = homeUiState.isSpeedDialOpen,
                 enter = fadeIn(),
@@ -158,26 +181,43 @@ fun MainAppShell(
                 )
             }
 
-            // Shared Floating Bottom Navigation Dock & Companion Quick-Add FAB
+            // Shared Floating Bottom Navigation Dock & Companion Quick-Add [ + ] FAB
             HomeFloatingBottomDock(
                 selectedTab = activeTab,
                 onTabSelect = { tab ->
-                    val target = when (tab) {
-                        HomeNavTab.HOME -> HomeRoute.ROUTE_NAME
-                        HomeNavTab.PEOPLE -> PeopleRoute.ROUTE_NAME
+                    val targetPage = when (tab) {
+                        HomeNavTab.HOME -> 0
+                        HomeNavTab.PEOPLE -> 1
                     }
-                    navController.navigateToRootTab(target)
+                    scope.launch {
+                        pagerState.animateScrollToPage(
+                            page = targetPage,
+                            animationSpec = MotionTokens.tabTransitionTween()
+                        )
+                    }
                 },
                 isSpeedDialOpen = homeUiState.isSpeedDialOpen,
-                onToggleSpeedDial = { homeViewModel.onEvent(HomeUiEvent.OnToggleSpeedDial) },
+                onToggleSpeedDial = {
+                    homeViewModel.onEvent(HomeUiEvent.OnToggleSpeedDial)
+                },
                 onSpeedDialAction = { action ->
-                    homeViewModel.onEvent(HomeUiEvent.OnSpeedDialAction(action))
+                    homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
+                    when (action) {
+                        SpeedDialAction.NEW_CONTACT -> quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
+                        SpeedDialAction.LOG_ENCOUNTER -> quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter)
+                    }
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     )
+            )
+
+            // Quick Action Sheet Host (Flow A: Add Contact card flow, Flow B: Met Again encounter sheet)
+            QuickActionSheetHost(
+                uiState = quickActionUiState,
+                onEvent = quickActionViewModel::onEvent
             )
         }
     }

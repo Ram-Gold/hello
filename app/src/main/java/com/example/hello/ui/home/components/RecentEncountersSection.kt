@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.ui.theme.MotionTokens
 
 @Composable
 fun RecentEncountersSection(
@@ -70,11 +71,8 @@ fun RecentEncountersSection(
             val badgeInteractionSource = remember { MutableInteractionSource() }
             val isBadgePressed by badgeInteractionSource.collectIsPressedAsState()
             val badgeScale by animateFloatAsState(
-                targetValue = if (isBadgePressed) 0.88f else 1.0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
+                targetValue = if (isBadgePressed) MotionTokens.BADGE_PRESSED_SCALE else 1.0f,
+                animationSpec = MotionTokens.badgePressSpring(),
                 label = "peopleBadgeScale"
             )
 

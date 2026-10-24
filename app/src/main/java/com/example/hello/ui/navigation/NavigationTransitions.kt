@@ -4,17 +4,16 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.ui.unit.IntOffset
 import com.example.hello.domain.model.HomeNavTab
+import com.example.hello.ui.theme.MotionTokens
 
 object NavigationTransitionConfig {
-    const val SCREEN_TRANSITION_DURATION_MS = 50
-    const val USE_CONTAINER_SLIDE = false
+    const val SCREEN_TRANSITION_DURATION_MS = MotionTokens.TAB_COLOR_TWEEN_DURATION_MS
+    const val USE_CONTAINER_SLIDE = true
 }
 
 enum class NavigationTabDirection {
@@ -31,16 +30,9 @@ fun resolveTabSlideDirection(from: HomeNavTab, to: HomeNavTab): NavigationTabDir
     }
 }
 
-// Snappy spring physics complying with AGENTS.md §3 and ultra-fast capture speed
-private val TabSlideSpringSpec = spring<IntOffset>(
-    dampingRatio = 0.82f,
-    stiffness = 1400f
-)
+private val TabSlideSpec = MotionTokens.screenSlideSpec()
 
-private val TabFadeSpringSpec = spring<Float>(
-    dampingRatio = 0.9f,
-    stiffness = 1500f
-)
+private val TabFadeSpec = MotionTokens.screenFadeSpec()
 
 fun AnimatedContentTransitionScope<HomeNavTab>.tabSlideTransitionSpec(): ContentTransform {
     val direction = resolveTabSlideDirection(initialState, targetState)
@@ -81,19 +73,22 @@ private fun createSnappyCrossfade(): ContentTransform {
 private fun AnimatedContentTransitionScope<HomeNavTab>.createDirectionalSlide(
     slideDirection: AnimatedContentTransitionScope.SlideDirection
 ): ContentTransform {
+    val divisor = MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR
     return (slideIntoContainer(
         towards = slideDirection,
-        animationSpec = TabSlideSpringSpec
+        animationSpec = TabSlideSpec,
+        initialOffset = { it / divisor }
     ) + fadeIn(
-        animationSpec = TabFadeSpringSpec,
-        initialAlpha = 0.85f // Gentle softening rather than stark 0f fade
+        animationSpec = TabFadeSpec,
+        initialAlpha = 0f
     )).togetherWith(
         slideOutOfContainer(
             towards = slideDirection,
-            animationSpec = TabSlideSpringSpec
+            animationSpec = TabSlideSpec,
+            targetOffset = { it / divisor }
         ) + fadeOut(
-            animationSpec = TabFadeSpringSpec,
-            targetAlpha = 0.85f
+            animationSpec = TabFadeSpec,
+            targetAlpha = 0f
         )
     )
 }

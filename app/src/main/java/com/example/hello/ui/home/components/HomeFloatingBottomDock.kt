@@ -1,11 +1,9 @@
 package com.example.hello.ui.home.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -24,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,13 +49,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.ui.theme.MotionTokens
 
 @Composable
 fun HomeFloatingBottomDock(
@@ -67,7 +73,8 @@ fun HomeFloatingBottomDock(
     isSpeedDialOpen: Boolean,
     onToggleSpeedDial: () -> Unit,
     onSpeedDialAction: (SpeedDialAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween()
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -92,14 +99,14 @@ fun HomeFloatingBottomDock(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SpeedDialItem(
-                    label = "Log Encounter",
+                    label = "Met Again",
                     icon = Icons.Outlined.EditNote,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
                 )
                 SpeedDialItem(
-                    label = "New Contact",
+                    label = "Add Contact",
                     icon = Icons.Outlined.PersonAdd,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -116,7 +123,7 @@ fun HomeFloatingBottomDock(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Organic Floating Pill Navigation Dock with Spring-Animated Sliding Pill
+            // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -136,49 +143,63 @@ fun HomeFloatingBottomDock(
                         .fillMaxSize()
                         .padding(5.dp)
                 ) {
-                    val tabWidth = maxWidth / 2
-                    val indicatorOffset by animateDpAsState(
-                        targetValue = if (selectedTab == HomeNavTab.HOME) 0.dp else tabWidth,
-                        animationSpec = spring(
-                            dampingRatio = DockMotionConfig.PILL_SPRING_DAMPING,
-                            stiffness = DockMotionConfig.PILL_SPRING_STIFFNESS
-                        ),
-                        label = "dockSlidingPill"
+                    val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
+                    val pillProgress by animateFloatAsState(
+                        targetValue = targetProgress,
+                        animationSpec = pillAnimationSpec,
+                        label = "dockSlidingPillProgress"
                     )
 
-                    // Continuous spring-animated sliding indicator pill
+                    // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
+                    TabsRow(
+                        iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
+                    // clipped dynamically in the GPU draw phase to the moving pill shape.
+                    val pillShape = remember { PillClipShape({ pillProgress }) }
                     Box(
                         modifier = Modifier
-                            .offset(x = indicatorOffset)
-                            .width(tabWidth)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(25.dp))
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                clip = true
+                                shape = pillShape
+                            }
                             .background(MaterialTheme.colorScheme.secondaryContainer)
-                    )
+                    ) {
+                        TabsRow(
+                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
 
-                    // Navigation Tabs Row
+                    // Interactive Touch Layer on top (zero visual decoration, indication = null)
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        NavTabItem(
-                            tab = HomeNavTab.HOME,
-                            icon = Icons.Outlined.Home,
-                            isSelected = selectedTab == HomeNavTab.HOME,
-                            onClick = { onTabSelect(HomeNavTab.HOME) },
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                                .clip(RoundedCornerShape(25.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null, // Only the sliding pill appears; no click ripple/background
+                                    onClick = { onTabSelect(HomeNavTab.HOME) }
+                                )
                         )
-
-                        NavTabItem(
-                            tab = HomeNavTab.PEOPLE,
-                            icon = Icons.Outlined.People,
-                            isSelected = selectedTab == HomeNavTab.PEOPLE,
-                            onClick = { onTabSelect(HomeNavTab.PEOPLE) },
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                                .clip(RoundedCornerShape(25.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { onTabSelect(HomeNavTab.PEOPLE) }
+                                )
                         )
                     }
                 }
@@ -223,32 +244,46 @@ fun HomeFloatingBottomDock(
 }
 
 @Composable
-private fun NavTabItem(
-    tab: HomeNavTab,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit,
+private fun TabsRow(
+    iconColor: Color,
+    textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(DockMotionConfig.SCREEN_FADE_DURATION_MS),
-        label = "tabContentColor"
-    )
+    Row(
+        modifier = modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NavTabItemContent(
+            tab = HomeNavTab.HOME,
+            icon = Icons.Outlined.Home,
+            iconColor = iconColor,
+            textColor = textColor,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        )
+        NavTabItemContent(
+            tab = HomeNavTab.PEOPLE,
+            icon = Icons.Outlined.People,
+            iconColor = iconColor,
+            textColor = textColor,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        )
+    }
+}
 
+@Composable
+private fun NavTabItemContent(
+    tab: HomeNavTab,
+    icon: ImageVector,
+    iconColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(25.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null, // Only the sliding pill appears; no click ripple/background
-                onClick = onClick
-            )
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier = modifier.padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -258,15 +293,15 @@ private fun NavTabItem(
             Icon(
                 imageVector = icon,
                 contentDescription = tab.label,
-                tint = contentColor,
+                tint = iconColor,
                 modifier = Modifier.size(20.dp)
             )
             Text(
                 text = tab.label,
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 ),
-                color = contentColor
+                color = textColor
             )
         }
     }
@@ -315,5 +350,31 @@ private fun SpeedDialItem(
                 modifier = Modifier.size(18.dp)
             )
         }
+    }
+}
+
+/**
+ * Reusable zero-allocation shape that dynamically outlines the sliding pill in the draw phase.
+ */
+private class PillClipShape(
+    private val progressProvider: () -> Float
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val halfWidth = size.width / 2f
+        val left = progressProvider() * halfWidth
+        val radius = with(density) { 25.dp.toPx() }
+        return Outline.Rounded(
+            RoundRect(
+                left = left,
+                top = 0f,
+                right = left + halfWidth,
+                bottom = size.height,
+                cornerRadius = CornerRadius(radius, radius)
+            )
+        )
     }
 }

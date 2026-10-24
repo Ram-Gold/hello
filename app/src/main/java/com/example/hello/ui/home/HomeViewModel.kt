@@ -145,6 +145,18 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun syncRepositoryData(
+        recentContacts: List<ContactSummary>,
+        upcomingAlerts: List<UpcomingAlert>
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                recentContacts = recentContacts,
+                upcomingAlerts = upcomingAlerts
+            )
+        }
+    }
+
     companion object {
         fun createInitialState(): HomeUiState {
             val workCard = MyCardData(

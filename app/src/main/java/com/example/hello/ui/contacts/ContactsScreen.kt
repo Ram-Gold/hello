@@ -2,12 +2,15 @@ package com.example.hello.ui.contacts
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,9 +51,12 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -62,6 +68,7 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.ui.home.components.CircleBadge
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
+import com.example.hello.ui.theme.MotionTokens
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -168,12 +175,28 @@ private fun ContactsSearchHeader(
             }
 
             // Quick shortcut back to Home (animates dock pill to Home)
+            val homeBadgeInteractionSource = remember { MutableInteractionSource() }
+            val isHomeBadgePressed by homeBadgeInteractionSource.collectIsPressedAsState()
+            val homeBadgeScale by animateFloatAsState(
+                targetValue = if (isHomeBadgePressed) MotionTokens.BADGE_PRESSED_SCALE else 1.0f,
+                animationSpec = MotionTokens.badgePressSpring(),
+                label = "homeBadgeScale"
+            )
+
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
                 modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = homeBadgeScale
+                        scaleY = homeBadgeScale
+                    }
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onNavigateToHome)
+                    .clickable(
+                        interactionSource = homeBadgeInteractionSource,
+                        indication = null,
+                        onClick = onNavigateToHome
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),

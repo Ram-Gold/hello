@@ -1,6 +1,8 @@
 package com.example.hello.ui.home
 
 import com.example.hello.ui.home.components.DockMotionConfig
+import com.example.hello.ui.theme.MotionTokens
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,20 +10,34 @@ import org.junit.Test
 class DockPerformanceTest {
 
     @Test
-    fun dockMotionConfig_hasHighStiffnessForZeroPerceivedDelay() {
-        // Stiffness must be high (>= 1200f) so the pill springs across instantly without sluggishness
+    fun dockMotionConfig_hasVisibleTactileSpringPhysics() {
+        // Stiffness must be balanced (250f..600f) so the pill visibly glides with a tactile spring
         assertTrue(
-            "Stiffness must be >= 1200f for little to no delay",
-            DockMotionConfig.PILL_SPRING_STIFFNESS >= 1200f
+            "Stiffness must be in visible spring range (250f..600f)",
+            DockMotionConfig.PILL_SPRING_STIFFNESS in 250f..600f
+        )
+        assertEquals(
+            "Damping must be critically-damped (1.0f) for velocity-preserving interruptible motion",
+            1.0f,
+            DockMotionConfig.PILL_SPRING_DAMPING,
+            0.001f
+        )
+        assertEquals(
+            MotionTokens.PILL_SPRING_STIFFNESS,
+            DockMotionConfig.PILL_SPRING_STIFFNESS,
+            0.001f
+        )
+        assertTrue(
+            "Clip-path reveal must be enabled for pixel-perfect typography sync",
+            DockMotionConfig.USE_CLIP_PATH_REVEAL
         )
     }
 
     @Test
-    fun dockMotionConfig_screenTransitionIsNearInstant() {
-        // Screen fade duration must be <= 100ms so screen transition doesn't lag the tap
+    fun dockMotionConfig_tabColorCrossfadeMatchesSpringTravel() {
         assertTrue(
-            "Screen fade must be snappy (<= 100ms)",
-            DockMotionConfig.SCREEN_FADE_DURATION_MS <= 100
+            "Tab label color fade must be smooth and bounded (100ms..300ms)",
+            DockMotionConfig.SCREEN_FADE_DURATION_MS in 100..300
         )
     }
 

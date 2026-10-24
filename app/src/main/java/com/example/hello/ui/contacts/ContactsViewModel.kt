@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.update
 
 class ContactsViewModel : ViewModel() {
 
-    private val allContacts: List<ContactSummary> = createSampleContacts()
+    private var allContacts: List<ContactSummary> = createSampleContacts()
 
     private val _uiState = MutableStateFlow(
         computeState(
@@ -22,6 +22,18 @@ class ContactsViewModel : ViewModel() {
         )
     )
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
+
+    fun syncContacts(updatedContacts: List<ContactSummary>) {
+        allContacts = updatedContacts
+        _uiState.update { current ->
+            computeState(
+                searchQuery = current.searchQuery,
+                selectedCircle = current.selectedCircle,
+                sortMode = current.sortMode,
+                contacts = allContacts
+            )
+        }
+    }
 
     fun onEvent(event: ContactsUiEvent) {
         when (event) {
