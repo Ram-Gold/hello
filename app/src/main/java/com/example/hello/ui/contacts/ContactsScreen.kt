@@ -76,6 +76,7 @@ fun ContactsScreen(
     uiState: ContactsUiState,
     onEvent: (ContactsUiEvent) -> Unit,
     onNavigateToHome: () -> Unit = {},
+    onContactClick: (String) -> Unit = { onEvent(ContactsUiEvent.OnContactClick(it)) },
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -134,7 +135,7 @@ fun ContactsScreen(
                     ) { contact ->
                         MinimalistContactRow(
                             contact = contact,
-                            onClick = { onEvent(ContactsUiEvent.OnContactClick(contact.id)) }
+                            onClick = { onContactClick(contact.id) }
                         )
                     }
                 }

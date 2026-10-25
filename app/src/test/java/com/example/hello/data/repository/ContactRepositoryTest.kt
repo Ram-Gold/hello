@@ -3,7 +3,9 @@ package com.example.hello.data.repository
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.UpcomingAlert
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -116,5 +118,71 @@ class ContactRepositoryTest {
             it is UpcomingAlert.CadenceAlert && it.contactName.startsWith("Sarah")
         }
         assertTrue(remainingSarahCadence.isEmpty())
+    }
+
+    @Test
+    fun getContact_returnsFullContactDetails() {
+        val contact = repository.getContact("c-1")
+        assertNotNull(contact)
+        assertEquals("Alex Rivera", contact?.name)
+        assertEquals("+1 (555) 876-5432", contact?.phone)
+        assertEquals("alex.rivera@example.com", contact?.email)
+        assertEquals(14, contact?.cadenceDays)
+    }
+
+    @Test
+    fun updateContact_updatesFullContactAndSummaries() {
+        val initial = repository.getContact("c-1")!!
+        val updated = initial.copy(
+            name = "Alexander Rivera",
+            phone = "+1 (555) 999-0000",
+            notes = "Updated notes"
+        )
+        repository.updateContact(updated)
+
+        val fetched = repository.getContact("c-1")
+        assertEquals("Alexander Rivera", fetched?.name)
+        assertEquals("+1 (555) 999-0000", fetched?.phone)
+
+        val inContacts = repository.contacts.value.first { it.id == "c-1" }
+        assertEquals("Alexander Rivera", inContacts.name)
+        assertEquals("+1 (555) 999-0000", inContacts.phone)
+    }
+
+    @Test
+    fun archiveContact_marksContactArchivedAndClearsCadenceAlert() {
+        val initial = repository.getContact("c-1")!!
+        assertFalse(initial.isArchived)
+
+        repository.archiveContact("c-1", archived = true)
+
+        val archived = repository.getContact("c-1")!!
+        assertTrue(archived.isArchived)
+
+        val inContacts = repository.contacts.value.first { it.id == "c-1" }
+        assertTrue(inContacts.isArchived)
+    }
+
+    @Test
+    fun deleteContact_removesContactAndCascadesEncounters() {
+        val initialContact = repository.getContact("c-1")
+        assertNotNull(initialContact)
+        val initialEncounters = repository.encounters.value.filter { it.contactId == "c-1" }
+        assertTrue(initialEncounters.isNotEmpty())
+
+        repository.deleteContact("c-1")
+
+        assertNull(repository.getContact("c-1"))
+        assertTrue(repository.contacts.value.none { it.id == "c-1" })
+        assertTrue(repository.recentContacts.value.none { it.id == "c-1" })
+        assertTrue(repository.encounters.value.none { it.contactId == "c-1" })
+    }
+
+    @Test
+    fun addTag_createsNewTagSuccessfully() {
+        val newTag = repository.addTag("Mentorship", "#4A6572")
+        assertEquals("Mentorship", newTag.name)
+        assertEquals("#4A6572", newTag.colorHex)
+        assertTrue(repository.tags.value.any { it.id == newTag.id })
     }
 }

@@ -60,7 +60,8 @@ fun HomeScreen(
     onEvent: (HomeUiEvent) -> Unit,
     modifier: Modifier = Modifier,
     showBottomDock: Boolean = true,
-    onNavigateToPeople: () -> Unit = { onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.PEOPLE)) }
+    onNavigateToPeople: () -> Unit = { onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.PEOPLE)) },
+    onContactClick: (String) -> Unit = { onEvent(HomeUiEvent.OnContactClick(it)) }
 ) {
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -220,7 +221,7 @@ fun HomeScreen(
                 // 4. Recent Encounters List
                 RecentEncountersSection(
                     contacts = filteredContacts,
-                    onContactClick = { onEvent(HomeUiEvent.OnContactClick(it)) },
+                    onContactClick = onContactClick,
                     onNavigateToPeople = onNavigateToPeople
                 )
 

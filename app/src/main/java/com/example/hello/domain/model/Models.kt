@@ -52,7 +52,10 @@ data class ContactSummary(
     val circles: List<Circle>,
     val avatarInitials: String,
     val avatarBgIndex: Int = 0,
-    val lastEncounterText: String? = null
+    val lastEncounterText: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val isArchived: Boolean = false
 )
 
 data class MyCardData(

@@ -18,6 +18,18 @@ data object PeopleRoute {
     const val ROUTE_NAME = "people"
 }
 
+data object PersonDetailRoute {
+    const val ROUTE_PATTERN = "detail/{contactId}"
+    const val ARG_CONTACT_ID = "contactId"
+    fun createRoute(contactId: String) = "detail/$contactId"
+}
+
+data object PersonEditRoute {
+    const val ROUTE_PATTERN = "edit/{contactId}"
+    const val ARG_CONTACT_ID = "contactId"
+    fun createRoute(contactId: String) = "edit/$contactId"
+}
+
 object SharedAxisMotionConfig {
     const val SLIDE_DURATION_MS = MotionTokens.SCREEN_SLIDE_DURATION_MS
     const val SLIDE_OFFSET_DIVISOR = MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR

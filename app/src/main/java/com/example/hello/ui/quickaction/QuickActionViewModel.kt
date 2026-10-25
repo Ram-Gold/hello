@@ -62,6 +62,18 @@ class QuickActionViewModel(
                 }
             }
 
+            is QuickActionUiEvent.OnOpenLogEncounterForContact -> {
+                refreshSuggestionsFromRepository()
+                _uiState.update { state ->
+                    resetDraftState(state).copy(
+                        isOpen = true,
+                        currentMode = QuickActionMode.FLOW_B_LOG_ENCOUNTER,
+                        selectedContact = event.contact,
+                        searchQuery = ""
+                    )
+                }
+            }
+
             is QuickActionUiEvent.OnBackToChoice -> {
                 _uiState.update { state ->
                     state.copy(
