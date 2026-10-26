@@ -235,4 +235,70 @@ class DockPerformanceTest {
             0.001f
         )
     }
+
+    @Test
+    fun dockMotionConfig_calculateHuggingDockWidthDp_hugsContentDynamically() {
+        // Home tab content: ~68dp
+        val homeDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(contentWidthDp = 68f)
+        // Expected = 68 + (16 * 2) + 8 (gap) + 42 (icon slot) + (4 * 2) (slot padding) + 10 (surface padding) = 168dp
+        assertEquals("Home dock width must hug content at exactly 168dp", 168f, homeDockWidth, 0.001f)
+
+        // People tab content: ~76dp -> 176dp
+        val peopleDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(contentWidthDp = 76f)
+        assertEquals("People dock width must hug content at exactly 176dp", 176f, peopleDockWidth, 0.001f)
+
+        // Friends tab content: ~82dp -> 182dp
+        val friendsDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(contentWidthDp = 82f)
+        assertEquals("Friends dock width must hug content at exactly 182dp", 182f, friendsDockWidth, 0.001f)
+
+        // Contacts tab content: ~90dp -> 190dp
+        val contactsDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(contentWidthDp = 90f)
+        assertEquals("Contacts dock width must hug content at exactly 190dp", 190f, contactsDockWidth, 0.001f)
+
+        // Connections tab content: ~114dp -> 214dp
+        val connectionsDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(contentWidthDp = 114f)
+        assertEquals("Connections dock width must hug content at exactly 214dp", 214f, connectionsDockWidth, 0.001f)
+
+        // All dynamic widths must comfortably fit within max container boundary (<= 220dp)
+        assertTrue(homeDockWidth <= DockMotionConfig.DOCK_CONTAINER_WIDTH_DP)
+        assertTrue(friendsDockWidth <= DockMotionConfig.DOCK_CONTAINER_WIDTH_DP)
+        assertTrue(connectionsDockWidth <= DockMotionConfig.DOCK_CONTAINER_WIDTH_DP)
+    }
+
+    @Test
+    fun dockMotionConfig_huggingDockMaintains8dpGapBetweenPillAndUnselectedIcon() {
+        val gap = DockMotionConfig.DOCK_ITEMS_GAP_DP.toFloat()
+        assertEquals("Items gap must be 8dp", 8f, gap, 0.001f)
+
+        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat() // 4f
+        val hPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat() // 16f
+        val iconSlotWidth = 42f
+        val surfacePadding = 10f
+
+        val homeContentWidth = 68f
+        val homeDockWidth = DockMotionConfig.calculateHuggingDockWidthDp(
+            contentWidthDp = homeContentWidth,
+            horizontalPaddingDp = hPadding,
+            slotPaddingDp = vPadding,
+            gapDp = gap,
+            unselectedSlotWidthDp = iconSlotWidth,
+            surfacePaddingDp = surfacePadding
+        )
+        val innerWidth = homeDockWidth - surfacePadding
+
+        // Pill on the left: 4f .. 4f + pillWidth
+        val homePillWidth = homeContentWidth + (2f * hPadding)
+        val pillRight = vPadding + homePillWidth
+
+        // Unselected icon on the right: innerWidth - 4f - 42f .. innerWidth - 4f
+        val iconLeft = innerWidth - vPadding - iconSlotWidth
+
+        val distanceBetweenPillAndIcon = iconLeft - pillRight
+        assertEquals(
+            "Distance between active pill and unselected icon must equal exact 8dp gap in hugging dock",
+            gap,
+            distanceBetweenPillAndIcon,
+            0.001f
+        )
+    }
 }

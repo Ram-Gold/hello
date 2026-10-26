@@ -29,6 +29,7 @@ object DockMotionConfig {
     const val PILL_VERTICAL_PADDING_DP = 4
     const val PILL_CONTENT_HORIZONTAL_PADDING_DP = 16
     const val TAB_ITEM_HORIZONTAL_PADDING_DP = 14
+    const val DOCK_ITEMS_GAP_DP = 8
     const val HAS_DOCK_BORDER = false
 
     // Warm tactile shadow tokens for light theme (natural diffuse single shadow, darker contrast)
@@ -71,6 +72,23 @@ object DockMotionConfig {
      * Estimates the content width in DP for a tab item with an icon (24dp) + gap (8dp) + label text.
      */
     fun estimateContentWidthDp(label: String): Int = 32 + (label.length * 8)
+
+    /**
+     * Calculates the dynamic hugging dock container width in DP based on the active tab content width.
+     * Hugs the active pill (content + 2 * horizontalPadding) + gap (8dp) + unselected 1:1 icon slot (42dp)
+     * + outer slot padding (2 * 4dp) + surface inner padding (10dp).
+     */
+    fun calculateHuggingDockWidthDp(
+        contentWidthDp: Float,
+        horizontalPaddingDp: Float = PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat(),
+        slotPaddingDp: Float = PILL_VERTICAL_PADDING_DP.toFloat(),
+        gapDp: Float = DOCK_ITEMS_GAP_DP.toFloat(),
+        unselectedSlotWidthDp: Float = 42f,
+        surfacePaddingDp: Float = 10f
+    ): Float {
+        val pillWidth = contentWidthDp + (horizontalPaddingDp * 2f)
+        return pillWidth + gapDp + unselectedSlotWidthDp + (slotPaddingDp * 2f) + surfacePaddingDp
+    }
 
     /**
      * Calculates dynamically sized pill coordinates anchored to the container edge:
