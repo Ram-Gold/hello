@@ -301,4 +301,46 @@ class DockPerformanceTest {
             0.001f
         )
     }
+
+    @Test
+    fun dockMotionConfig_calculateStableDockWidthDp_remainsStaticRegardlessOfActiveTab() {
+        val friendsContentWidth = 82f
+        val homeContentWidth = 68f
+
+        // Dock width calculated for Friends terminology
+        val stableWidth = DockMotionConfig.calculateStableDockWidthDp(
+            relationshipContentWidthDp = friendsContentWidth,
+            homeContentWidthDp = homeContentWidth
+        )
+
+        // Switching between Home and Friends produces the exact same static container width
+        assertEquals(
+            "Stable dock width must equal 184dp for Friends",
+            184f,
+            stableWidth,
+            0.001f
+        )
+    }
+
+    @Test
+    fun dockMotionConfig_calculateStableDockWidthDp_hugsConfiguredTerminologyCleanly() {
+        // "People" (~76dp): max(100, 108) + 10 + 42 + 8 + 10 = 178dp
+        val peopleWidth = DockMotionConfig.calculateStableDockWidthDp(relationshipContentWidthDp = 76f)
+        assertEquals(178f, peopleWidth, 0.001f)
+
+        // "Friends" (~82dp): max(100, 114) + 10 + 42 + 8 + 10 = 184dp
+        val friendsWidth = DockMotionConfig.calculateStableDockWidthDp(relationshipContentWidthDp = 82f)
+        assertEquals(184f, friendsWidth, 0.001f)
+
+        // "Contacts" (~90dp): max(100, 122) + 10 + 42 + 8 + 10 = 192dp
+        val contactsWidth = DockMotionConfig.calculateStableDockWidthDp(relationshipContentWidthDp = 90f)
+        assertEquals(192f, contactsWidth, 0.001f)
+
+        // "Connections" (~114dp): max(100, 146) + 10 + 42 + 8 + 10 = 216dp
+        val connectionsWidth = DockMotionConfig.calculateStableDockWidthDp(relationshipContentWidthDp = 114f)
+        assertEquals(216f, connectionsWidth, 0.001f)
+
+        // All stable widths must fit comfortably within the 220dp max dock boundary
+        assertTrue("Connections width must fit in max dock width (220dp)", connectionsWidth <= DockMotionConfig.DOCK_CONTAINER_WIDTH_DP)
+    }
 }

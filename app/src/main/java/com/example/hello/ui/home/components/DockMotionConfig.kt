@@ -91,6 +91,26 @@ object DockMotionConfig {
     }
 
     /**
+     * Calculates a stable, non-animating dock container width in DP based on the configured terminology.
+     * Uses the maximum of Home content and the relationship tab content so the dock remains completely
+     * static during tab switching, eliminating jitter and resizing bugs while snugly fitting both states.
+     */
+    fun calculateStableDockWidthDp(
+        relationshipContentWidthDp: Float,
+        homeContentWidthDp: Float = 68f,
+        horizontalPaddingDp: Float = PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat(),
+        slotPaddingDp: Float = PILL_VERTICAL_PADDING_DP.toFloat(),
+        gapDp: Float = 10f,
+        unselectedSlotWidthDp: Float = 42f,
+        surfacePaddingDp: Float = 10f
+    ): Float {
+        val homePillWidth = homeContentWidthDp + (horizontalPaddingDp * 2f)
+        val relationshipPillWidth = relationshipContentWidthDp + (horizontalPaddingDp * 2f)
+        val maxPillWidth = maxOf(homePillWidth, relationshipPillWidth)
+        return maxPillWidth + gapDp + unselectedSlotWidthDp + (slotPaddingDp * 2f) + surfacePaddingDp
+    }
+
+    /**
      * Calculates dynamically sized pill coordinates anchored to the container edge:
      * - Home (isRightAnchored = false): left = slotPadding, right = left + pillWidth
      * - People/Friends/Connections (isRightAnchored = true): right = containerWidth - slotPadding, left = right - pillWidth

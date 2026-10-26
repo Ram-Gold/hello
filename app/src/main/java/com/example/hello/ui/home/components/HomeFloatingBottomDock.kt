@@ -2,7 +2,6 @@ package com.example.hello.ui.home.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
@@ -120,18 +119,10 @@ fun HomeFloatingBottomDock(
     val homeWidthDp = if (homeContentWidthPx > 0f) with(density) { homeContentWidthPx.toDp().value } else defaultHomeContentWidthDp
     val peopleWidthDp = if (peopleContentWidthPx > 0f) with(density) { peopleContentWidthPx.toDp().value } else defaultPeopleContentWidthDp
 
-    val homeDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(homeWidthDp).dp
-    val peopleDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(peopleWidthDp).dp
-
-    val targetDockWidth = if (selectedTab == HomeNavTab.HOME) homeDockWidthDp else peopleDockWidthDp
-    val animatedDockWidth by animateDpAsState(
-        targetValue = targetDockWidth,
-        animationSpec = spring(
-            dampingRatio = DockMotionConfig.PILL_SPRING_DAMPING,
-            stiffness = DockMotionConfig.PILL_SPRING_STIFFNESS
-        ),
-        label = "dockHuggingContainerWidth"
-    )
+    val stableDockWidthDp = DockMotionConfig.calculateStableDockWidthDp(
+        relationshipContentWidthDp = peopleWidthDp,
+        homeContentWidthDp = homeWidthDp
+    ).dp
 
     // Separate Rounded-Square Quick-Add FAB with matching elevation & spring rotation
     val fabRotation by animateFloatAsState(
@@ -161,7 +152,7 @@ fun HomeFloatingBottomDock(
     ) {
         Surface(
             modifier = Modifier
-                .width(animatedDockWidth)
+                .width(stableDockWidthDp)
                 .height(60.dp)
                 .shadow(
                     elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,

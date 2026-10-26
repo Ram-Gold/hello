@@ -214,4 +214,48 @@ class SmoothTabsTest {
         assertTrue("Connections estimate must be larger than Contacts", connectionsWidth > contactsWidth)
         assertTrue("Connections estimate must accommodate 11 chars", connectionsWidth >= 120)
     }
+
+    @Test
+    fun calculateAnchoredPillBounds_fitsInsideStableDockWidthWithExact4dpMargins() {
+        val terminologies = listOf(
+            "People" to 76f,
+            "Friends" to 82f,
+            "Contacts" to 90f,
+            "Connections" to 114f
+        )
+        val homeContentWidth = 68f
+        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
+        val hPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat()
+
+        terminologies.forEach { (label, contentWidth) ->
+            val stableDockWidth = DockMotionConfig.calculateStableDockWidthDp(
+                relationshipContentWidthDp = contentWidth,
+                homeContentWidthDp = homeContentWidth
+            )
+            val innerWidth = stableDockWidth - 10f // minus 5dp padding on each side
+
+            // 1. Home pill inside stable dock
+            val (homeLeft, homeRight) = DockMotionConfig.calculateAnchoredPillBounds(
+                contentWidth = homeContentWidth,
+                horizontalPadding = hPadding,
+                containerWidth = innerWidth,
+                isRightAnchored = false,
+                slotPadding = vPadding
+            )
+            assertEquals("Home left margin must equal 4dp", vPadding, homeLeft, 0.001f)
+            assertTrue("Home pill must fit inside inner container", homeRight <= innerWidth - vPadding)
+
+            // 2. Relationship pill inside stable dock
+            val (relLeft, relRight) = DockMotionConfig.calculateAnchoredPillBounds(
+                contentWidth = contentWidth,
+                horizontalPadding = hPadding,
+                containerWidth = innerWidth,
+                isRightAnchored = true,
+                slotPadding = vPadding
+            )
+            val relRightMargin = innerWidth - relRight
+            assertEquals("Pill for '$label' right margin must equal 4dp", vPadding, relRightMargin, 0.001f)
+            assertTrue("Pill for '$label' must stay within inner container left edge", relLeft >= vPadding)
+        }
+    }
 }
