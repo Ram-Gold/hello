@@ -95,218 +95,217 @@ fun HomeFloatingBottomDock(
     addContactLabel: String = "Add Contact",
     pillAnimationSpec: AnimationSpec<Float> = MotionTokens.dockPillProgressSpring()
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.End
+    // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
+    val isDark = isSystemInDarkTheme()
+    val warmShadowAmbient = if (isDark) Color(0x80000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
+    val warmShadowSpot = if (isDark) Color(0xB3000000) else DockMotionConfig.WARM_SHADOW_SPOT
+
+    val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
+        Modifier.border(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant,
+            shape = RoundedCornerShape(30.dp)
+        )
+    } else {
+        Modifier
+    }
+
+    val density = LocalDensity.current
+    var homeContentWidthPx by remember { mutableFloatStateOf(0f) }
+    var peopleContentWidthPx by remember(peopleTabLabel) { mutableFloatStateOf(0f) }
+
+    val defaultHomeContentWidthDp = 68f
+    val defaultPeopleContentWidthDp = DockMotionConfig.estimateContentWidthDp(peopleTabLabel).toFloat()
+
+    val homeWidthDp = if (homeContentWidthPx > 0f) with(density) { homeContentWidthPx.toDp().value } else defaultHomeContentWidthDp
+    val peopleWidthDp = if (peopleContentWidthPx > 0f) with(density) { peopleContentWidthPx.toDp().value } else defaultPeopleContentWidthDp
+
+    val homeDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(homeWidthDp).dp
+    val peopleDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(peopleWidthDp).dp
+
+    val targetDockWidth = if (selectedTab == HomeNavTab.HOME) homeDockWidthDp else peopleDockWidthDp
+    val animatedDockWidth by animateDpAsState(
+        targetValue = targetDockWidth,
+        animationSpec = spring(
+            dampingRatio = DockMotionConfig.PILL_SPRING_DAMPING,
+            stiffness = DockMotionConfig.PILL_SPRING_STIFFNESS
+        ),
+        label = "dockHuggingContainerWidth"
+    )
+
+    // Separate Rounded-Square Quick-Add FAB with matching elevation & spring rotation
+    val fabRotation by animateFloatAsState(
+        targetValue = if (isSpeedDialOpen) 45f else 0f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+        label = "fabRotate"
+    )
+
+    val fabBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
+        Modifier.border(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(18.dp)
+        )
+    } else {
+        Modifier
+    }
+
+    // Bottom Row: [ Floating Pill Dock ] + [ Quick-Add FAB with stacked Speed Dial ]
+    // Centered horizontally on the screen as a cohesive, balanced unit
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.Bottom
     ) {
-        // Speed Dial Popups (Animated above the FAB)
-        AnimatedVisibility(
-            visible = isSpeedDialOpen,
-            enter = slideInVertically(
-                initialOffsetY = { it / 2 },
-                animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f)
-            ) + fadeIn(),
-            exit = slideOutVertically(
-                targetOffsetY = { it / 2 },
-                animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f)
-            ) + fadeOut()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(end = 20.dp, bottom = 12.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SpeedDialItem(
-                    label = "Met Again",
-                    icon = Icons.Outlined.EditNote,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
-                )
-                SpeedDialItem(
-                    label = addContactLabel,
-                    icon = Icons.Outlined.PersonAdd,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    onClick = { onSpeedDialAction(SpeedDialAction.NEW_CONTACT) }
-                )
-            }
-        }
-
-        // Bottom Row: [ Floating Pill Dock ] + [ Rounded-Square Quick-Add FAB ]
-        Row(
+        Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
-            val isDark = isSystemInDarkTheme()
-            val warmShadowAmbient = if (isDark) Color(0x80000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
-            val warmShadowSpot = if (isDark) Color(0xB3000000) else DockMotionConfig.WARM_SHADOW_SPOT
-
-            val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
-                Modifier.border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(30.dp)
+                .width(animatedDockWidth)
+                .height(60.dp)
+                .shadow(
+                    elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
+                    shape = RoundedCornerShape(30.dp),
+                    ambientColor = warmShadowAmbient,
+                    spotColor = warmShadowSpot
                 )
-            } else {
-                Modifier
-            }
-
-            val density = LocalDensity.current
-            var homeContentWidthPx by remember { mutableFloatStateOf(0f) }
-            var peopleContentWidthPx by remember(peopleTabLabel) { mutableFloatStateOf(0f) }
-
-            val defaultHomeContentWidthDp = 68f
-            val defaultPeopleContentWidthDp = DockMotionConfig.estimateContentWidthDp(peopleTabLabel).toFloat()
-
-            val homeWidthDp = if (homeContentWidthPx > 0f) with(density) { homeContentWidthPx.toDp().value } else defaultHomeContentWidthDp
-            val peopleWidthDp = if (peopleContentWidthPx > 0f) with(density) { peopleContentWidthPx.toDp().value } else defaultPeopleContentWidthDp
-
-            val homeDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(homeWidthDp).dp
-            val peopleDockWidthDp = DockMotionConfig.calculateHuggingDockWidthDp(peopleWidthDp).dp
-
-            val targetDockWidth = if (selectedTab == HomeNavTab.HOME) homeDockWidthDp else peopleDockWidthDp
-            val animatedDockWidth by animateDpAsState(
-                targetValue = targetDockWidth,
-                animationSpec = spring(
-                    dampingRatio = DockMotionConfig.PILL_SPRING_DAMPING,
-                    stiffness = DockMotionConfig.PILL_SPRING_STIFFNESS
-                ),
-                label = "dockHuggingContainerWidth"
-            )
-
-            Surface(
+                .clip(RoundedCornerShape(30.dp))
+                .then(dockBorderModifier),
+            shape = RoundedCornerShape(30.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 3.dp
+        ) {
+            BoxWithConstraints(
                 modifier = Modifier
-                    .width(animatedDockWidth)
-                    .height(60.dp)
-                    .shadow(
-                        elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
-                        shape = RoundedCornerShape(30.dp),
-                        ambientColor = warmShadowAmbient,
-                        spotColor = warmShadowSpot
-                    )
-                    .clip(RoundedCornerShape(30.dp))
-                    .then(dockBorderModifier),
-                shape = RoundedCornerShape(30.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 3.dp
+                    .fillMaxSize()
+                    .padding(5.dp)
             ) {
-                BoxWithConstraints(
+                val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
+                val pillProgress by animateFloatAsState(
+                    targetValue = targetProgress,
+                    animationSpec = pillAnimationSpec,
+                    label = "dockSlidingPillProgress"
+                )
+
+                // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
+                TabsRow(
+                    selectedTab = selectedTab,
+                    pillProgress = pillProgress,
+                    peopleLabel = peopleTabLabel,
+                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    homeContentWidthPx = homeContentWidthPx,
+                    peopleContentWidthPx = peopleContentWidthPx,
+                    onHomeContentWidth = { homeContentWidthPx = it },
+                    onPeopleContentWidth = { peopleContentWidthPx = it }
+                )
+
+                // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
+                // clipped dynamically in the GPU draw phase to the moving content-hugging pill shape.
+                val pillShape = remember {
+                    PillClipShape(
+                        progressProvider = { pillProgress },
+                        homeWidthProvider = { homeContentWidthPx },
+                        peopleWidthProvider = { peopleContentWidthPx },
+                        peopleLabelProvider = { peopleTabLabel }
+                    )
+                }
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(5.dp)
+                        .graphicsLayer {
+                            clip = true
+                            shape = pillShape
+                        }
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
                 ) {
-                    val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
-                    val pillProgress by animateFloatAsState(
-                        targetValue = targetProgress,
-                        animationSpec = pillAnimationSpec,
-                        label = "dockSlidingPillProgress"
-                    )
-
-                    // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
                     TabsRow(
                         selectedTab = selectedTab,
                         pillProgress = pillProgress,
                         peopleLabel = peopleTabLabel,
-                        iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        textColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         homeContentWidthPx = homeContentWidthPx,
-                        peopleContentWidthPx = peopleContentWidthPx,
-                        onHomeContentWidth = { homeContentWidthPx = it },
-                        onPeopleContentWidth = { peopleContentWidthPx = it }
+                        peopleContentWidthPx = peopleContentWidthPx
                     )
+                }
 
-                    // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
-                    // clipped dynamically in the GPU draw phase to the moving content-hugging pill shape.
-                    val pillShape = remember {
-                        PillClipShape(
-                            progressProvider = { pillProgress },
-                            homeWidthProvider = { homeContentWidthPx },
-                            peopleWidthProvider = { peopleContentWidthPx },
-                            peopleLabelProvider = { peopleTabLabel }
-                        )
-                    }
+                // Interactive Touch Layer on top (48dp+ accessible touch target)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                clip = true
-                                shape = pillShape
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(25.dp))
+                            .semantics {
+                                role = Role.Tab
+                                selected = selectedTab == HomeNavTab.HOME
                             }
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
-                        TabsRow(
-                            selectedTab = selectedTab,
-                            pillProgress = pillProgress,
-                            peopleLabel = peopleTabLabel,
-                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            homeContentWidthPx = homeContentWidthPx,
-                            peopleContentWidthPx = peopleContentWidthPx
-                        )
-                    }
-
-                    // Interactive Touch Layer on top (48dp+ accessible touch target)
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(25.dp))
-                                .semantics {
-                                    role = Role.Tab
-                                    selected = selectedTab == HomeNavTab.HOME
-                                }
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null, // Only the sliding pill appears; no click ripple/background
-                                    onClick = { onTabSelect(HomeNavTab.HOME) }
-                                )
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(25.dp))
-                                .semantics {
-                                    role = Role.Tab
-                                    selected = selectedTab == HomeNavTab.PEOPLE
-                                }
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { onTabSelect(HomeNavTab.PEOPLE) }
-                                )
-                        )
-                    }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null, // Only the sliding pill appears; no click ripple/background
+                                onClick = { onTabSelect(HomeNavTab.HOME) }
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(25.dp))
+                            .semantics {
+                                role = Role.Tab
+                                selected = selectedTab == HomeNavTab.PEOPLE
+                            }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onTabSelect(HomeNavTab.PEOPLE) }
+                            )
+                    )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.width(14.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
-            // 2. Separate Rounded-Square Quick-Add FAB with matching elevation
-            val fabRotation by animateFloatAsState(
-                targetValue = if (isSpeedDialOpen) 45f else 0f,
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
-                label = "fabRotate"
-            )
-
-            val fabBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
-                Modifier.border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(18.dp)
-                )
-            } else {
-                Modifier
+        // Quick-Add FAB + Speed Dial Popups directly anchored above it
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AnimatedVisibility(
+                visible = isSpeedDialOpen,
+                enter = slideInVertically(
+                    initialOffsetY = { it / 2 },
+                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f)
+                ) + fadeIn(),
+                exit = slideOutVertically(
+                    targetOffsetY = { it / 2 },
+                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f)
+                ) + fadeOut()
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SpeedDialItem(
+                        label = "Met Again",
+                        icon = Icons.Outlined.EditNote,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
+                    )
+                    SpeedDialItem(
+                        label = addContactLabel,
+                        icon = Icons.Outlined.PersonAdd,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { onSpeedDialAction(SpeedDialAction.NEW_CONTACT) }
+                    )
+                }
             }
 
             FloatingActionButton(
