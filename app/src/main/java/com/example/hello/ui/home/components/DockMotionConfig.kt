@@ -31,9 +31,9 @@ object DockMotionConfig {
     const val TAB_ITEM_HORIZONTAL_PADDING_DP = 14
     const val HAS_DOCK_BORDER = false
 
-    // Warm tactile shadow tokens for light theme (natural diffuse single shadow)
-    val WARM_SHADOW_AMBIENT = Color(0x592B1F14)
-    val WARM_SHADOW_SPOT = Color(0x73140D07)
+    // Warm tactile shadow tokens for light theme (natural diffuse single shadow, darker contrast)
+    val WARM_SHADOW_AMBIENT = Color(0x802B1F14)
+    val WARM_SHADOW_SPOT = Color(0xA6140D07)
 
     // Unified left-to-right text transition offsets
     const val TEXT_ENTER_OFFSET_FRACTION = -0.5f

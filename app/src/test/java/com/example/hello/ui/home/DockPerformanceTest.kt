@@ -108,12 +108,12 @@ class DockPerformanceTest {
             DockMotionConfig.HAS_DOCK_BORDER
         )
         assertTrue(
-            "Shadow ambient color must have natural softened alpha",
-            DockMotionConfig.WARM_SHADOW_AMBIENT.alpha in 0.30f..0.60f
+            "Shadow ambient color must have natural softened alpha with visible contrast",
+            DockMotionConfig.WARM_SHADOW_AMBIENT.alpha in 0.40f..0.65f
         )
         assertTrue(
-            "Shadow spot color must have natural softened alpha",
-            DockMotionConfig.WARM_SHADOW_SPOT.alpha in 0.40f..0.70f
+            "Shadow spot color must have darker distinct tactile alpha",
+            DockMotionConfig.WARM_SHADOW_SPOT.alpha in 0.55f..0.80f
         )
     }
 

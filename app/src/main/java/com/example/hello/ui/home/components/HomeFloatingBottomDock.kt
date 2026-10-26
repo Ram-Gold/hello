@@ -140,8 +140,8 @@ fun HomeFloatingBottomDock(
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
             val isDark = isSystemInDarkTheme()
-            val warmShadowAmbient = if (isDark) Color(0x66000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
-            val warmShadowSpot = if (isDark) Color(0x8C000000) else DockMotionConfig.WARM_SHADOW_SPOT
+            val warmShadowAmbient = if (isDark) Color(0x80000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
+            val warmShadowSpot = if (isDark) Color(0xB3000000) else DockMotionConfig.WARM_SHADOW_SPOT
 
             val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
                 Modifier.border(
