@@ -54,11 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -159,40 +157,6 @@ fun HomeFloatingBottomDock(
                 modifier = Modifier
                     .width(DockMotionConfig.DOCK_CONTAINER_WIDTH_DP.dp)
                     .height(60.dp)
-                    .drawBehind {
-                        // Natural multi-tier soft dropdown shadow with wide spread
-                        val diffuseSpread = 8.dp.toPx()
-                        val midSpread = 4.dp.toPx()
-                        val contactSpread = 1.dp.toPx()
-
-                        val ambientShadow = if (isDark) Color(0x1F000000) else Color(0x0C2B1F14)
-                        val midShadow = if (isDark) Color(0x2E000000) else Color(0x122B1F14)
-                        val dropShadow = if (isDark) Color(0x3D000000) else Color(0x182B1F14)
-
-                        val baseRadius = 30.dp.toPx()
-
-                        // Tier 1: Wide diffuse ambient bloom
-                        drawRoundRect(
-                            color = ambientShadow,
-                            topLeft = Offset(-diffuseSpread, 4.dp.toPx()),
-                            size = Size(size.width + diffuseSpread * 2f, size.height + diffuseSpread),
-                            cornerRadius = CornerRadius(baseRadius + diffuseSpread, baseRadius + diffuseSpread)
-                        )
-                        // Tier 2: Mid-range downward spread
-                        drawRoundRect(
-                            color = midShadow,
-                            topLeft = Offset(-midSpread, 8.dp.toPx()),
-                            size = Size(size.width + midSpread * 2f, size.height + midSpread),
-                            cornerRadius = CornerRadius(baseRadius + midSpread, baseRadius + midSpread)
-                        )
-                        // Tier 3: Soft directional drop
-                        drawRoundRect(
-                            color = dropShadow,
-                            topLeft = Offset(-contactSpread, 12.dp.toPx()),
-                            size = Size(size.width + contactSpread * 2f, size.height),
-                            cornerRadius = CornerRadius(baseRadius + contactSpread, baseRadius + contactSpread)
-                        )
-                    }
                     .shadow(
                         elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
                         shape = RoundedCornerShape(30.dp),
@@ -318,40 +282,6 @@ fun HomeFloatingBottomDock(
                 onClick = onToggleSpeedDial,
                 modifier = Modifier
                     .size(60.dp)
-                    .drawBehind {
-                        // Natural multi-tier soft dropdown shadow matching the dock
-                        val diffuseSpread = 6.dp.toPx()
-                        val midSpread = 3.dp.toPx()
-                        val contactSpread = 1.dp.toPx()
-
-                        val ambientShadow = if (isDark) Color(0x1F000000) else Color(0x0C2B1F14)
-                        val midShadow = if (isDark) Color(0x2E000000) else Color(0x122B1F14)
-                        val dropShadow = if (isDark) Color(0x3D000000) else Color(0x182B1F14)
-
-                        val baseRadius = 18.dp.toPx()
-
-                        // Tier 1: Wide diffuse ambient bloom
-                        drawRoundRect(
-                            color = ambientShadow,
-                            topLeft = Offset(-diffuseSpread, 4.dp.toPx()),
-                            size = Size(size.width + diffuseSpread * 2f, size.height + diffuseSpread),
-                            cornerRadius = CornerRadius(baseRadius + diffuseSpread, baseRadius + diffuseSpread)
-                        )
-                        // Tier 2: Mid-range downward spread
-                        drawRoundRect(
-                            color = midShadow,
-                            topLeft = Offset(-midSpread, 8.dp.toPx()),
-                            size = Size(size.width + midSpread * 2f, size.height + midSpread),
-                            cornerRadius = CornerRadius(baseRadius + midSpread, baseRadius + midSpread)
-                        )
-                        // Tier 3: Soft directional drop
-                        drawRoundRect(
-                            color = dropShadow,
-                            topLeft = Offset(-contactSpread, 12.dp.toPx()),
-                            size = Size(size.width + contactSpread * 2f, size.height),
-                            cornerRadius = CornerRadius(baseRadius + contactSpread, baseRadius + contactSpread)
-                        )
-                    }
                     .shadow(
                         elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
                         shape = RoundedCornerShape(18.dp),
