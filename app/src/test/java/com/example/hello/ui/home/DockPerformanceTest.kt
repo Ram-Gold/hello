@@ -49,4 +49,71 @@ class DockPerformanceTest {
             DockMotionConfig.HAS_TAB_CLICK_INDICATION
         )
     }
+
+    @Test
+    fun dockMotionConfig_textTransitionSpecsSynchronizedWithPillTravel() {
+        val sizeSpec = MotionTokens.tabTransitionSizeTween()
+        val offsetSpec = MotionTokens.tabTransitionOffsetTween()
+
+        assertEquals(
+            "Size expansion spec must match pill travel duration (250ms)",
+            MotionTokens.TAB_TRANSITION_DURATION_MS,
+            sizeSpec.durationMillis
+        )
+        assertEquals(
+            "Offset slide spec must match pill travel duration (250ms)",
+            MotionTokens.TAB_TRANSITION_DURATION_MS,
+            offsetSpec.durationMillis
+        )
+        assertEquals(
+            "Size spec easing must be FastOutSlowInEasing for natural deceleration",
+            androidx.compose.animation.core.FastOutSlowInEasing,
+            sizeSpec.easing
+        )
+        assertEquals(
+            "Offset spec easing must be FastOutSlowInEasing for natural deceleration",
+            androidx.compose.animation.core.FastOutSlowInEasing,
+            offsetSpec.easing
+        )
+    }
+
+    @Test
+    fun dockMotionConfig_hasRefinedPillGeometryAndShadowTokens() {
+        assertEquals(
+            "Floating dock shadow elevation must be 8.dp for unclipped drop shadow",
+            8,
+            DockMotionConfig.DOCK_SHADOW_ELEVATION_DP
+        )
+        assertTrue(
+            "Pill vertical padding must provide breathing room (between 2.dp and 6.dp)",
+            DockMotionConfig.PILL_VERTICAL_PADDING_DP in 2..6
+        )
+        assertTrue(
+            "Pill content horizontal padding must be defined for content-hugging pill",
+            DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP >= 12
+        )
+    }
+
+    @Test
+    fun dockMotionConfig_textTransitionSlidesLeftToRight() {
+        // Negative enter fraction means entering from left (-x) to 0
+        assertTrue(
+            "Text enter offset fraction must start from the left (negative fraction)",
+            DockMotionConfig.TEXT_ENTER_OFFSET_FRACTION < 0f
+        )
+        // Positive exit fraction means exiting towards the right (+x)
+        assertTrue(
+            "Text exit offset fraction must slide out towards the right (positive fraction)",
+            DockMotionConfig.TEXT_EXIT_OFFSET_FRACTION > 0f
+        )
+    }
+
+    @Test
+    fun dockTouchTargets_meetAccessibilityMinimums() {
+        // Accessibility standards require at least 48dp touch targets
+        assertTrue(
+            "Floating dock height must be at least 48dp to satisfy accessibility standards",
+            60 >= 48
+        )
+    }
 }

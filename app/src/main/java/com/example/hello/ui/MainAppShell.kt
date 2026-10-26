@@ -35,20 +35,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.hello.data.local.HelloDatabase
+import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
+import com.example.hello.data.preferences.UserPreferencesRepository
+import com.example.hello.data.preferences.helloDataStore
+import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
+import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.ui.contacts.ContactsScreen
 import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.detail.PersonDetailScreen
-import com.example.hello.ui.detail.PersonDetailUiEvent
 import com.example.hello.ui.detail.PersonDetailViewModel
 import com.example.hello.ui.edit.PersonEditScreen
 import com.example.hello.ui.edit.PersonEditViewModel
@@ -56,22 +64,61 @@ import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
+import com.example.hello.ui.navigation.OnboardingRoute
+import com.example.hello.ui.navigation.PersonDetailMotionConfig
 import com.example.hello.ui.navigation.PersonDetailRoute
 import com.example.hello.ui.navigation.PersonEditRoute
+import com.example.hello.ui.navigation.SettingsRoute
+import com.example.hello.ui.navigation.shouldInterceptPeopleBack
+import com.example.hello.ui.onboarding.OnboardingScreen
+import com.example.hello.ui.onboarding.OnboardingViewModel
 import com.example.hello.ui.quickaction.QuickActionSheetHost
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionViewModel
+import com.example.hello.ui.settings.SettingsScreen
+import com.example.hello.ui.settings.SettingsViewModel
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainAppShell(
-    homeViewModel: HomeViewModel = remember { HomeViewModel() },
-    contactsViewModel: ContactsViewModel = remember { ContactsViewModel() },
-    quickActionViewModel: QuickActionViewModel = remember { QuickActionViewModel() },
+    preferencesRepository: UserPreferencesRepository = DataStoreUserPreferencesRepository(LocalContext.current.helloDataStore),
+    contactRepository: ContactRepository? = null,
+    initialHomeViewModel: HomeViewModel? = null,
+    initialContactsViewModel: ContactsViewModel? = null,
+    initialQuickActionViewModel: QuickActionViewModel? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val repository = remember(contactRepository) {
+        contactRepository ?: ContactRepository(database = HelloDatabase.getInstance(context))
+    }
+    val quickActionViewModel = remember(initialQuickActionViewModel, repository) {
+        initialQuickActionViewModel ?: QuickActionViewModel(repository = repository)
+    }
+    val homeViewModel = remember(initialHomeViewModel, repository) {
+        initialHomeViewModel ?: HomeViewModel(repository = repository)
+    }
+    val contactsViewModel = remember(initialContactsViewModel, repository) {
+        initialContactsViewModel ?: ContactsViewModel(repository = repository)
+    }
+
+    val userPreferences by preferencesRepository.userPreferencesFlow.collectAsState(initial = null)
+
+    // ADR 0005: Zero-flicker cold start gating (<50ms). Render solid warm surface while DataStore initial == null
+    if (userPreferences == null) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        )
+        return
+    }
+
+    val preferredTerminology = userPreferences?.preferredTerminology ?: RelationshipTerminology.DEFAULT
+    val hasCompletedOnboarding = userPreferences?.hasCompletedOnboarding == true
+
     val homeUiState by homeViewModel.uiState.collectAsState()
     val contactsUiState by contactsViewModel.uiState.collectAsState()
     val quickActionUiState by quickActionViewModel.uiState.collectAsState()
@@ -82,6 +129,8 @@ fun MainAppShell(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     // Single source of truth: PagerState is the authority for active tab when on Root screen
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
@@ -91,8 +140,15 @@ fun MainAppShell(
         }
     }
 
-    // Predictive / System Back on People (page 1) smoothly slides back to Home (page 0)
-    BackHandler(enabled = pagerState.currentPage == 1 || pagerState.targetPage == 1) {
+    // Predictive / System Back on People (page 1) smoothly slides back to Home (page 0),
+    // ONLY when on the Root screen so it never intercepts or delays PersonDetail navigation.
+    BackHandler(
+        enabled = shouldInterceptPeopleBack(
+            currentRoute = currentRoute,
+            currentPage = pagerState.currentPage,
+            targetPage = pagerState.targetPage
+        )
+    ) {
         scope.launch {
             pagerState.animateScrollToPage(
                 page = 0,
@@ -144,9 +200,29 @@ fun MainAppShell(
         ) {
             NavHost(
                 navController = navController,
-                startDestination = "root",
+                startDestination = if (hasCompletedOnboarding) "root" else OnboardingRoute.ROUTE_NAME,
                 modifier = Modifier.fillMaxSize()
             ) {
+                composable(
+                    route = OnboardingRoute.ROUTE_NAME,
+                    enterTransition = { fadeIn(animationSpec = MotionTokens.screenFadeSpec()) },
+                    exitTransition = { fadeOut(animationSpec = MotionTokens.screenFadeSpec()) }
+                ) {
+                    val onboardingViewModel = remember { OnboardingViewModel(preferencesRepository) }
+                    val onboardingUiState by onboardingViewModel.uiState.collectAsState()
+
+                    OnboardingScreen(
+                        uiState = onboardingUiState,
+                        onEvent = onboardingViewModel::onEvent,
+                        onFinish = {
+                            navController.navigate("root") {
+                                popUpTo(OnboardingRoute.ROUTE_NAME) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
+
                 composable(
                     route = "root",
                     enterTransition = {
@@ -156,10 +232,10 @@ fun MainAppShell(
                         ) + fadeIn(animationSpec = MotionTokens.screenFadeSpec())
                     },
                     exitTransition = {
-                        slideOutHorizontally(
-                            animationSpec = MotionTokens.screenSlideSpec(),
-                            targetOffsetX = { -it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
-                        ) + fadeOut(animationSpec = MotionTokens.screenFadeSpec())
+                        PersonDetailMotionConfig.rootExitTransition()
+                    },
+                    popEnterTransition = {
+                        PersonDetailMotionConfig.rootPopEnterTransition()
                     }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -187,7 +263,17 @@ fun MainAppShell(
                                     },
                                     onContactClick = { contactId ->
                                         navController.navigate(PersonDetailRoute.createRoute(contactId))
-                                    }
+                                    },
+                                    onSettingsClick = {
+                                        navController.navigate(SettingsRoute.ROUTE_NAME)
+                                    },
+                                    onLogEncounterClick = {
+                                        quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter)
+                                    },
+                                    onAddContactClick = {
+                                        quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
+                                    },
+                                    terminology = preferredTerminology
                                 )
                                 1 -> ContactsScreen(
                                     uiState = contactsUiState,
@@ -202,7 +288,11 @@ fun MainAppShell(
                                     },
                                     onContactClick = { contactId ->
                                         navController.navigate(PersonDetailRoute.createRoute(contactId))
-                                    }
+                                    },
+                                    onAddContactClick = {
+                                        quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
+                                    },
+                                    terminology = preferredTerminology
                                 )
                             }
                         }
@@ -252,6 +342,8 @@ fun MainAppShell(
                                     SpeedDialAction.LOG_ENCOUNTER -> quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter)
                                 }
                             },
+                            peopleTabLabel = preferredTerminology.pluralTitle,
+                            addContactLabel = preferredTerminology.addActionTitle(),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(
@@ -262,8 +354,7 @@ fun MainAppShell(
                 }
 
                 composable(
-                    route = PersonDetailRoute.ROUTE_PATTERN,
-                    arguments = listOf(navArgument(PersonDetailRoute.ARG_CONTACT_ID) { type = NavType.StringType }),
+                    route = SettingsRoute.ROUTE_NAME,
                     enterTransition = {
                         slideInHorizontally(
                             animationSpec = MotionTokens.screenSlideSpec(),
@@ -273,7 +364,7 @@ fun MainAppShell(
                     exitTransition = {
                         slideOutHorizontally(
                             animationSpec = MotionTokens.screenSlideSpec(),
-                            targetOffsetX = { -it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
+                            targetOffsetX = { it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
                         ) + fadeOut(animationSpec = MotionTokens.screenFadeSpec())
                     },
                     popEnterTransition = {
@@ -288,6 +379,40 @@ fun MainAppShell(
                             targetOffsetX = { it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
                         ) + fadeOut(animationSpec = MotionTokens.screenFadeSpec())
                     }
+                ) {
+                    val settingsViewModel = remember {
+                        SettingsViewModel(preferencesRepository, quickActionViewModel.repository)
+                    }
+                    val settingsUiState by settingsViewModel.uiState.collectAsState()
+
+                    SettingsScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = PersonDetailRoute.ROUTE_PATTERN,
+                    arguments = listOf(navArgument(PersonDetailRoute.ARG_CONTACT_ID) { type = NavType.StringType }),
+                    enterTransition = {
+                        PersonDetailMotionConfig.detailEnterTransition()
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(
+                            animationSpec = MotionTokens.screenSlideSpec(),
+                            targetOffsetX = { -it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
+                        ) + fadeOut(animationSpec = MotionTokens.screenFadeSpec())
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(
+                            animationSpec = MotionTokens.screenSlideSpec(),
+                            initialOffsetX = { -it / MotionTokens.SCREEN_SLIDE_OFFSET_DIVISOR }
+                        ) + fadeIn(animationSpec = MotionTokens.screenFadeSpec())
+                    },
+                    popExitTransition = {
+                        PersonDetailMotionConfig.detailPopExitTransition()
+                    }
                 ) { backStackEntry ->
                     val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
                     val detailViewModel = remember(contactId) {
@@ -297,25 +422,24 @@ fun MainAppShell(
 
                     PersonDetailScreen(
                         uiState = detailUiState,
-                        onEvent = { event ->
-                            when (event) {
-                                PersonDetailUiEvent.OnBackClick -> navController.popBackStack()
-                                PersonDetailUiEvent.OnEditClick -> navController.navigate(PersonEditRoute.createRoute(contactId))
-                                PersonDetailUiEvent.OnLogEncounterClick -> {
-                                    val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
-                                        ?: detailUiState.contactSummary
-                                        ?: ContactSummary(
-                                            id = contactId,
-                                            name = detailUiState.contact?.name ?: "Contact",
-                                            contextSubtitle = "",
-                                            circles = detailUiState.contact?.circles ?: emptyList(),
-                                            avatarInitials = detailUiState.contact?.name?.take(2)?.uppercase() ?: "👋"
-                                        )
-                                    quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
-                                }
-                                else -> detailViewModel.onEvent(event)
-                            }
-                        }
+                        onEvent = detailViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() },
+                        onEditClick = { navController.navigate(PersonEditRoute.createRoute(contactId)) },
+                        onLogEncounterClick = {
+                            val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
+                                ?: detailUiState.contactSummary
+                                ?: ContactSummary(
+                                    id = contactId,
+                                    name = detailUiState.contact?.name ?: "Contact",
+                                    contextSubtitle = "",
+                                    circles = detailUiState.contact?.circles ?: emptyList(),
+                                    avatarInitials = detailUiState.contact?.name?.take(2)?.uppercase() ?: "👋"
+                                )
+                            quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .zIndex(PersonDetailMotionConfig.DETAIL_Z_INDEX)
                     )
                 }
 
@@ -381,7 +505,20 @@ fun MainAppShell(
 @Composable
 fun MainAppShellLightPreview() {
     HelloTheme(darkTheme = false) {
-        MainAppShell()
+        MainAppShell(
+            preferencesRepository = remember {
+                object : UserPreferencesRepository {
+                    override val userPreferencesFlow = kotlinx.coroutines.flow.flowOf(
+                        com.example.hello.data.preferences.UserPreferences(
+                            hasCompletedOnboarding = true,
+                            preferredTerminology = RelationshipTerminology.PEOPLE
+                        )
+                    )
+                    override suspend fun setOnboardingCompleted(completed: Boolean) {}
+                    override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
+                }
+            }
+        )
     }
 }
 
@@ -389,6 +526,19 @@ fun MainAppShellLightPreview() {
 @Composable
 fun MainAppShellDarkPreview() {
     HelloTheme(darkTheme = true) {
-        MainAppShell()
+        MainAppShell(
+            preferencesRepository = remember {
+                object : UserPreferencesRepository {
+                    override val userPreferencesFlow = kotlinx.coroutines.flow.flowOf(
+                        com.example.hello.data.preferences.UserPreferences(
+                            hasCompletedOnboarding = true,
+                            preferredTerminology = RelationshipTerminology.FRIENDS
+                        )
+                    )
+                    override suspend fun setOnboardingCompleted(completed: Boolean) {}
+                    override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
+                }
+            }
+        )
     }
 }

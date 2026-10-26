@@ -4,9 +4,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,7 +47,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,8 +63,14 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,7 +86,9 @@ fun HomeFloatingBottomDock(
     onToggleSpeedDial: () -> Unit,
     onSpeedDialAction: (SpeedDialAction) -> Unit,
     modifier: Modifier = Modifier,
-    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween()
+    peopleTabLabel: String = "People",
+    addContactLabel: String = "Add Contact",
+    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.dockPillProgressSpring()
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -106,7 +120,7 @@ fun HomeFloatingBottomDock(
                     onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
                 )
                 SpeedDialItem(
-                    label = "Add Contact",
+                    label = addContactLabel,
                     icon = Icons.Outlined.PersonAdd,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -124,17 +138,25 @@ fun HomeFloatingBottomDock(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
+            val warmShadowAmbient = Color(0x1F2E2218)
+            val warmShadowSpot = Color(0x332E2218)
+
             Surface(
                 modifier = Modifier
                     .weight(1f)
                     .height(60.dp)
+                    .shadow(
+                        elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
+                        shape = RoundedCornerShape(30.dp),
+                        ambientColor = warmShadowAmbient,
+                        spotColor = warmShadowSpot
+                    )
                     .clip(RoundedCornerShape(30.dp))
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant,
                         shape = RoundedCornerShape(30.dp)
-                    )
-                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(30.dp)),
+                    ),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp
             ) {
@@ -150,15 +172,28 @@ fun HomeFloatingBottomDock(
                         label = "dockSlidingPillProgress"
                     )
 
+                    var homeContentWidthPx by remember { mutableFloatStateOf(0f) }
+                    var peopleContentWidthPx by remember { mutableFloatStateOf(0f) }
+
                     // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
                     TabsRow(
+                        selectedTab = selectedTab,
+                        peopleLabel = peopleTabLabel,
                         iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onHomeContentWidth = { homeContentWidthPx = it },
+                        onPeopleContentWidth = { peopleContentWidthPx = it }
                     )
 
                     // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
-                    // clipped dynamically in the GPU draw phase to the moving pill shape.
-                    val pillShape = remember { PillClipShape({ pillProgress }) }
+                    // clipped dynamically in the GPU draw phase to the moving content-hugging pill shape.
+                    val pillShape = remember {
+                        PillClipShape(
+                            progressProvider = { pillProgress },
+                            homeWidthProvider = { homeContentWidthPx },
+                            peopleWidthProvider = { peopleContentWidthPx }
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -169,12 +204,14 @@ fun HomeFloatingBottomDock(
                             .background(MaterialTheme.colorScheme.secondaryContainer)
                     ) {
                         TabsRow(
+                            selectedTab = selectedTab,
+                            peopleLabel = peopleTabLabel,
                             iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             textColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
 
-                    // Interactive Touch Layer on top (zero visual decoration, indication = null)
+                    // Interactive Touch Layer on top (48dp+ accessible touch target)
                     Row(
                         modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically
@@ -184,6 +221,10 @@ fun HomeFloatingBottomDock(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(25.dp))
+                                .semantics {
+                                    role = Role.Tab
+                                    selected = selectedTab == HomeNavTab.HOME
+                                }
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null, // Only the sliding pill appears; no click ripple/background
@@ -195,6 +236,10 @@ fun HomeFloatingBottomDock(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(25.dp))
+                                .semantics {
+                                    role = Role.Tab
+                                    selected = selectedTab == HomeNavTab.PEOPLE
+                                }
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -207,7 +252,7 @@ fun HomeFloatingBottomDock(
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // 2. Separate Rounded-Square Quick-Add FAB with Primary Terracotta color
+            // 2. Separate Rounded-Square Quick-Add FAB with matching elevation
             val fabRotation by animateFloatAsState(
                 targetValue = if (isSpeedDialOpen) 45f else 0f,
                 animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
@@ -227,8 +272,8 @@ fun HomeFloatingBottomDock(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 8.dp
+                    defaultElevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
+                    pressedElevation = 10.dp
                 )
             ) {
                 Icon(
@@ -245,9 +290,13 @@ fun HomeFloatingBottomDock(
 
 @Composable
 private fun TabsRow(
+    selectedTab: HomeNavTab,
+    peopleLabel: String = "People",
     iconColor: Color,
     textColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHomeContentWidth: ((Float) -> Unit)? = null,
+    onPeopleContentWidth: ((Float) -> Unit)? = null
 ) {
     Row(
         modifier = modifier.fillMaxSize(),
@@ -255,18 +304,24 @@ private fun TabsRow(
     ) {
         NavTabItemContent(
             tab = HomeNavTab.HOME,
-            icon = Icons.Outlined.Home,
+            customLabel = null,
+            isSelected = selectedTab == HomeNavTab.HOME,
+            icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, selectedTab == HomeNavTab.HOME),
             iconColor = iconColor,
             textColor = textColor,
+            onContentWidthMeasured = onHomeContentWidth,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
         )
         NavTabItemContent(
             tab = HomeNavTab.PEOPLE,
-            icon = Icons.Outlined.People,
+            customLabel = peopleLabel,
+            isSelected = selectedTab == HomeNavTab.PEOPLE,
+            icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, selectedTab == HomeNavTab.PEOPLE),
             iconColor = iconColor,
             textColor = textColor,
+            onContentWidthMeasured = onPeopleContentWidth,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
@@ -277,32 +332,75 @@ private fun TabsRow(
 @Composable
 private fun NavTabItemContent(
     tab: HomeNavTab,
+    customLabel: String?,
+    isSelected: Boolean,
     icon: ImageVector,
     iconColor: Color,
     textColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onContentWidthMeasured: ((Float) -> Unit)? = null
 ) {
+    val displayLabel = customLabel ?: tab.label
+    var lastExpandedWidthPx by remember { mutableFloatStateOf(0f) }
+
     Box(
         modifier = modifier.padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
+            modifier = Modifier.onSizeChanged { size ->
+                if (isSelected && size.width > 0) {
+                    lastExpandedWidthPx = size.width.toFloat()
+                    onContentWidthMeasured?.invoke(lastExpandedWidthPx)
+                } else if (lastExpandedWidthPx > 0f) {
+                    onContentWidthMeasured?.invoke(lastExpandedWidthPx)
+                }
+            },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = tab.label,
+                contentDescription = displayLabel,
                 tint = iconColor,
                 modifier = Modifier.size(20.dp)
             )
-            Text(
-                text = tab.label,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = textColor
-            )
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
+                        expandHorizontally(
+                            expandFrom = Alignment.Start,
+                            animationSpec = MotionTokens.tabTransitionSizeTween()
+                        ) +
+                        slideInHorizontally(
+                            initialOffsetX = { (it * DockMotionConfig.TEXT_ENTER_OFFSET_FRACTION).toInt() },
+                            animationSpec = MotionTokens.tabTransitionOffsetTween()
+                        ),
+                exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
+                       shrinkHorizontally(
+                           shrinkTowards = Alignment.End,
+                           animationSpec = MotionTokens.tabTransitionSizeTween()
+                       ) +
+                       slideOutHorizontally(
+                           targetOffsetX = { (it * DockMotionConfig.TEXT_EXIT_OFFSET_FRACTION).toInt() },
+                           animationSpec = MotionTokens.tabTransitionOffsetTween()
+                       )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = displayLabel,
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = textColor
+                    )
+                }
+            }
         }
     }
 }
@@ -354,10 +452,14 @@ private fun SpeedDialItem(
 }
 
 /**
- * Reusable zero-allocation shape that dynamically outlines the sliding pill in the draw phase.
+ * Reusable zero-allocation shape that dynamically outlines the content-hugging sliding pill in the draw phase.
  */
 private class PillClipShape(
-    private val progressProvider: () -> Float
+    private val progressProvider: () -> Float,
+    private val homeWidthProvider: () -> Float,
+    private val peopleWidthProvider: () -> Float,
+    private val verticalPaddingDp: Dp = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp,
+    private val horizontalPaddingDp: Dp = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.dp
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -365,14 +467,43 @@ private class PillClipShape(
         density: Density
     ): Outline {
         val halfWidth = size.width / 2f
-        val left = progressProvider() * halfWidth
-        val radius = with(density) { 25.dp.toPx() }
+        val progress = progressProvider()
+
+        val hPaddingPx = with(density) { horizontalPaddingDp.toPx() }
+        val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
+
+        // Fallback default content widths (~75dp) when not yet measured in layout pass
+        val defaultContentWidth = with(density) { 75.dp.toPx() }
+        val measuredHomeWidth = homeWidthProvider().takeIf { it > 0f } ?: defaultContentWidth
+        val measuredPeopleWidth = peopleWidthProvider().takeIf { it > 0f } ?: defaultContentWidth
+
+        val slot0CenterX = halfWidth * 0.5f
+        val slot1CenterX = halfWidth * 1.5f
+
+        // Content-hugging bounds calculated inline without heap Pair allocations
+        val tightHomeWidth = (measuredHomeWidth + (hPaddingPx * 2f)).coerceAtMost(halfWidth)
+        val homeLeft = slot0CenterX - (tightHomeWidth / 2f)
+        val homeRight = slot0CenterX + (tightHomeWidth / 2f)
+
+        val tightPeopleWidth = (measuredPeopleWidth + (hPaddingPx * 2f)).coerceAtMost(halfWidth)
+        val peopleLeft = slot1CenterX - (tightPeopleWidth / 2f)
+        val peopleRight = slot1CenterX + (tightPeopleWidth / 2f)
+
+        // Interpolate smoothly between tab 0 and tab 1 bounds
+        val left = homeLeft + (peopleLeft - homeLeft) * progress
+        val right = homeRight + (peopleRight - homeRight) * progress
+
+        val top = vPaddingPx
+        val bottom = size.height - vPaddingPx
+        val pillHeight = (bottom - top).coerceAtLeast(0f)
+        val radius = pillHeight / 2f
+
         return Outline.Rounded(
             RoundRect(
                 left = left,
-                top = 0f,
-                right = left + halfWidth,
-                bottom = size.height,
+                top = top,
+                right = right,
+                bottom = bottom,
                 cornerRadius = CornerRadius(radius, radius)
             )
         )
