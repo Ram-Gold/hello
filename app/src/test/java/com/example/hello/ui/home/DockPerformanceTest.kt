@@ -343,4 +343,111 @@ class DockPerformanceTest {
         // All stable widths must fit comfortably within the 220dp max dock boundary
         assertTrue("Connections width must fit in max dock width (220dp)", connectionsWidth <= DockMotionConfig.DOCK_CONTAINER_WIDTH_DP)
     }
+
+    @Test
+    fun dockMotionConfig_resolveDockDimensions_preConfiguresSizingPerTerminology() {
+        val peopleDims = DockMotionConfig.resolveDockDimensions("People")
+        assertEquals(206, peopleDims.dockWidthDp)
+        assertEquals(90, peopleDims.pillWidthDp)
+
+        val friendsDims = DockMotionConfig.resolveDockDimensions("Friends")
+        assertEquals(218, friendsDims.dockWidthDp)
+        assertEquals(96, friendsDims.pillWidthDp)
+
+        val contactsDims = DockMotionConfig.resolveDockDimensions("Contacts")
+        assertEquals(234, contactsDims.dockWidthDp)
+        assertEquals(104, contactsDims.pillWidthDp)
+
+        val connectionsDims = DockMotionConfig.resolveDockDimensions("Connections")
+        assertEquals(258, connectionsDims.dockWidthDp)
+        assertEquals(116, connectionsDims.pillWidthDp)
+
+        val fallbackDims = DockMotionConfig.resolveDockDimensions(null)
+        assertEquals(218, fallbackDims.dockWidthDp)
+        assertEquals(96, fallbackDims.pillWidthDp)
+    }
+
+    @Test
+    fun dockMotionConfig_calculateCenteredPillBounds_translatesPurelyWithZeroWidthFluctuation() {
+        val containerWidth = 196f // 206dp dock - 10dp padding
+        val pillWidth = 90f
+
+        // Progress = 0.0f (Home selected)
+        val (homeLeft, homeRight) = DockMotionConfig.calculateCenteredPillBounds(
+            containerWidth = containerWidth,
+            pillWidth = pillWidth,
+            progress = 0.0f
+        )
+        assertEquals("Home left margin must equal 4dp", 4f, homeLeft, 0.001f)
+        assertEquals("Home right bound must equal 94dp", 94f, homeRight, 0.001f)
+        assertEquals("Pill width must be exactly 90dp", 90f, homeRight - homeLeft, 0.001f)
+
+        // Progress = 1.0f (People selected)
+        val (peopleLeft, peopleRight) = DockMotionConfig.calculateCenteredPillBounds(
+            containerWidth = containerWidth,
+            pillWidth = pillWidth,
+            progress = 1.0f
+        )
+        assertEquals("People left bound must equal 102dp", 102f, peopleLeft, 0.001f)
+        assertEquals("People right margin must equal 4dp", 4f, containerWidth - peopleRight, 0.001f)
+        assertEquals("Pill width must be exactly 90dp", 90f, peopleRight - peopleLeft, 0.001f)
+
+        // Progress = 0.5f (Mid-flight)
+        val (midLeft, midRight) = DockMotionConfig.calculateCenteredPillBounds(
+            containerWidth = containerWidth,
+            pillWidth = pillWidth,
+            progress = 0.5f
+        )
+        val midCenter = (midLeft + midRight) / 2f
+        assertEquals("Midpoint center must equal exact container center (98dp)", 98f, midCenter, 0.001f)
+        assertEquals("Pill width must remain exactly 90dp mid-flight", 90f, midRight - midLeft, 0.001f)
+
+        // Across all intermediate progress frames: width fluctuation must be strictly 0%
+        var p = 0.0f
+        while (p <= 1.0f) {
+            val (left, right) = DockMotionConfig.calculateCenteredPillBounds(
+                containerWidth = containerWidth,
+                pillWidth = pillWidth,
+                progress = p
+            )
+            assertEquals("Pill width must never fluctuate during motion", pillWidth, right - left, 0.001f)
+            p += 0.05f
+        }
+    }
+
+    @Test
+    fun dockMotionConfig_symmetricalTwoSlotDesign_guaranteesExact4dpMarginsAnd8dpInterPillGap() {
+        val terminologies = listOf("People", "Friends", "Contacts", "Connections")
+
+        for (term in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            assertEquals(
+                "Dock width must satisfy the mathematical identity dockWidth = 2 * pillWidth + 26",
+                2 * dims.pillWidthDp + 26,
+                dims.dockWidthDp
+            )
+
+            val containerWidth = (dims.dockWidthDp - 10).toFloat()
+            val pillWidth = dims.pillWidthDp.toFloat()
+
+            val (homeLeft, homeRight) = DockMotionConfig.calculateCenteredPillBounds(
+                containerWidth = containerWidth,
+                pillWidth = pillWidth,
+                progress = 0.0f
+            )
+            val (relLeft, relRight) = DockMotionConfig.calculateCenteredPillBounds(
+                containerWidth = containerWidth,
+                pillWidth = pillWidth,
+                progress = 1.0f
+            )
+
+            val leftMargin = homeLeft
+            val rightMargin = containerWidth - relRight
+            val gap = relLeft - homeRight
+
+            assertEquals("Outer left margin for $term must equal exactly 4dp", 4f, leftMargin, 0.001f)
+            assertEquals("Outer right margin for $term must equal exactly 4dp", 4f, rightMargin, 0.001f)
+            assertEquals("Inter-pill gap between slots for $term must equal exactly 8dp", 8f, gap, 0.001f)
+        }
+    }
 }

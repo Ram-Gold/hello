@@ -136,4 +136,46 @@ object DockMotionConfig {
             Pair(left, right)
         }
     }
+
+    /**
+     * Resolves pre-configured, deterministic dock and selection pill dimensions per relationship terminology.
+     * Guarantees 100% static, non-animating container geometry during tab switching (zero jitter).
+     */
+    fun resolveDockDimensions(label: String?): DockDimensions {
+        return when (label?.lowercase()) {
+            "connections" -> DockDimensions(dockWidthDp = 258, pillWidthDp = 116)
+            "contacts" -> DockDimensions(dockWidthDp = 234, pillWidthDp = 104)
+            "friends" -> DockDimensions(dockWidthDp = 218, pillWidthDp = 96)
+            "people" -> DockDimensions(dockWidthDp = 206, pillWidthDp = 90)
+            else -> DockDimensions(dockWidthDp = 218, pillWidthDp = 96)
+        }
+    }
+
+    /**
+     * Calculates pure translation centered pill coordinates across two equal 50% slots:
+     * - At progress = 0f (Home): pill center = slot0Center (25% of container width)
+     * - At progress = 1f (Relationship): pill center = slot1Center (75% of container width)
+     * Pill width is completely constant during motion, making width jitter mathematically impossible.
+     */
+    fun calculateCenteredPillBounds(
+        containerWidth: Float,
+        pillWidth: Float,
+        progress: Float
+    ): Pair<Float, Float> {
+        val slotWidth = containerWidth / 2f
+        val slot0Center = slotWidth / 2f
+        val slot1Center = slotWidth + (slotWidth / 2f)
+        val currentCenterX = slot0Center + (slot1Center - slot0Center) * progress
+        val left = currentCenterX - (pillWidth / 2f)
+        val right = currentCenterX + (pillWidth / 2f)
+        return Pair(left, right)
+    }
 }
+
+/**
+ * Pre-configured dimensions for a symmetrical, centered dock.
+ */
+data class DockDimensions(
+    val dockWidthDp: Int,
+    val pillWidthDp: Int
+)

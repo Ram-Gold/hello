@@ -258,4 +258,31 @@ class SmoothTabsTest {
             assertTrue("Pill for '$label' must stay within inner container left edge", relLeft >= vPadding)
         }
     }
+
+    @Test
+    fun calculateCenteredPillBounds_preservesConstantPillWidthThroughoutGlidingTransition() {
+        val terminologies = listOf("People", "Friends", "Contacts", "Connections")
+
+        for (term in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val containerWidth = (dims.dockWidthDp - 10).toFloat()
+            val pillWidth = dims.pillWidthDp.toFloat()
+
+            var progress = 0.0f
+            while (progress <= 1.0f) {
+                val (left, right) = DockMotionConfig.calculateCenteredPillBounds(
+                    containerWidth = containerWidth,
+                    pillWidth = pillWidth,
+                    progress = progress
+                )
+                assertEquals(
+                    "Pill width for $term at progress $progress must remain constant with zero fluctuation",
+                    pillWidth,
+                    right - left,
+                    0.001f
+                )
+                progress += 0.1f
+            }
+        }
+    }
 }
