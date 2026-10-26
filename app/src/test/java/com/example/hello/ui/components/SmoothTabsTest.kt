@@ -260,27 +260,34 @@ class SmoothTabsTest {
     }
 
     @Test
-    fun calculateCenteredPillBounds_preservesConstantPillWidthThroughoutGlidingTransition() {
+    fun calculatePillBounds_interpolatesMonotonicallyAndMaintainsComfortablePadding() {
         val terminologies = listOf("People", "Friends", "Contacts", "Connections")
 
         for (term in terminologies) {
             val dims = DockMotionConfig.resolveDockDimensions(term)
             val containerWidth = (dims.dockWidthDp - 10).toFloat()
-            val pillWidth = dims.pillWidthDp.toFloat()
+            val homePill = dims.homePillWidthDp.toFloat()
+            val relPill = dims.relationshipPillWidthDp.toFloat()
 
             var progress = 0.0f
+            var prevWidth = homePill
             while (progress <= 1.0f) {
-                val (left, right) = DockMotionConfig.calculateCenteredPillBounds(
+                val (left, right) = DockMotionConfig.calculateBalancedPillBounds(
                     containerWidth = containerWidth,
-                    pillWidth = pillWidth,
+                    homePillWidth = homePill,
+                    relationshipPillWidth = relPill,
                     progress = progress
                 )
-                assertEquals(
-                    "Pill width for $term at progress $progress must remain constant with zero fluctuation",
-                    pillWidth,
-                    right - left,
-                    0.001f
+                val currentWidth = right - left
+                assertTrue(
+                    "Pill width for $term at progress $progress must interpolate monotonically ($currentWidth >= $prevWidth)",
+                    currentWidth >= prevWidth - 0.001f
                 )
+                assertTrue(
+                    "Pill width for $term must remain bounded between home ($homePill) and rel ($relPill)",
+                    currentWidth in homePill..relPill
+                )
+                prevWidth = currentWidth
                 progress += 0.1f
             }
         }

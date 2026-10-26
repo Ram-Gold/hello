@@ -137,45 +137,76 @@ object DockMotionConfig {
         }
     }
 
+    // Default home selection pill width providing ~15dp balanced inline padding
+    const val HOME_PILL_WIDTH_DP = 96
+
     /**
-     * Resolves pre-configured, deterministic dock and selection pill dimensions per relationship terminology.
-     * Guarantees 100% static, non-animating container geometry during tab switching (zero jitter).
+     * Resolves pre-configured, deterministic dock and tab-specific selection pill dimensions per relationship terminology.
+     * Guarantees 100% static container geometry during tab switching (zero jitter) while ensuring both
+     * Home and the relationship tab enjoy consistent, generous ~15dp inline padding.
      */
     fun resolveDockDimensions(label: String?): DockDimensions {
-        return when (label?.lowercase()) {
-            "connections" -> DockDimensions(dockWidthDp = 258, pillWidthDp = 116)
-            "contacts" -> DockDimensions(dockWidthDp = 234, pillWidthDp = 104)
-            "friends" -> DockDimensions(dockWidthDp = 218, pillWidthDp = 96)
-            "people" -> DockDimensions(dockWidthDp = 206, pillWidthDp = 90)
-            else -> DockDimensions(dockWidthDp = 218, pillWidthDp = 96)
+        val homePill = HOME_PILL_WIDTH_DP
+        val relPill = when (label?.lowercase()) {
+            "connections" -> 138
+            "contacts" -> 118
+            "friends" -> 108
+            "people" -> 104
+            else -> 108
         }
+        val dockWidth = homePill + relPill + 26
+        return DockDimensions(
+            dockWidthDp = dockWidth,
+            homePillWidthDp = homePill,
+            relationshipPillWidthDp = relPill
+        )
     }
 
     /**
-     * Calculates pure translation centered pill coordinates across two equal 50% slots:
-     * - At progress = 0f (Home): pill center = slot0Center (25% of container width)
-     * - At progress = 1f (Relationship): pill center = slot1Center (75% of container width)
-     * Pill width is completely constant during motion, making width jitter mathematically impossible.
+     * Calculates deterministic position and width coordinates for the selection pill:
+     * - At progress = 0f (Home): pill center = homeCenter, width = homePillWidth
+     * - At progress = 1f (Relationship): pill center = relCenter, width = relationshipPillWidth
+     * Guarantees exact 4dp outer margins and ~15dp balanced inline padding on both tabs.
+     */
+    fun calculateBalancedPillBounds(
+        containerWidth: Float,
+        homePillWidth: Float,
+        relationshipPillWidth: Float,
+        progress: Float,
+        slotPadding: Float = PILL_VERTICAL_PADDING_DP.toFloat()
+    ): Pair<Float, Float> {
+        val homeCenter = slotPadding + (homePillWidth / 2f)
+        val relCenter = containerWidth - slotPadding - (relationshipPillWidth / 2f)
+        val currentCenter = homeCenter + (relCenter - homeCenter) * progress
+        val currentWidth = homePillWidth + (relationshipPillWidth - homePillWidth) * progress
+        val left = currentCenter - (currentWidth / 2f)
+        val right = currentCenter + (currentWidth / 2f)
+        return Pair(left, right)
+    }
+
+    /**
+     * Backward-compatible overload for symmetrical pill widths.
      */
     fun calculateCenteredPillBounds(
         containerWidth: Float,
         pillWidth: Float,
         progress: Float
-    ): Pair<Float, Float> {
-        val slotWidth = containerWidth / 2f
-        val slot0Center = slotWidth / 2f
-        val slot1Center = slotWidth + (slotWidth / 2f)
-        val currentCenterX = slot0Center + (slot1Center - slot0Center) * progress
-        val left = currentCenterX - (pillWidth / 2f)
-        val right = currentCenterX + (pillWidth / 2f)
-        return Pair(left, right)
-    }
+    ): Pair<Float, Float> = calculateBalancedPillBounds(
+        containerWidth = containerWidth,
+        homePillWidth = pillWidth,
+        relationshipPillWidth = pillWidth,
+        progress = progress
+    )
 }
 
 /**
- * Pre-configured dimensions for a symmetrical, centered dock.
+ * Pre-configured dimensions for a dock with balanced, tab-specific pill widths.
  */
 data class DockDimensions(
     val dockWidthDp: Int,
-    val pillWidthDp: Int
-)
+    val homePillWidthDp: Int,
+    val relationshipPillWidthDp: Int
+) {
+    // Backward-compatibility property
+    val pillWidthDp: Int get() = relationshipPillWidthDp
+}

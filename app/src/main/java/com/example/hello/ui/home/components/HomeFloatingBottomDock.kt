@@ -158,20 +158,26 @@ fun HomeFloatingBottomDock(
                     label = "dockSlidingPillProgress"
                 )
 
+                val homeWeight = dimensions.homePillWidthDp + 8f
+                val relWeight = dimensions.relationshipPillWidthDp + 8f
+
                 // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
                 TabsRow(
                     selectedTab = selectedTab,
                     peopleLabel = peopleTabLabel,
+                    homeWeight = homeWeight,
+                    relationshipWeight = relWeight,
                     iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     textColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
                 // clipped dynamically in the GPU draw phase to the moving centered pill shape.
-                val pillShape = remember(dimensions.pillWidthDp) {
+                val pillShape = remember(dimensions.homePillWidthDp, dimensions.relationshipPillWidthDp) {
                     CenteredPillClipShape(
                         progressProvider = { pillProgress },
-                        pillWidthDp = dimensions.pillWidthDp
+                        homePillWidthDp = dimensions.homePillWidthDp,
+                        relationshipPillWidthDp = dimensions.relationshipPillWidthDp
                     )
                 }
                 Box(
@@ -186,6 +192,8 @@ fun HomeFloatingBottomDock(
                     TabsRow(
                         selectedTab = selectedTab,
                         peopleLabel = peopleTabLabel,
+                        homeWeight = homeWeight,
+                        relationshipWeight = relWeight,
                         iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         textColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -198,7 +206,7 @@ fun HomeFloatingBottomDock(
                 ) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(homeWeight)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(25.dp))
                             .semantics {
@@ -213,7 +221,7 @@ fun HomeFloatingBottomDock(
                     )
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(relWeight)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(25.dp))
                             .semantics {
@@ -304,6 +312,8 @@ fun HomeFloatingBottomDock(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
+    homeWeight: Float,
+    relationshipWeight: Float,
     iconColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier
@@ -312,10 +322,10 @@ private fun TabsRow(
         modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Slot 0 (Home): 50% width, permanently centered
+        // Slot 0 (Home): weighted slot, permanently centered at homeCenter
         Box(
             modifier = Modifier
-                .weight(1f)
+                .weight(homeWeight)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
@@ -329,10 +339,10 @@ private fun TabsRow(
             )
         }
 
-        // Slot 1 (Relationship): 50% width, permanently centered
+        // Slot 1 (Relationship): weighted slot, permanently centered at relCenter
         Box(
             modifier = Modifier
-                .weight(1f)
+                .weight(relationshipWeight)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
@@ -471,11 +481,12 @@ private fun SpeedDialItem(
 
 /**
  * Reusable zero-allocation shape that dynamically outlines the centered sliding pill in the draw phase.
- * Translates purely along X between Slot 0 center and Slot 1 center with constant width (zero width jitter).
+ * Translates between Slot 0 center and Slot 1 center with deterministic width interpolation (zero jitter).
  */
 private class CenteredPillClipShape(
     private val progressProvider: () -> Float,
-    private val pillWidthDp: Int,
+    private val homePillWidthDp: Int,
+    private val relationshipPillWidthDp: Int,
     private val verticalPaddingDp: Dp = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp
 ) : Shape {
     override fun createOutline(
@@ -484,13 +495,16 @@ private class CenteredPillClipShape(
         density: Density
     ): Outline {
         val progress = progressProvider()
-        val pillWidthPx = with(density) { pillWidthDp.dp.toPx() }
+        val homeWidthPx = with(density) { homePillWidthDp.dp.toPx() }
+        val relWidthPx = with(density) { relationshipPillWidthDp.dp.toPx() }
         val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
 
-        val (left, right) = DockMotionConfig.calculateCenteredPillBounds(
+        val (left, right) = DockMotionConfig.calculateBalancedPillBounds(
             containerWidth = size.width,
-            pillWidth = pillWidthPx,
-            progress = progress
+            homePillWidth = homeWidthPx,
+            relationshipPillWidth = relWidthPx,
+            progress = progress,
+            slotPadding = vPaddingPx
         )
 
         val top = vPaddingPx
