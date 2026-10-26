@@ -85,8 +85,8 @@ class DockPerformanceTest {
             DockMotionConfig.DOCK_CONTAINER_WIDTH_DP
         )
         assertEquals(
-            "Floating dock shadow elevation must be 16.dp for prominent dropdown shadow",
-            16,
+            "Floating dock shadow elevation must be 20.dp for wide, natural diffuse shadow",
+            20,
             DockMotionConfig.DOCK_SHADOW_ELEVATION_DP
         )
         assertTrue(
@@ -108,12 +108,12 @@ class DockPerformanceTest {
             DockMotionConfig.HAS_DOCK_BORDER
         )
         assertTrue(
-            "Shadow ambient color must have full alpha for visible hardware shadow",
-            DockMotionConfig.WARM_SHADOW_AMBIENT.alpha >= 0.99f
+            "Shadow ambient color must have natural softened alpha",
+            DockMotionConfig.WARM_SHADOW_AMBIENT.alpha in 0.35f..0.85f
         )
         assertTrue(
-            "Shadow spot color must have full alpha for visible hardware shadow",
-            DockMotionConfig.WARM_SHADOW_SPOT.alpha >= 0.99f
+            "Shadow spot color must have natural softened alpha",
+            DockMotionConfig.WARM_SHADOW_SPOT.alpha in 0.45f..0.95f
         )
     }
 

@@ -142,8 +142,8 @@ fun HomeFloatingBottomDock(
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
             val isDark = isSystemInDarkTheme()
-            val warmShadowAmbient = if (isDark) Color(0xFF000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
-            val warmShadowSpot = if (isDark) Color(0xFF000000) else DockMotionConfig.WARM_SHADOW_SPOT
+            val warmShadowAmbient = if (isDark) Color(0x66000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
+            val warmShadowSpot = if (isDark) Color(0x8C000000) else DockMotionConfig.WARM_SHADOW_SPOT
 
             val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
                 Modifier.border(
@@ -160,22 +160,37 @@ fun HomeFloatingBottomDock(
                     .width(DockMotionConfig.DOCK_CONTAINER_WIDTH_DP.dp)
                     .height(60.dp)
                     .drawBehind {
-                        // Highly visible downward dropdown shadow
-                        val dropdownShadowColor = if (isDark) Color(0x66000000) else Color(0x382B1F14)
-                        val dropdownShadowSubtle = if (isDark) Color(0x40000000) else Color(0x202B1F14)
-                        val radius = CornerRadius(30.dp.toPx(), 30.dp.toPx())
+                        // Natural multi-tier soft dropdown shadow with wide spread
+                        val diffuseSpread = 8.dp.toPx()
+                        val midSpread = 4.dp.toPx()
+                        val contactSpread = 1.dp.toPx()
 
+                        val ambientShadow = if (isDark) Color(0x1F000000) else Color(0x0C2B1F14)
+                        val midShadow = if (isDark) Color(0x2E000000) else Color(0x122B1F14)
+                        val dropShadow = if (isDark) Color(0x3D000000) else Color(0x182B1F14)
+
+                        val baseRadius = 30.dp.toPx()
+
+                        // Tier 1: Wide diffuse ambient bloom
                         drawRoundRect(
-                            color = dropdownShadowSubtle,
-                            topLeft = Offset(0f, 4.dp.toPx()),
-                            size = Size(size.width, size.height),
-                            cornerRadius = radius
+                            color = ambientShadow,
+                            topLeft = Offset(-diffuseSpread, 4.dp.toPx()),
+                            size = Size(size.width + diffuseSpread * 2f, size.height + diffuseSpread),
+                            cornerRadius = CornerRadius(baseRadius + diffuseSpread, baseRadius + diffuseSpread)
                         )
+                        // Tier 2: Mid-range downward spread
                         drawRoundRect(
-                            color = dropdownShadowColor,
-                            topLeft = Offset(0f, 8.dp.toPx()),
-                            size = Size(size.width, size.height),
-                            cornerRadius = radius
+                            color = midShadow,
+                            topLeft = Offset(-midSpread, 8.dp.toPx()),
+                            size = Size(size.width + midSpread * 2f, size.height + midSpread),
+                            cornerRadius = CornerRadius(baseRadius + midSpread, baseRadius + midSpread)
+                        )
+                        // Tier 3: Soft directional drop
+                        drawRoundRect(
+                            color = dropShadow,
+                            topLeft = Offset(-contactSpread, 12.dp.toPx()),
+                            size = Size(size.width + contactSpread * 2f, size.height),
+                            cornerRadius = CornerRadius(baseRadius + contactSpread, baseRadius + contactSpread)
                         )
                     }
                     .shadow(
@@ -304,22 +319,37 @@ fun HomeFloatingBottomDock(
                 modifier = Modifier
                     .size(60.dp)
                     .drawBehind {
-                        // Highly visible downward dropdown shadow matching the dock
-                        val dropdownShadowColor = if (isDark) Color(0x66000000) else Color(0x382B1F14)
-                        val dropdownShadowSubtle = if (isDark) Color(0x40000000) else Color(0x202B1F14)
-                        val radius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
+                        // Natural multi-tier soft dropdown shadow matching the dock
+                        val diffuseSpread = 6.dp.toPx()
+                        val midSpread = 3.dp.toPx()
+                        val contactSpread = 1.dp.toPx()
 
+                        val ambientShadow = if (isDark) Color(0x1F000000) else Color(0x0C2B1F14)
+                        val midShadow = if (isDark) Color(0x2E000000) else Color(0x122B1F14)
+                        val dropShadow = if (isDark) Color(0x3D000000) else Color(0x182B1F14)
+
+                        val baseRadius = 18.dp.toPx()
+
+                        // Tier 1: Wide diffuse ambient bloom
                         drawRoundRect(
-                            color = dropdownShadowSubtle,
-                            topLeft = Offset(0f, 4.dp.toPx()),
-                            size = Size(size.width, size.height),
-                            cornerRadius = radius
+                            color = ambientShadow,
+                            topLeft = Offset(-diffuseSpread, 4.dp.toPx()),
+                            size = Size(size.width + diffuseSpread * 2f, size.height + diffuseSpread),
+                            cornerRadius = CornerRadius(baseRadius + diffuseSpread, baseRadius + diffuseSpread)
                         )
+                        // Tier 2: Mid-range downward spread
                         drawRoundRect(
-                            color = dropdownShadowColor,
-                            topLeft = Offset(0f, 8.dp.toPx()),
-                            size = Size(size.width, size.height),
-                            cornerRadius = radius
+                            color = midShadow,
+                            topLeft = Offset(-midSpread, 8.dp.toPx()),
+                            size = Size(size.width + midSpread * 2f, size.height + midSpread),
+                            cornerRadius = CornerRadius(baseRadius + midSpread, baseRadius + midSpread)
+                        )
+                        // Tier 3: Soft directional drop
+                        drawRoundRect(
+                            color = dropShadow,
+                            topLeft = Offset(-contactSpread, 12.dp.toPx()),
+                            size = Size(size.width + contactSpread * 2f, size.height),
+                            cornerRadius = CornerRadius(baseRadius + contactSpread, baseRadius + contactSpread)
                         )
                     }
                     .shadow(

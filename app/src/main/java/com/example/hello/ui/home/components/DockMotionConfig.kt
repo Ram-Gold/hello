@@ -24,16 +24,16 @@ object DockMotionConfig {
 
     // Visual geometry and drop shadow elevation
     const val DOCK_CONTAINER_WIDTH_DP = 220
-    const val DOCK_SHADOW_ELEVATION_DP = 16
-    const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 20
+    const val DOCK_SHADOW_ELEVATION_DP = 20
+    const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 24
     const val PILL_VERTICAL_PADDING_DP = 4
     const val PILL_CONTENT_HORIZONTAL_PADDING_DP = 16
     const val TAB_ITEM_HORIZONTAL_PADDING_DP = 14
     const val HAS_DOCK_BORDER = false
 
-    // Warm tactile shadow tokens for light theme (full alpha so hardware RenderNode casts rich, visible shadow)
-    val WARM_SHADOW_AMBIENT = Color(0xFF2B1F14)
-    val WARM_SHADOW_SPOT = Color(0xFF140D07)
+    // Warm tactile shadow tokens for light theme (natural diffuse elevation)
+    val WARM_SHADOW_AMBIENT = Color(0x662B1F14)
+    val WARM_SHADOW_SPOT = Color(0x8C140D07)
 
     // Unified left-to-right text transition offsets
     const val TEXT_ENTER_OFFSET_FRACTION = -0.5f
