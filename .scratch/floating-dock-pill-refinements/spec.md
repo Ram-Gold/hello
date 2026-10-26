@@ -10,10 +10,13 @@ Users navigating the Hello app observe that the bottom navigation dock's floatin
 
 Provide visual polish and tactile refinement to the floating bottom navigation dock:
 
-1. **Pronounced Dropdown Shadow**: Increased shadow elevation (from 8.dp to 12.dp) and enriched shadow ambient and spot opacity using warm, earthy undertones, ensuring the dock casts an unmistakable, soft dropdown shadow over content beneath.
-2. **Compact Entire Dock Width & Grouped Right Placement**: Constrained the entire outer dock container to a compact width of 220.dp (`DOCK_CONTAINER_WIDTH_DP = 220`) grouped on the right (`Arrangement.End`) alongside the Quick-Add FAB, creating a unified navigation cluster.
-3. **Restored Selection Pill Width**: Restored the sliding selection pill width to 16.dp horizontal content padding and 14.dp tab item padding as preferred by the user.
-4. **Borderless Floating Dock Container**: Removed the 1.dp outline border stroke from the dock container surface (`HAS_DOCK_BORDER = false`), allowing the prominent drop shadow and warm surface elevation to delineate the organic pill silhouette naturally without artificial line strokes.
+1. **Pronounced & Unmistakable Dropdown Shadow**: Integrated a dual-layer downward dropdown shadow using `drawBehind` (offset 4.dp and 8.dp below the surface) coupled with hardware-accelerated 16.dp shadow elevation (`DOCK_SHADOW_ELEVATION_DP = 16`) using full-opacity warm ambient (`0xFF2B1F14`) and spot (`0xFF140D07`) tones on both the dock container and the Quick-Add FAB.
+2. **Consistent Pill Padding Across All Tabs**: Symmetrically calibrated selection pill bounds so that the distance from the pill to the dock container edges is completely consistent on all sides:
+   - When Home is selected: Left padding == Top padding == Bottom padding == `4.dp` (`vPaddingPx`).
+   - When Friends is selected: Right padding == Top padding == Bottom padding == `4.dp` (`vPaddingPx`).
+   - The Home and Friends selection pills maintain identical, proportional widths (`halfWidth - 2 * vPaddingPx`), gliding smoothly with zero stretching or lopsided edge gaps.
+3. **Compact Entire Dock Width & Grouped Right Placement**: Constrained the entire outer dock container to a compact width of 220.dp (`DOCK_CONTAINER_WIDTH_DP = 220`) grouped on the right (`Arrangement.End`) alongside the Quick-Add FAB.
+4. **Borderless Floating Dock Container**: Maintained a borderless container surface (`HAS_DOCK_BORDER = false`), allowing the prominent dropdown shadow to delineate the organic pill silhouette naturally.
 
 ---
 

@@ -54,9 +54,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -140,8 +142,8 @@ fun HomeFloatingBottomDock(
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
             val isDark = isSystemInDarkTheme()
-            val warmShadowAmbient = if (isDark) Color.Black.copy(alpha = 0.40f) else DockMotionConfig.WARM_SHADOW_AMBIENT
-            val warmShadowSpot = if (isDark) Color.Black.copy(alpha = 0.50f) else DockMotionConfig.WARM_SHADOW_SPOT
+            val warmShadowAmbient = if (isDark) Color(0xFF000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
+            val warmShadowSpot = if (isDark) Color(0xFF000000) else DockMotionConfig.WARM_SHADOW_SPOT
 
             val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
                 Modifier.border(
@@ -157,6 +159,25 @@ fun HomeFloatingBottomDock(
                 modifier = Modifier
                     .width(DockMotionConfig.DOCK_CONTAINER_WIDTH_DP.dp)
                     .height(60.dp)
+                    .drawBehind {
+                        // Highly visible downward dropdown shadow
+                        val dropdownShadowColor = if (isDark) Color(0x66000000) else Color(0x382B1F14)
+                        val dropdownShadowSubtle = if (isDark) Color(0x40000000) else Color(0x202B1F14)
+                        val radius = CornerRadius(30.dp.toPx(), 30.dp.toPx())
+
+                        drawRoundRect(
+                            color = dropdownShadowSubtle,
+                            topLeft = Offset(0f, 4.dp.toPx()),
+                            size = Size(size.width, size.height),
+                            cornerRadius = radius
+                        )
+                        drawRoundRect(
+                            color = dropdownShadowColor,
+                            topLeft = Offset(0f, 8.dp.toPx()),
+                            size = Size(size.width, size.height),
+                            cornerRadius = radius
+                        )
+                    }
                     .shadow(
                         elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
                         shape = RoundedCornerShape(30.dp),
@@ -165,6 +186,7 @@ fun HomeFloatingBottomDock(
                     )
                     .clip(RoundedCornerShape(30.dp))
                     .then(dockBorderModifier),
+                shape = RoundedCornerShape(30.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp
             ) {
@@ -281,6 +303,25 @@ fun HomeFloatingBottomDock(
                 onClick = onToggleSpeedDial,
                 modifier = Modifier
                     .size(60.dp)
+                    .drawBehind {
+                        // Highly visible downward dropdown shadow matching the dock
+                        val dropdownShadowColor = if (isDark) Color(0x66000000) else Color(0x382B1F14)
+                        val dropdownShadowSubtle = if (isDark) Color(0x40000000) else Color(0x202B1F14)
+                        val radius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
+
+                        drawRoundRect(
+                            color = dropdownShadowSubtle,
+                            topLeft = Offset(0f, 4.dp.toPx()),
+                            size = Size(size.width, size.height),
+                            cornerRadius = radius
+                        )
+                        drawRoundRect(
+                            color = dropdownShadowColor,
+                            topLeft = Offset(0f, 8.dp.toPx()),
+                            size = Size(size.width, size.height),
+                            cornerRadius = radius
+                        )
+                    }
                     .shadow(
                         elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
                         shape = RoundedCornerShape(18.dp),
@@ -492,25 +533,17 @@ private class PillClipShape(
         val halfWidth = size.width / 2f
         val progress = progressProvider()
 
-        val hPaddingPx = with(density) { horizontalPaddingDp.toPx() }
         val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
 
-        // Fallback default content widths (~75dp) when not yet measured in layout pass
-        val defaultContentWidth = with(density) { 75.dp.toPx() }
-        val measuredHomeWidth = homeWidthProvider().takeIf { it > 0f } ?: defaultContentWidth
-        val measuredPeopleWidth = peopleWidthProvider().takeIf { it > 0f } ?: defaultContentWidth
+        // Bounded pill width ensuring completely consistent padding across all edges:
+        // Top padding == Bottom padding == Left padding (Home) == Right padding (Friends) == vPaddingPx
+        val maxPillWidth = (halfWidth - (vPaddingPx * 2f)).coerceAtLeast(0f)
 
-        val slot0CenterX = halfWidth * 0.5f
-        val slot1CenterX = halfWidth * 1.5f
+        val homeLeft = vPaddingPx
+        val homeRight = homeLeft + maxPillWidth
 
-        // Content-hugging bounds calculated inline without heap Pair allocations
-        val tightHomeWidth = (measuredHomeWidth + (hPaddingPx * 2f)).coerceAtMost(halfWidth)
-        val homeLeft = slot0CenterX - (tightHomeWidth / 2f)
-        val homeRight = slot0CenterX + (tightHomeWidth / 2f)
-
-        val tightPeopleWidth = (measuredPeopleWidth + (hPaddingPx * 2f)).coerceAtMost(halfWidth)
-        val peopleLeft = slot1CenterX - (tightPeopleWidth / 2f)
-        val peopleRight = slot1CenterX + (tightPeopleWidth / 2f)
+        val peopleRight = size.width - vPaddingPx
+        val peopleLeft = peopleRight - maxPillWidth
 
         // Interpolate smoothly between tab 0 and tab 1 bounds
         val left = homeLeft + (peopleLeft - homeLeft) * progress

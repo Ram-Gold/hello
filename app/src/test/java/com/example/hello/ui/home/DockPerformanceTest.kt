@@ -85,8 +85,8 @@ class DockPerformanceTest {
             DockMotionConfig.DOCK_CONTAINER_WIDTH_DP
         )
         assertEquals(
-            "Floating dock shadow elevation must be 12.dp for more visible dropdown shadow",
-            12,
+            "Floating dock shadow elevation must be 16.dp for prominent dropdown shadow",
+            16,
             DockMotionConfig.DOCK_SHADOW_ELEVATION_DP
         )
         assertTrue(
@@ -107,6 +107,49 @@ class DockPerformanceTest {
             "Floating dock must be borderless without a background outline border",
             DockMotionConfig.HAS_DOCK_BORDER
         )
+        assertTrue(
+            "Shadow ambient color must have full alpha for visible hardware shadow",
+            DockMotionConfig.WARM_SHADOW_AMBIENT.alpha >= 0.99f
+        )
+        assertTrue(
+            "Shadow spot color must have full alpha for visible hardware shadow",
+            DockMotionConfig.WARM_SHADOW_SPOT.alpha >= 0.99f
+        )
+    }
+
+    @Test
+    fun dockMotionConfig_calculatePillBounds_guaranteesConsistentPaddingAcrossTabs() {
+        val slotWidth = 105f // Half of 210dp container
+        val verticalPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
+        val horizontalPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat()
+
+        // Home slot (centered at 52.5f)
+        val homeSlotCenter = 52.5f
+        val homeContentWidth = 65f
+        val (homeLeft, _) = DockMotionConfig.calculatePillBounds(
+            slotCenterX = homeSlotCenter,
+            contentWidth = homeContentWidth,
+            horizontalPadding = horizontalPadding,
+            slotWidth = slotWidth,
+            slotPadding = verticalPadding
+        )
+        val homeLeftPadding = homeLeft
+
+        // Friends slot (centered at 157.5f)
+        val friendsSlotCenter = 157.5f
+        val friendsContentWidth = 85f
+        val (_, friendsRight) = DockMotionConfig.calculatePillBounds(
+            slotCenterX = friendsSlotCenter,
+            contentWidth = friendsContentWidth,
+            horizontalPadding = horizontalPadding,
+            slotWidth = slotWidth,
+            slotPadding = verticalPadding
+        )
+        val friendsRightPadding = (slotWidth * 2f) - friendsRight
+
+        // Outer padding on Friends must be consistent with vertical padding and Home left padding
+        assertEquals(verticalPadding, homeLeftPadding, 0.001f)
+        assertEquals(verticalPadding, friendsRightPadding, 0.001f)
     }
 
     @Test

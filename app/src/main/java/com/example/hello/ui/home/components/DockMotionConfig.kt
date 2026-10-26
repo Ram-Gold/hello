@@ -24,16 +24,16 @@ object DockMotionConfig {
 
     // Visual geometry and drop shadow elevation
     const val DOCK_CONTAINER_WIDTH_DP = 220
-    const val DOCK_SHADOW_ELEVATION_DP = 12
-    const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 14
+    const val DOCK_SHADOW_ELEVATION_DP = 16
+    const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 20
     const val PILL_VERTICAL_PADDING_DP = 4
     const val PILL_CONTENT_HORIZONTAL_PADDING_DP = 16
     const val TAB_ITEM_HORIZONTAL_PADDING_DP = 14
     const val HAS_DOCK_BORDER = false
 
-    // Warm tactile shadow tokens for light theme
-    val WARM_SHADOW_AMBIENT = Color(0x382B1F14)
-    val WARM_SHADOW_SPOT = Color(0x592B1F14)
+    // Warm tactile shadow tokens for light theme (full alpha so hardware RenderNode casts rich, visible shadow)
+    val WARM_SHADOW_AMBIENT = Color(0xFF2B1F14)
+    val WARM_SHADOW_SPOT = Color(0xFF140D07)
 
     // Unified left-to-right text transition offsets
     const val TEXT_ENTER_OFFSET_FRACTION = -0.5f
@@ -51,15 +51,17 @@ object DockMotionConfig {
 
     /**
      * Calculates tight content-hugging pill bounds (left and right coordinates) centered within
-     * the tab slot.
+     * the tab slot, preserving uniform vertical and outer margin constraints.
      */
     fun calculatePillBounds(
         slotCenterX: Float,
         contentWidth: Float,
         horizontalPadding: Float,
-        slotWidth: Float
+        slotWidth: Float,
+        slotPadding: Float = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
     ): Pair<Float, Float> {
-        val tightWidth = (contentWidth + (horizontalPadding * 2f)).coerceAtMost(slotWidth)
+        val maxPillWidth = (slotWidth - (slotPadding * 2f)).coerceAtLeast(0f)
+        val tightWidth = (contentWidth + (horizontalPadding * 2f)).coerceIn(0f, maxPillWidth)
         val left = slotCenterX - (tightWidth / 2f)
         val right = slotCenterX + (tightWidth / 2f)
         return Pair(left, right)
