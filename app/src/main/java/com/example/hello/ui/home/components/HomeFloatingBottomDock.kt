@@ -135,7 +135,7 @@ fun HomeFloatingBottomDock(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
@@ -155,7 +155,7 @@ fun HomeFloatingBottomDock(
 
             Surface(
                 modifier = Modifier
-                    .weight(1f)
+                    .width(DockMotionConfig.DOCK_CONTAINER_WIDTH_DP.dp)
                     .height(60.dp)
                     .shadow(
                         elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,

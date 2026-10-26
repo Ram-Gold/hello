@@ -80,6 +80,11 @@ class DockPerformanceTest {
     @Test
     fun dockMotionConfig_hasRefinedPillGeometryAndShadowTokens() {
         assertEquals(
+            "Floating dock container width must be 220.dp for a compact entire dock",
+            220,
+            DockMotionConfig.DOCK_CONTAINER_WIDTH_DP
+        )
+        assertEquals(
             "Floating dock shadow elevation must be 12.dp for more visible dropdown shadow",
             12,
             DockMotionConfig.DOCK_SHADOW_ELEVATION_DP
@@ -89,13 +94,13 @@ class DockPerformanceTest {
             DockMotionConfig.PILL_VERTICAL_PADDING_DP in 2..6
         )
         assertEquals(
-            "Pill content horizontal padding must be 8.dp for a narrower, sleeker pill",
-            8,
+            "Pill content horizontal padding must be reverted to 16.dp for perfect selection pill width",
+            16,
             DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP
         )
         assertEquals(
-            "Tab item container horizontal padding must be 10.dp for snug layout",
-            10,
+            "Tab item container horizontal padding must be reverted to 14.dp",
+            14,
             DockMotionConfig.TAB_ITEM_HORIZONTAL_PADDING_DP
         )
         assertFalse(

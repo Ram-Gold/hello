@@ -23,11 +23,12 @@ object DockMotionConfig {
     const val USE_CLIP_PATH_REVEAL = true
 
     // Visual geometry and drop shadow elevation
+    const val DOCK_CONTAINER_WIDTH_DP = 220
     const val DOCK_SHADOW_ELEVATION_DP = 12
     const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 14
     const val PILL_VERTICAL_PADDING_DP = 4
-    const val PILL_CONTENT_HORIZONTAL_PADDING_DP = 8
-    const val TAB_ITEM_HORIZONTAL_PADDING_DP = 10
+    const val PILL_CONTENT_HORIZONTAL_PADDING_DP = 16
+    const val TAB_ITEM_HORIZONTAL_PADDING_DP = 14
     const val HAS_DOCK_BORDER = false
 
     // Warm tactile shadow tokens for light theme

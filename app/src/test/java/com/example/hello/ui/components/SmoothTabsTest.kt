@@ -121,8 +121,8 @@ class SmoothTabsTest {
         )
 
         val pillWidth = right - left
-        // Expected tight width = contentWidth + 2 * horizontalPadding = 60 + 16 = 76f
-        assertEquals(76f, pillWidth, 0.001f)
+        // Expected tight width = contentWidth + 2 * horizontalPadding = 60 + 32 = 92f
+        assertEquals(92f, pillWidth, 0.001f)
         assertTrue(
             "Pill width ($pillWidth) must be substantially smaller than full slot ($slotWidth)",
             pillWidth < slotWidth
