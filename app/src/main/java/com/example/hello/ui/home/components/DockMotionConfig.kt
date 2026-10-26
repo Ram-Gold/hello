@@ -66,4 +66,36 @@ object DockMotionConfig {
         val right = slotCenterX + (tightWidth / 2f)
         return Pair(left, right)
     }
+
+    /**
+     * Estimates the content width in DP for a tab item with an icon (24dp) + gap (8dp) + label text.
+     */
+    fun estimateContentWidthDp(label: String): Int = 32 + (label.length * 8)
+
+    /**
+     * Calculates dynamically sized pill coordinates anchored to the container edge:
+     * - Home (isRightAnchored = false): left = slotPadding, right = left + pillWidth
+     * - People/Friends/Connections (isRightAnchored = true): right = containerWidth - slotPadding, left = right - pillWidth
+     *
+     * Ensures consistent padding across all edges (left/right, top, bottom = slotPadding).
+     */
+    fun calculateAnchoredPillBounds(
+        contentWidth: Float,
+        horizontalPadding: Float,
+        containerWidth: Float,
+        isRightAnchored: Boolean,
+        slotPadding: Float = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
+    ): Pair<Float, Float> {
+        val maxAvailableWidth = (containerWidth - (slotPadding * 2f)).coerceAtLeast(0f)
+        val pillWidth = (contentWidth + (horizontalPadding * 2f)).coerceIn(0f, maxAvailableWidth)
+        return if (isRightAnchored) {
+            val right = containerWidth - slotPadding
+            val left = right - pillWidth
+            Pair(left, right)
+        } else {
+            val left = slotPadding
+            val right = left + pillWidth
+            Pair(left, right)
+        }
+    }
 }

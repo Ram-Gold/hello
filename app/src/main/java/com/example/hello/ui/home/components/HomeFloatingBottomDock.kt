@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -182,14 +184,17 @@ fun HomeFloatingBottomDock(
                     )
 
                     var homeContentWidthPx by remember { mutableFloatStateOf(0f) }
-                    var peopleContentWidthPx by remember { mutableFloatStateOf(0f) }
+                    var peopleContentWidthPx by remember(peopleTabLabel) { mutableFloatStateOf(0f) }
 
                     // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
                     TabsRow(
                         selectedTab = selectedTab,
+                        pillProgress = pillProgress,
                         peopleLabel = peopleTabLabel,
                         iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        homeContentWidthPx = homeContentWidthPx,
+                        peopleContentWidthPx = peopleContentWidthPx,
                         onHomeContentWidth = { homeContentWidthPx = it },
                         onPeopleContentWidth = { peopleContentWidthPx = it }
                     )
@@ -200,7 +205,8 @@ fun HomeFloatingBottomDock(
                         PillClipShape(
                             progressProvider = { pillProgress },
                             homeWidthProvider = { homeContentWidthPx },
-                            peopleWidthProvider = { peopleContentWidthPx }
+                            peopleWidthProvider = { peopleContentWidthPx },
+                            peopleLabelProvider = { peopleTabLabel }
                         )
                     }
                     Box(
@@ -214,9 +220,12 @@ fun HomeFloatingBottomDock(
                     ) {
                         TabsRow(
                             selectedTab = selectedTab,
+                            pillProgress = pillProgress,
                             peopleLabel = peopleTabLabel,
                             iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            textColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            homeContentWidthPx = homeContentWidthPx,
+                            peopleContentWidthPx = peopleContentWidthPx
                         )
                     }
 
@@ -312,41 +321,85 @@ fun HomeFloatingBottomDock(
 @Composable
 private fun TabsRow(
     selectedTab: HomeNavTab,
+    pillProgress: Float,
     peopleLabel: String = "People",
     iconColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier,
+    homeContentWidthPx: Float = 0f,
+    peopleContentWidthPx: Float = 0f,
     onHomeContentWidth: ((Float) -> Unit)? = null,
     onPeopleContentWidth: ((Float) -> Unit)? = null
 ) {
-    Row(
-        modifier = modifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NavTabItemContent(
-            tab = HomeNavTab.HOME,
-            customLabel = null,
-            isSelected = selectedTab == HomeNavTab.HOME,
-            icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, selectedTab == HomeNavTab.HOME),
-            iconColor = iconColor,
-            textColor = textColor,
-            onContentWidthMeasured = onHomeContentWidth,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-        )
-        NavTabItemContent(
-            tab = HomeNavTab.PEOPLE,
-            customLabel = peopleLabel,
-            isSelected = selectedTab == HomeNavTab.PEOPLE,
-            icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, selectedTab == HomeNavTab.PEOPLE),
-            iconColor = iconColor,
-            textColor = textColor,
-            onContentWidthMeasured = onPeopleContentWidth,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-        )
+    Layout(
+        content = {
+            NavTabItemContent(
+                tab = HomeNavTab.HOME,
+                customLabel = null,
+                isSelected = selectedTab == HomeNavTab.HOME,
+                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, selectedTab == HomeNavTab.HOME),
+                iconColor = iconColor,
+                textColor = textColor,
+                onContentWidthMeasured = onHomeContentWidth
+            )
+            NavTabItemContent(
+                tab = HomeNavTab.PEOPLE,
+                customLabel = peopleLabel,
+                isSelected = selectedTab == HomeNavTab.PEOPLE,
+                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, selectedTab == HomeNavTab.PEOPLE),
+                iconColor = iconColor,
+                textColor = textColor,
+                onContentWidthMeasured = onPeopleContentWidth
+            )
+        },
+        modifier = modifier.fillMaxSize()
+    ) { measurables, constraints ->
+        val unconstrained = constraints.copy(minWidth = 0, minHeight = 0)
+        val homePlaceable = measurables[0].measure(unconstrained)
+        val peoplePlaceable = measurables[1].measure(unconstrained)
+
+        val containerWidth = constraints.maxWidth.toFloat()
+        val containerHeight = constraints.maxHeight.toFloat()
+        val vPaddingPx = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp.toPx()
+        val hPaddingPx = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.dp.toPx()
+        val pillHeight = (containerHeight - (2f * vPaddingPx)).coerceAtLeast(0f)
+
+        // Estimated content widths if not yet measured
+        val defaultHomeWidth = 68.dp.toPx()
+        val defaultPeopleWidth = DockMotionConfig.estimateContentWidthDp(peopleLabel).dp.toPx()
+
+        val effectiveHomeWidth = homeContentWidthPx.takeIf { it > 0f }
+            ?: (if (selectedTab == HomeNavTab.HOME && homePlaceable.width > 0) homePlaceable.width.toFloat() else defaultHomeWidth)
+        val effectivePeopleWidth = peopleContentWidthPx.takeIf { it > 0f }
+            ?: (if (selectedTab == HomeNavTab.PEOPLE && peoplePlaceable.width > 0) peoplePlaceable.width.toFloat() else defaultPeopleWidth)
+
+        val homePillWidth = effectiveHomeWidth + (2f * hPaddingPx)
+        val peoplePillWidth = effectivePeopleWidth + (2f * hPaddingPx)
+
+        // Center coordinates for Home tab:
+        // When active: centered in Home pill (vPaddingPx .. vPaddingPx + homePillWidth)
+        // When inactive: centered in 1:1 icon slot (vPaddingPx .. vPaddingPx + pillHeight)
+        val homeActiveCenterX = vPaddingPx + (homePillWidth / 2f)
+        val homeInactiveCenterX = vPaddingPx + (pillHeight / 2f)
+        val homeCenterX = homeActiveCenterX + (homeInactiveCenterX - homeActiveCenterX) * pillProgress
+
+        // Center coordinates for Relationship tab:
+        // When inactive: centered in 1:1 icon slot (containerWidth - vPaddingPx - pillHeight .. containerWidth - vPaddingPx)
+        // When active: centered in Relationship pill (containerWidth - vPaddingPx - peoplePillWidth .. containerWidth - vPaddingPx)
+        val peopleInactiveCenterX = containerWidth - vPaddingPx - (pillHeight / 2f)
+        val peopleActiveCenterX = containerWidth - vPaddingPx - (peoplePillWidth / 2f)
+        val peopleCenterX = peopleInactiveCenterX + (peopleActiveCenterX - peopleInactiveCenterX) * pillProgress
+
+        val homeX = (homeCenterX - (homePlaceable.width / 2f)).toInt()
+        val homeY = ((containerHeight - homePlaceable.height) / 2f).toInt()
+
+        val peopleX = (peopleCenterX - (peoplePlaceable.width / 2f)).toInt()
+        val peopleY = ((containerHeight - peoplePlaceable.height) / 2f).toInt()
+
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            homePlaceable.placeRelative(homeX, homeY)
+            peoplePlaceable.placeRelative(peopleX, peopleY)
+        }
     }
 }
 
@@ -362,13 +415,10 @@ private fun NavTabItemContent(
     onContentWidthMeasured: ((Float) -> Unit)? = null
 ) {
     val displayLabel = customLabel ?: tab.label
-    var lastExpandedWidthPx by remember { mutableFloatStateOf(0f) }
+    var lastExpandedWidthPx by remember(displayLabel) { mutableFloatStateOf(0f) }
 
     Box(
-        modifier = modifier.padding(
-            horizontal = DockMotionConfig.TAB_ITEM_HORIZONTAL_PADDING_DP.dp,
-            vertical = 10.dp
-        ),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -383,12 +433,21 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = displayLabel,
-                tint = iconColor,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = displayLabel,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .aspectRatio(1f)
+                )
+            }
             AnimatedVisibility(
                 visible = isSelected,
                 enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
@@ -482,6 +541,7 @@ private class PillClipShape(
     private val progressProvider: () -> Float,
     private val homeWidthProvider: () -> Float,
     private val peopleWidthProvider: () -> Float,
+    private val peopleLabelProvider: () -> String,
     private val verticalPaddingDp: Dp = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp,
     private val horizontalPaddingDp: Dp = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.dp
 ) : Shape {
@@ -490,20 +550,30 @@ private class PillClipShape(
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
-        val halfWidth = size.width / 2f
         val progress = progressProvider()
 
         val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
+        val hPaddingPx = with(density) { horizontalPaddingDp.toPx() }
 
-        // Bounded pill width ensuring completely consistent padding across all edges:
-        // Top padding == Bottom padding == Left padding (Home) == Right padding (Friends) == vPaddingPx
-        val maxPillWidth = (halfWidth - (vPaddingPx * 2f)).coerceAtLeast(0f)
+        val defaultHomeWidth = with(density) { 68.dp.toPx() }
+        val defaultPeopleWidth = with(density) {
+            DockMotionConfig.estimateContentWidthDp(peopleLabelProvider()).dp.toPx()
+        }
 
+        val measuredHome = homeWidthProvider().takeIf { it > 0f } ?: defaultHomeWidth
+        val measuredPeople = peopleWidthProvider().takeIf { it > 0f } ?: defaultPeopleWidth
+
+        val homePillWidth = measuredHome + (hPaddingPx * 2f)
+        val peoplePillWidth = measuredPeople + (hPaddingPx * 2f)
+
+        // Anchored positioning ensuring exact consistent margins:
+        // When Home is selected: left padding == vPaddingPx, top == vPaddingPx, bottom == vPaddingPx
         val homeLeft = vPaddingPx
-        val homeRight = homeLeft + maxPillWidth
+        val homeRight = (homeLeft + homePillWidth).coerceAtMost(size.width - vPaddingPx)
 
-        val peopleRight = size.width - vPaddingPx
-        val peopleLeft = peopleRight - maxPillWidth
+        // When Relationship tab is selected: right padding == vPaddingPx, top == vPaddingPx, bottom == vPaddingPx
+        val peopleRight = (size.width - vPaddingPx).coerceAtLeast(vPaddingPx)
+        val peopleLeft = (peopleRight - peoplePillWidth).coerceAtLeast(vPaddingPx)
 
         // Interpolate smoothly between tab 0 and tab 1 bounds
         val left = homeLeft + (peopleLeft - homeLeft) * progress

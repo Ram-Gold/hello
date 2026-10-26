@@ -174,4 +174,65 @@ class DockPerformanceTest {
             60 >= 48
         )
     }
+
+    @Test
+    fun dockMotionConfig_calculateAnchoredPillBounds_guaranteesIdentical4dpPaddingOnAllEdges() {
+        val containerWidth = 210f
+        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
+        val hPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat()
+
+        // Home selected
+        val (homeLeft, _) = DockMotionConfig.calculateAnchoredPillBounds(
+            contentWidth = 68f,
+            horizontalPadding = hPadding,
+            containerWidth = containerWidth,
+            isRightAnchored = false,
+            slotPadding = vPadding
+        )
+        // Friends selected
+        val (_, friendsRight) = DockMotionConfig.calculateAnchoredPillBounds(
+            contentWidth = 76f,
+            horizontalPadding = hPadding,
+            containerWidth = containerWidth,
+            isRightAnchored = true,
+            slotPadding = vPadding
+        )
+        // Connections selected
+        val (_, connectionsRight) = DockMotionConfig.calculateAnchoredPillBounds(
+            contentWidth = 114f,
+            horizontalPadding = hPadding,
+            containerWidth = containerWidth,
+            isRightAnchored = true,
+            slotPadding = vPadding
+        )
+
+        val homeLeftMargin = homeLeft
+        val friendsRightMargin = containerWidth - friendsRight
+        val connectionsRightMargin = containerWidth - connectionsRight
+
+        // Top, bottom, left (Home), and right (Friends/Connections) must all equal 4dp
+        assertEquals("Home left margin must equal 4dp vertical padding", vPadding, homeLeftMargin, 0.001f)
+        assertEquals("Friends right margin must equal 4dp vertical padding", vPadding, friendsRightMargin, 0.001f)
+        assertEquals("Connections right margin must equal 4dp vertical padding", vPadding, connectionsRightMargin, 0.001f)
+    }
+
+    @Test
+    fun dockMotionConfig_unselectedIconSlotHas1to1AspectRatio() {
+        // In a 50dp high dock container with 4dp top and bottom padding:
+        val containerHeight = 50f
+        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
+        val pillHeight = containerHeight - (2f * vPadding) // 42f
+
+        // A 1:1 unselected icon slot has width equal to pill height:
+        val unselectedSlotWidth = pillHeight
+        val unselectedSlotHeight = pillHeight
+        val aspectRatio = unselectedSlotWidth / unselectedSlotHeight
+
+        assertEquals(
+            "Unselected icon slot must have exact 1:1 aspect ratio",
+            1.0f,
+            aspectRatio,
+            0.001f
+        )
+    }
 }

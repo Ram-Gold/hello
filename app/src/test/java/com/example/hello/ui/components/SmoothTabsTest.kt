@@ -152,4 +152,66 @@ class SmoothTabsTest {
             assertEquals("Pill for '$label' must remain centered at slot center", slotCenterX, (left + right) / 2f, 0.001f)
         }
     }
+
+    @Test
+    fun calculateAnchoredPillBounds_dynamicallySizesPillByTextLengthAndPreservesConsistentOuterPadding() {
+        val containerWidth = 210f
+        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat() // 4f
+        val hPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat() // 16f
+
+        // 1. Home tab: left-anchored
+        val homeContentWidth = 68f // 24dp icon + 8dp gap + ~36dp text
+        val (homeLeft, homeRight) = DockMotionConfig.calculateAnchoredPillBounds(
+            contentWidth = homeContentWidth,
+            horizontalPadding = hPadding,
+            containerWidth = containerWidth,
+            isRightAnchored = false,
+            slotPadding = vPadding
+        )
+        val homePillWidth = homeRight - homeLeft
+        assertEquals("Home left margin must exactly match vertical padding (4f)", vPadding, homeLeft, 0.001f)
+        assertEquals("Home pill length must equal content + 2 * hPadding", homeContentWidth + (2f * hPadding), homePillWidth, 0.001f)
+
+        // 2. Relationship tab: right-anchored with dynamically varying text lengths
+        // Friends (~76f) vs People (~82f) vs Contacts (~90f) vs Connections (~114f)
+        val terminologies = listOf(
+            "Friends" to 76f,
+            "People" to 82f,
+            "Contacts" to 90f,
+            "Connections" to 114f
+        )
+
+        var previousPillWidth = 0f
+        terminologies.forEach { (label, contentWidth) ->
+            val (relLeft, relRight) = DockMotionConfig.calculateAnchoredPillBounds(
+                contentWidth = contentWidth,
+                horizontalPadding = hPadding,
+                containerWidth = containerWidth,
+                isRightAnchored = true,
+                slotPadding = vPadding
+            )
+            val pillWidth = relRight - relLeft
+            val rightMargin = containerWidth - relRight
+
+            // Right margin must be exactly 4f (same as vertical padding and Home's left margin)
+            assertEquals("Pill for '$label' right margin must equal vertical padding (4f)", vPadding, rightMargin, 0.001f)
+            // Pill length must be determined by the text/content size
+            assertEquals("Pill for '$label' length must auto-adjust to text length", contentWidth + (2f * hPadding), pillWidth, 0.001f)
+            // Each longer label must produce a strictly larger pill width
+            assertTrue("Pill for '$label' ($pillWidth) must be wider than previous ($previousPillWidth)", pillWidth > previousPillWidth)
+            previousPillWidth = pillWidth
+        }
+    }
+
+    @Test
+    fun estimateContentWidthDp_scalesMonotonicallyWithLabelLength() {
+        val friendsWidth = DockMotionConfig.estimateContentWidthDp("Friends")
+        val peopleWidth = DockMotionConfig.estimateContentWidthDp("People")
+        val contactsWidth = DockMotionConfig.estimateContentWidthDp("Contacts")
+        val connectionsWidth = DockMotionConfig.estimateContentWidthDp("Connections")
+
+        assertTrue("Contacts estimate must be larger than People", contactsWidth > peopleWidth)
+        assertTrue("Connections estimate must be larger than Contacts", connectionsWidth > contactsWidth)
+        assertTrue("Connections estimate must accommodate 11 chars", connectionsWidth >= 120)
+    }
 }
