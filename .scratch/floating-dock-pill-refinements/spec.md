@@ -1,104 +1,86 @@
 Status: ready-for-agent
 
-# Specification: Floating Bottom Navigation Dock Refinements
+# Specification: Floating Bottom Navigation Dock Visual Polish
 
 ## Problem Statement
 
-Users navigating the app currently encounter a bottom navigation dock whose sliding indicator pill spans a rigid 50% half-width of the container, appearing overly bulky and visually heavy rather than sleek and refined. Furthermore, the dock container lacks visible physical depth because previous elevation modifier ordering clipped the drop shadow, making the dock appear flat against underlying content. 
-
-Additionally, when switching tabs, the tab label text exits to the left in reverse of natural reading order, creating a jarring, backward visual sensation. Finally, navigation icons remain outlined in both selected and unselected states, diminishing instant visual glanceability and failing to provide standard Material Design 3 state clarity where the active tab features a filled, grounded icon.
+Users navigating the Hello app observe that the bottom navigation dock's floating dropdown shadow is too faint and subtle, blending into warm backgrounds and failing to convey distinct tactile elevation above scrolling content. Additionally, the sliding active pill indicator is still wider than desired, taking up excessive horizontal real estate and diminishing the compact, organic feel of the dock. Finally, the container displays a rigid 1.dp outline border around the pill dock, which clashes with the soft, borderless aesthetic and distracts from the clean drop shadow elevation.
 
 ## Solution
 
-Refine the floating bottom navigation dock (`HomeFloatingBottomDock`) with polished visual and tactile ergonomics:
+Provide visual polish and tactile refinement to the floating bottom navigation dock:
 
-1. **Tight-Hugging Pill Sizing**: Transition from a full 50% half-width block to a sleek, compact pill that hugs the active tab's icon and label with comfortable internal padding, creating an airy and modern aesthetic.
-2. **Prominent Unclipped Drop Shadow**: Fix container modifier ordering and establish an unclipped 8.dp drop shadow beneath the floating dock, lifting the dock elegantly off the scrolling content surface.
-3. **Consistent Left-to-Right Text Flow**: Reorient tab label exit motion so that text enters from the left (-x to 0) and exits towards the right (0 to +x) alongside smooth opacity crossfades, matching natural reading flow and forward momentum.
-4. **State-Driven Icon Fill States**: Instantly swap navigation icons between standard Outlined vectors for unselected tabs and solid Filled vectors for the active tab (e.g., `Icons.Filled.Home` vs `Icons.Outlined.Home`, and `Icons.Filled.People` vs `Icons.Outlined.People`), providing immediate visual reinforcement of current location.
+1. **Pronounced Dropdown Shadow**: Increase shadow elevation (from 8.dp to 12.dp) and enrich shadow ambient and spot opacity using warm, earthy undertones, ensuring the dock casts an unmistakable, soft dropdown shadow over content beneath.
+2. **Narrower Pill Width**: Reduce pill horizontal content padding (from 16.dp to 8.dp) and tighten internal layout padding, ensuring the active pill wraps the icon and text tightly as a compact, elegant chip.
+3. **Borderless Floating Dock Container**: Remove the 1.dp outline border stroke from the dock container surface, allowing the prominent drop shadow and warm surface elevation to delineate the organic pill silhouette naturally without artificial line strokes.
 
 ---
 
 ## User Stories
 
-1. As an active app user, I want the active tab pill to hug its content rather than occupying half the screen width, so that the navigation dock feels sleek, lightweight, and modern.
-2. As a user browsing content, I want the floating dock to cast a soft, prominent drop shadow onto the surface below, so that the navigation bar clearly floats above feed items and cards.
-3. As a user switching from the Home tab to People, I want the departing "Home" label to glide smoothly to the right as it fades out, so that the motion feels consistent with forward reading progression.
-4. As a user switching from People to Home, I want the newly selected label to slide in smoothly from the left as it fades in, so that text enters naturally without sudden visual jumping.
-5. As a user looking at the navigation dock at a glance, I want the active tab's icon to display in a solid filled style, so that I can immediately identify my current screen without reading labels.
-6. As a user looking at inactive navigation tabs, I want their icons to appear as clean outlines, so that there is strong visual hierarchy between active and inactive destinations.
-7. As a user tapping a tab, I want the icon to switch instantly to its filled state, so that touch feedback is immediate and responsive.
-8. As a user who has customized my Relationship Terminology (e.g., "Friends", "Connections", "Contacts"), I want the tighter pill width to adapt gracefully to variable label lengths without clipping or awkward gaps.
-9. As a user with smaller hands, I want the touch target of each navigation tab to remain at or above standard accessibility dimensions (at least 48dp width and height), even though the visual pill indicator itself is smaller and tighter.
-10. As a user rapidly toggling between tabs, I want the text slide and fade animations to be fully interruptible with zero glitching or overlapping label text.
-11. As a user on a warm cream/beige background in light mode, I want the dock drop shadow to cast a warm, soft ambient tone rather than a harsh, dark black drop shadow.
-12. As a user navigating in dark mode, I want the drop shadow and container borders to maintain subtle elevation distinction without causing high-contrast glare.
-13. As a user interacting with the companion Quick-Add Floating Action Button (`+`), I want the dock container's updated shadow and refined pill to remain visually harmonious with the FAB's elevation and corner radius.
-14. As a user on an older or lower-spec Android device, I want the pill resizing and left-to-right text slide animation to execute entirely in the GPU draw and layout phases without triggering unnecessary recompositions.
-15. As a user using talkback or accessibility services, I want accessibility semantics and tab selection announcements to reflect the active tab correctly, independent of the visual pill size or icon vector swap.
-16. As a user transitioning between screens, I want the dock's refined pill motion to synchronize with the page scroll duration, ensuring complete visual unity across the entire interface.
+1. As a user viewing my relationship feed on the Home screen, I want the bottom navigation dock to cast a deep, noticeable dropdown shadow, so that it clearly floats as a distinct tactile layer above cards and encounters.
+2. As a user navigating in bright light, I want the dropdown shadow to be rich and distinct enough to be instantly visible, so that the navigation dock never looks flat against light backgrounds.
+3. As a user looking at the active navigation tab, I want the indicator pill to have a tighter, narrower width, so that it wraps the active icon and label cleanly without excessive empty space on the sides.
+4. As a user with sensitive visual preferences, I want the active pill to feel like a compact, nimble chip rather than an oversized rounded rectangle, so that the bar feels lightweight and modern.
+5. As a user who appreciates clean minimalism, I want the outer floating dock to have no border stroke, so that the boundary is defined entirely by depth and elevation rather than a distracting outline.
+6. As a user switching between Home and People, I want the narrower pill to glide with the same smooth spring physics across the dock, maintaining snappy translation without jitter.
+7. As a user with customized Relationship Terminology (such as "Friends" or "Connections"), I want the narrower pill calculation to hug variable text lengths with consistent, snug padding, so that longer or shorter labels remain balanced.
+8. As a user tapping on the navigation bar, I want the interactive touch targets to remain expansive and easy to tap (>= 48dp), even though the visual pill indicator itself is narrower.
+9. As a user switching between light and dark themes, I want the more visible shadow to adjust its ambient and spot intensity gracefully, so that it creates tactile depth in light mode without glowing or clipping in dark mode.
+10. As a user operating the app with one hand, I want the companion Quick-Add Floating Action Button to share the same borderless, elevated depth as the dock container, ensuring visual harmony across the bottom row.
+11. As a user rapidly toggling tabs, I want the narrower pill's draw-phase clip to execute with zero heap allocation, maintaining 60-120 FPS render performance.
+12. As a user scrolling through long contact lists on the People screen, I want the dock's dropdown shadow to create a clear visual separation between the fixed navigation elements and scrolling list items.
+13. As a user observing the text slide animation, I want the narrower pill boundaries to contain the left-to-right enter/exit transitions cleanly without text peeking outside the pill edges.
+14. As an accessibility user, I want the visual narrowing of the pill and removal of the border to preserve all accessibility roles (`Role.Tab`) and selection announcements unchanged.
 
 ---
 
 ## Implementation Decisions
 
-### Component Architecture
-- Update the floating bottom navigation dock container and tab items within the home presentation module.
-- Retain the dual-element floating row structure: the primary multi-tab navigation dock on the left, paired with the independent companion Quick-Add FAB on the right.
+### Elevation and Shadow Intensification
+- Increase the floating dock shadow elevation token from 8.dp to 12.dp.
+- Deepen the warm ambient and spot shadow color definitions to boost visibility against `#F9F6F0` (warm beige) surfaces without turning into harsh black.
+- Align the companion Quick-Add Floating Action Button's default elevation to 12.dp with matching warm shadow styling.
 
-### Pill Sizing & Layout Geometry
-- Replace the rigid 50% (`halfWidth = size.width / 2f`) pill outline calculation with a compact, content-hugging pill indicator.
-- Compute the active pill bounds based on the measured tab content (icon width + spacing + expanded label width + horizontal content padding).
-- Ensure the interactive touch bounding box spans the full available tab sector (providing a comfortable touch target), while the visual indicator pill cleanly wraps only the active tab content.
-- Maintain smooth spring physics for the pill's horizontal translation across tabs (`PILL_SPRING_STIFFNESS` and `PILL_SPRING_DAMPING`).
+### Pill Width Compaction
+- Reduce the pill content horizontal padding token from 16.dp to 8.dp.
+- Adjust tab item horizontal content padding from 14.dp to 10.dp.
+- Retain the zero-allocation, draw-phase outline calculation, dynamically scaling the active pill to tightly envelope the measured icon and text bounds.
 
-### Elevation & Drop Shadow Hierarchy
-- Reorder the Modifier chain on the floating dock container so that the drop shadow is applied before any surface clipping or border drawing.
-- Configure elevation to 8.dp with a soft, warm ambient and spot shadow color to ensure clear separation above scrolling cards and empty states.
-- Ensure the companion Quick-Add FAB retains matching elevation and elevation physics when pressed.
-
-### Text Slide and Fade Direction
-- Update the enter and exit transition specs in the tab content composable:
-  - **Enter transition**: `fadeIn` combined with `slideInHorizontally(initialOffsetX = { -it / 2 })` and horizontal expansion from start.
-  - **Exit transition**: `fadeOut` combined with `slideOutHorizontally(targetOffsetX = { it / 2 })` and horizontal shrinkage towards end.
-- Both enter and exit motions now proceed in a unified left-to-right trajectory, eliminating the previous right-to-left exit retreat.
-
-### Icon Selection State Contract
-- Map tab destinations to paired vector assets:
-  - `HomeNavTab.HOME`: `Icons.Filled.Home` when selected; `Icons.Outlined.Home` when unselected.
-  - `HomeNavTab.PEOPLE`: `Icons.Filled.People` when selected; `Icons.Outlined.People` when unselected.
-- Apply an immediate vector swap conditioned on the tab's active selection state, ensuring instantaneous recognition on pointer down.
+### Border Removal & Borderless Styling
+- Remove the 1.dp `outlineVariant` border modifier from the floating dock container.
+- Declare a formal `HAS_DOCK_BORDER = false` configuration token in the dock motion config.
+- Remove the outer border stroke on the companion Quick-Add Floating Action Button to maintain visual consistency across the bottom bar.
 
 ---
 
 ## Testing Decisions
 
 ### What Makes a Good Test
-Tests must verify observable behaviors, motion tokens, and layout contracts rather than internal private Compose layout pass details:
-- Verify that motion tokens for text slide offset and duration adhere to the left-to-right transition parameters and match dock travel times.
-- Verify deterministic mapping of tab selection to corresponding Outlined vs. Filled icon vectors.
-- Verify touch-target safety constraints (ensuring touch bounds remain >= 48dp despite compact pill presentation).
-- Verify spring and tween specifications for pill translation stability under rapid interruptions.
+Tests verify external behavior, layout token contracts, and mathematical bounds without asserting internal Compose layout passes:
+- Verify that `DOCK_SHADOW_ELEVATION_DP` is updated to 12.dp.
+- Verify that `PILL_CONTENT_HORIZONTAL_PADDING_DP` is reduced to 8.dp.
+- Verify that `HAS_DOCK_BORDER` is `false`.
+- Verify that `calculatePillBounds` produces narrower, tightly bound coordinates that wrap content with the reduced horizontal padding.
 
 ### Modules Under Test
-- `DockPerformanceTest`: Extend to validate updated pill sizing tokens, left-to-right text transition specs, and dock elevation constants.
-- `SmoothTabsTest`: Extend to validate icon state resolution (filled vs outlined) across all `HomeNavTab` permutations and dynamic relationship terminology labels.
+- `DockPerformanceTest`: Extend to validate updated shadow elevation token (12.dp), reduced horizontal padding token (8.dp), and `HAS_DOCK_BORDER == false`.
+- `SmoothTabsTest`: Extend to validate pill bounds calculation with the reduced 8.dp horizontal padding across dynamic terminology variants.
 
 ### Prior Art
-- Follows existing tests in `app/src/test/java/com/example/hello/ui/home/DockPerformanceTest.kt` and `app/src/test/java/com/example/hello/ui/components/SmoothTabsTest.kt`.
+- Follows existing unit tests in `app/src/test/java/com/example/hello/ui/home/DockPerformanceTest.kt` and `app/src/test/java/com/example/hello/ui/components/SmoothTabsTest.kt`.
 
 ---
 
 ## Out of Scope
 
-- Introducing additional tabs to the bottom navigation dock (Hello maintains a strict two-tab primary model: Home and People).
-- Adding custom badge counters or notification dots on the bottom dock tab icons.
-- Redesigning the Speed Dial popup menu or the Quick-Add FAB behavior.
-- Altering the root pager navigation gestures or screen slide durations.
+- Modifying the dock container's 60.dp overall height or system navigation bar insets.
+- Changing icon vector assets or selection resolution logic.
+- Altering the left-to-right text transition trajectory or duration.
+- Changing the Speed Dial popup menu behavior or trigger mechanics.
 
 ---
 
 ## Further Notes
 
-- **Design System Alignment**: Follows the prime directives in `AGENTS.md` and ADR `0001-floating-pill-and-quick-add-dock.md`, preserving the warm, tactile aesthetic with terracotta accents, rounded pill geometry, and snappy spring physics.
-- **Terminology Dynamics**: The People tab label dynamically reflects the user's selected `RelationshipTerminology` (e.g., "People", "Contacts", "Friends", "Connections"), so dynamic pill width calculation must accommodate varying text widths seamlessly.
+- **Tactile Harmony**: Removing the 1.dp border stroke and strengthening the drop shadow brings the floating dock directly in line with Emil Kowalski's tactile UI principles and Material Design 3 Expressive elevation styling.

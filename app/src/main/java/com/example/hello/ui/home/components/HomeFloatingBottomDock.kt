@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -138,8 +139,19 @@ fun HomeFloatingBottomDock(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
-            val warmShadowAmbient = Color(0x1F2E2218)
-            val warmShadowSpot = Color(0x332E2218)
+            val isDark = isSystemInDarkTheme()
+            val warmShadowAmbient = if (isDark) Color.Black.copy(alpha = 0.40f) else DockMotionConfig.WARM_SHADOW_AMBIENT
+            val warmShadowSpot = if (isDark) Color.Black.copy(alpha = 0.50f) else DockMotionConfig.WARM_SHADOW_SPOT
+
+            val dockBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
+                Modifier.border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(30.dp)
+                )
+            } else {
+                Modifier
+            }
 
             Surface(
                 modifier = Modifier
@@ -152,11 +164,7 @@ fun HomeFloatingBottomDock(
                         spotColor = warmShadowSpot
                     )
                     .clip(RoundedCornerShape(30.dp))
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(30.dp)
-                    ),
+                    .then(dockBorderModifier),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp
             ) {
@@ -259,21 +267,33 @@ fun HomeFloatingBottomDock(
                 label = "fabRotate"
             )
 
+            val fabBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
+                Modifier.border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(18.dp)
+                )
+            } else {
+                Modifier
+            }
+
             FloatingActionButton(
                 onClick = onToggleSpeedDial,
                 modifier = Modifier
                     .size(60.dp)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(18.dp)
-                    ),
+                    .shadow(
+                        elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
+                        shape = RoundedCornerShape(18.dp),
+                        ambientColor = warmShadowAmbient,
+                        spotColor = warmShadowSpot
+                    )
+                    .then(fabBorderModifier),
                 shape = RoundedCornerShape(18.dp),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
-                    pressedElevation = 10.dp
+                    defaultElevation = 0.dp,
+                    pressedElevation = (DockMotionConfig.DOCK_PRESSED_SHADOW_ELEVATION_DP - DockMotionConfig.DOCK_SHADOW_ELEVATION_DP).dp
                 )
             ) {
                 Icon(
@@ -344,7 +364,10 @@ private fun NavTabItemContent(
     var lastExpandedWidthPx by remember { mutableFloatStateOf(0f) }
 
     Box(
-        modifier = modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier = modifier.padding(
+            horizontal = DockMotionConfig.TAB_ITEM_HORIZONTAL_PADDING_DP.dp,
+            vertical = 10.dp
+        ),
         contentAlignment = Alignment.Center
     ) {
         Row(

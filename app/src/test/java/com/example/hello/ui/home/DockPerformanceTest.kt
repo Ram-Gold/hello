@@ -80,17 +80,27 @@ class DockPerformanceTest {
     @Test
     fun dockMotionConfig_hasRefinedPillGeometryAndShadowTokens() {
         assertEquals(
-            "Floating dock shadow elevation must be 8.dp for unclipped drop shadow",
-            8,
+            "Floating dock shadow elevation must be 12.dp for more visible dropdown shadow",
+            12,
             DockMotionConfig.DOCK_SHADOW_ELEVATION_DP
         )
         assertTrue(
             "Pill vertical padding must provide breathing room (between 2.dp and 6.dp)",
             DockMotionConfig.PILL_VERTICAL_PADDING_DP in 2..6
         )
-        assertTrue(
-            "Pill content horizontal padding must be defined for content-hugging pill",
-            DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP >= 12
+        assertEquals(
+            "Pill content horizontal padding must be 8.dp for a narrower, sleeker pill",
+            8,
+            DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP
+        )
+        assertEquals(
+            "Tab item container horizontal padding must be 10.dp for snug layout",
+            10,
+            DockMotionConfig.TAB_ITEM_HORIZONTAL_PADDING_DP
+        )
+        assertFalse(
+            "Floating dock must be borderless without a background outline border",
+            DockMotionConfig.HAS_DOCK_BORDER
         )
     }
 

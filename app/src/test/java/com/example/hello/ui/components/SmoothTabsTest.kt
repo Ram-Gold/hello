@@ -111,7 +111,7 @@ class SmoothTabsTest {
         val slotWidth = 140f
         val slotCenterX = 70f
         val contentWidth = 60f
-        val horizontalPadding = 16f
+        val horizontalPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat()
 
         val (left, right) = DockMotionConfig.calculatePillBounds(
             slotCenterX = slotCenterX,
@@ -121,8 +121,8 @@ class SmoothTabsTest {
         )
 
         val pillWidth = right - left
-        // Expected tight width = contentWidth + 2 * horizontalPadding = 60 + 32 = 92f
-        assertEquals(92f, pillWidth, 0.001f)
+        // Expected tight width = contentWidth + 2 * horizontalPadding = 60 + 16 = 76f
+        assertEquals(76f, pillWidth, 0.001f)
         assertTrue(
             "Pill width ($pillWidth) must be substantially smaller than full slot ($slotWidth)",
             pillWidth < slotWidth
@@ -135,7 +135,7 @@ class SmoothTabsTest {
     fun calculatePillBounds_adaptsGracefullyToVariableRelationshipTerminologyLengths() {
         val slotWidth = 140f
         val slotCenterX = 70f
-        val horizontalPadding = 16f
+        val horizontalPadding = DockMotionConfig.PILL_CONTENT_HORIZONTAL_PADDING_DP.toFloat()
 
         // "People" (~60f) vs "Connections" (~90f) vs "Friends" (~55f)
         val terminologies = listOf("Friends" to 55f, "People" to 60f, "Contacts" to 65f, "Connections" to 90f)
