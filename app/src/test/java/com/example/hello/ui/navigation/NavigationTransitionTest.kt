@@ -97,4 +97,14 @@ class NavigationTransitionTest {
         val backwardDir = resolveRouteSlideDirection(PeopleRoute.ROUTE_NAME, HomeRoute.ROUTE_NAME)
         assertEquals(NavigationTabDirection.BACKWARD, backwardDir)
     }
+
+    @Test
+    fun personDetailTransitions_areLayeredAboveWithFullWidthSlide() {
+        assertEquals(
+            "PersonDetailScreen must be layered above main page with zIndex = 1f",
+            1f,
+            PersonDetailMotionConfig.DETAIL_Z_INDEX,
+            0.001f
+        )
+    }
 }

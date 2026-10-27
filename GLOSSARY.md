@@ -8,6 +8,10 @@ Local-first personal CRM and relationship keeper for Android, helping users cult
 An individual with whom the user maintains a personal or professional relationship.
 _Avoid_: Person, Connection, Client, Account
 
+**Relationship Terminology**:
+The user's chosen display nomenclature (People, Friends, Connections, or Contacts) applied across the presentation layer to describe Contacts according to personal mental models.
+_Avoid_: User Role, Category Type, Custom Entity
+
 **Circle**:
 A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context.
 _Avoid_: Group, Category, Folder

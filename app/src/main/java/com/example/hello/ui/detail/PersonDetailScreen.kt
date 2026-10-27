@@ -50,6 +50,9 @@ import com.example.hello.ui.theme.HelloTheme
 fun PersonDetailScreen(
     uiState: PersonDetailUiState,
     onEvent: (PersonDetailUiEvent) -> Unit,
+    onNavigateBack: () -> Unit,
+    onEditClick: () -> Unit,
+    onLogEncounterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -80,7 +83,7 @@ fun PersonDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { onEvent(PersonDetailUiEvent.OnBackClick) }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -89,7 +92,7 @@ fun PersonDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onEvent(PersonDetailUiEvent.OnEditClick) }) {
+                    IconButton(onClick = onEditClick) {
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit Contact",
@@ -145,7 +148,7 @@ fun PersonDetailScreen(
                     LivingTimeline(
                         encounters = uiState.encounters,
                         placesMap = uiState.placesMap,
-                        onLogEncounterClick = { onEvent(PersonDetailUiEvent.OnLogEncounterClick) }
+                        onLogEncounterClick = onLogEncounterClick
                     )
                 }
 
@@ -183,7 +186,10 @@ fun PersonDetailScreenPreview() {
                 ),
                 isLoading = false
             ),
-            onEvent = {}
+            onEvent = {},
+            onNavigateBack = {},
+            onEditClick = {},
+            onLogEncounterClick = {}
         )
     }
 }

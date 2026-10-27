@@ -185,4 +185,57 @@ class ContactRepositoryTest {
         assertEquals("#4A6572", newTag.colorHex)
         assertTrue(repository.tags.value.any { it.id == newTag.id })
     }
+
+    @Test
+    fun updateTag_modifiesNameAndColor() {
+        val initial = repository.tags.value.first()
+        val updated = initial.copy(name = "UpdatedTech", colorHex = "#7DAA82")
+        repository.updateTag(updated)
+
+        val retrieved = repository.tags.value.first { it.id == initial.id }
+        assertEquals("UpdatedTech", retrieved.name)
+        assertEquals("#7DAA82", retrieved.colorHex)
+    }
+
+    @Test
+    fun mergeTags_migratesContactsCombinesUseCountsAndDeletesSource() {
+        // Tag tech is on c-2 and c-8. Let's merge tag-tech into tag-design.
+        val sourceTag = repository.tags.value.first { it.id == "tag-tech" }
+        val targetTag = repository.tags.value.first { it.id == "tag-design" }
+        val expectedCombinedCount = sourceTag.useCount + targetTag.useCount
+
+        repository.mergeTags(sourceTagId = "tag-tech", targetTagId = "tag-design")
+
+        // 1. sourceTag is deleted from tags
+        assertNull(repository.tags.value.firstOrNull { it.id == "tag-tech" })
+
+        // 2. targetTag has combined useCount
+        val updatedTarget = repository.tags.value.first { it.id == "tag-design" }
+        assertEquals(expectedCombinedCount, updatedTarget.useCount)
+
+        // 3. Contacts that had tag-tech now have tag-design without duplicates
+        val c2 = repository.getContact("c-2")!!
+        assertFalse(c2.tagIds.contains("tag-tech"))
+        assertTrue(c2.tagIds.contains("tag-design"))
+
+        val c8 = repository.getContact("c-8")!!
+        assertFalse(c8.tagIds.contains("tag-tech"))
+        assertTrue(c8.tagIds.contains("tag-design"))
+    }
+
+    @Test
+    fun deleteTag_unlinksCleanlyFromAllContacts() {
+        val tagToDelete = "tag-design"
+        val c1Before = repository.getContact("c-1")!!
+        assertTrue(c1Before.tagIds.contains(tagToDelete))
+
+        repository.deleteTag(tagToDelete)
+
+        // Tag removed from tags
+        assertNull(repository.tags.value.firstOrNull { it.id == tagToDelete })
+
+        // Tag unlinked from contact
+        val c1After = repository.getContact("c-1")!!
+        assertFalse(c1After.tagIds.contains(tagToDelete))
+    }
 }

@@ -4,10 +4,29 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-10-24T07:35:17.202595432Z">
+        <DropdownSelection timestamp="2026-10-26T14:25:28.473295781Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=HYVOXWFQSOOFVW6L" />
+              <DeviceId pluginId="Wireless" identifier="serviceName=adb-HYVOXWFQSOOFVW6L-w8hrj1" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection>
+          <targets>
+            <Target type="DEFAULT_BOOT">
+              <handle>
+                <DeviceId pluginId="PhysicalDevice" identifier="serial=HYVOXWFQSOOFVW6L" />
+              </handle>
+            </Target>
+          </targets>
+        </DialogSelection>
+      </SelectionState>
+      <SelectionState runConfigName="App Shell Light - MainAppShellLightPreview">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-10-26T14:25:28.473295781Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="Wireless" identifier="serviceName=adb-HYVOXWFQSOOFVW6L-w8hrj1" />
             </handle>
           </Target>
         </DropdownSelection>

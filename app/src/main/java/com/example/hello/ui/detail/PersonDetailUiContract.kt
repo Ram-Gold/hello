@@ -35,11 +35,8 @@ data class PersonDetailUiState(
 )
 
 sealed interface PersonDetailUiEvent {
-    data object OnBackClick : PersonDetailUiEvent
-    data object OnEditClick : PersonDetailUiEvent
     data object OnPhoneClick : PersonDetailUiEvent
     data object OnMessageClick : PersonDetailUiEvent
     data object OnEmailClick : PersonDetailUiEvent
-    data object OnLogEncounterClick : PersonDetailUiEvent
     data object OnDismissUserMessage : PersonDetailUiEvent
 }

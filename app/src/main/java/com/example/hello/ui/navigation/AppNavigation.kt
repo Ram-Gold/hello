@@ -18,10 +18,45 @@ data object PeopleRoute {
     const val ROUTE_NAME = "people"
 }
 
+data object SettingsRoute {
+    const val ROUTE_NAME = "settings"
+}
+
+data object OnboardingRoute {
+    const val ROUTE_NAME = "onboarding"
+}
+
 data object PersonDetailRoute {
     const val ROUTE_PATTERN = "detail/{contactId}"
     const val ARG_CONTACT_ID = "contactId"
     fun createRoute(contactId: String) = "detail/$contactId"
+}
+
+/**
+ * Evaluates whether BackHandler should intercept system back to scroll from People (page 1) to Home (page 0).
+ * MUST only intercept when the user is actively on the "root" screen so it never delays exiting PersonDetailScreen.
+ */
+fun shouldInterceptPeopleBack(currentRoute: String?, currentPage: Int, targetPage: Int): Boolean {
+    val isAtRoot = currentRoute == "root"
+    return isAtRoot && (currentPage == 1 || targetPage == 1)
+}
+
+object PersonDetailMotionConfig {
+    const val DETAIL_Z_INDEX = 1f
+
+    fun detailEnterTransition(): EnterTransition = slideInHorizontally(
+        animationSpec = MotionTokens.detailSlideSpec(),
+        initialOffsetX = { it }
+    )
+
+    fun detailPopExitTransition(): ExitTransition = slideOutHorizontally(
+        animationSpec = MotionTokens.detailSlideSpec(),
+        targetOffsetX = { it }
+    )
+
+    fun rootPopEnterTransition(): EnterTransition = EnterTransition.None
+
+    fun rootExitTransition(): ExitTransition = ExitTransition.None
 }
 
 data object PersonEditRoute {

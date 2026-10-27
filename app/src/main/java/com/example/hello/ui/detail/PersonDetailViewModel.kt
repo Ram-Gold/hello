@@ -50,12 +50,6 @@ class PersonDetailViewModel(
 
     fun onEvent(event: PersonDetailUiEvent) {
         when (event) {
-            PersonDetailUiEvent.OnBackClick -> {
-                // Handled in UI navigation
-            }
-            PersonDetailUiEvent.OnEditClick -> {
-                // Handled in UI navigation
-            }
             PersonDetailUiEvent.OnPhoneClick -> {
                 val phone = _uiState.value.contact?.phone
                 if (phone.isNullOrBlank()) {
@@ -73,9 +67,6 @@ class PersonDetailViewModel(
                 if (email.isNullOrBlank()) {
                     _uiState.update { it.copy(userMessage = "No email address available") }
                 }
-            }
-            PersonDetailUiEvent.OnLogEncounterClick -> {
-                // Handled in UI / main shell
             }
             PersonDetailUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }

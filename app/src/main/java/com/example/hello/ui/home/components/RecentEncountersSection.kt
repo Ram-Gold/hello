@@ -19,7 +19,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.ui.theme.MotionTokens
 
 @Composable
@@ -45,6 +49,10 @@ fun RecentEncountersSection(
     contacts: List<ContactSummary>,
     onContactClick: (String) -> Unit,
     onNavigateToPeople: () -> Unit = {},
+    hasContacts: Boolean = true,
+    onLogEncounterClick: () -> Unit = {},
+    onAddContactClick: () -> Unit = {},
+    terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -97,7 +105,7 @@ fun RecentEncountersSection(
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = "${contacts.size} contacts",
+                        text = terminology.recentCounterText(contacts.size),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -110,17 +118,96 @@ fun RecentEncountersSection(
             }
         }
 
-        // List of Contact Items
+        // List of Contact Items or Warm Empty State
+        if (contacts.isEmpty()) {
+            EncountersEmptyState(
+                hasContacts = hasContacts,
+                onLogEncounterClick = onLogEncounterClick,
+                onAddContactClick = onAddContactClick,
+                terminology = terminology,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                contacts.forEach { contact ->
+                    ContactItemRow(
+                        contact = contact,
+                        onClick = { onContactClick(contact.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EncountersEmptyState(
+    hasContacts: Boolean,
+    onLogEncounterClick: () -> Unit,
+    onAddContactClick: () -> Unit,
+    terminology: RelationshipTerminology,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            contacts.forEach { contact ->
-                ContactItemRow(
-                    contact = contact,
-                    onClick = { onContactClick(contact.id) }
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "☕",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+
+            Text(
+                text = "No recent encounters logged",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = if (hasContacts) {
+                    "Log an encounter or notes from a recent conversation to keep your connections fresh."
+                } else {
+                    "Your directory is empty. Add your first ${terminology.singularTitle.lowercase()} to start cultivating your circle."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Button(
+                onClick = if (hasContacts) onLogEncounterClick else onAddContactClick,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (hasContacts) "Log Encounter" else "Add Your First ${terminology.singularTitle}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }

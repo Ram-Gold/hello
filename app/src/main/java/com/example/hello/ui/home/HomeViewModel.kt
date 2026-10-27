@@ -1,6 +1,8 @@
 package com.example.hello.ui.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
@@ -13,12 +15,30 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    val repository: ContactRepository? = null
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(createInitialState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    init {
+        if (repository != null) {
+            viewModelScope.launch {
+                repository.recentContacts.collect { recents ->
+                    _uiState.update { it.copy(recentContacts = recents) }
+                }
+            }
+            viewModelScope.launch {
+                repository.upcomingAlerts.collect { alerts ->
+                    _uiState.update { it.copy(upcomingAlerts = alerts) }
+                }
+            }
+        }
+    }
 
     fun onEvent(event: HomeUiEvent) {
         when (event) {
@@ -29,6 +49,7 @@ class HomeViewModel : ViewModel() {
                 _uiState.update { it.copy(isQrExpanded = event.expanded) }
             }
             is HomeUiEvent.OnReminderDone -> {
+                repository?.markFollowUpDone(event.alertId)
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
@@ -38,6 +59,7 @@ class HomeViewModel : ViewModel() {
                 }
             }
             is HomeUiEvent.OnReminderSnooze -> {
+                repository?.snoozeFollowUp(event.alertId)
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
@@ -47,28 +69,51 @@ class HomeViewModel : ViewModel() {
                 }
             }
             is HomeUiEvent.OnQuickAddContact -> {
-                val newContact = ContactSummary(
-                    id = UUID.randomUUID().toString(),
-                    name = event.name.trim().ifEmpty { "New Friend" },
-                    contextSubtitle = event.initialNote.trim().ifEmpty { "Added just now" },
-                    circles = event.circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
-                    avatarInitials = event.name.trim().split(" ")
-                        .mapNotNull { it.firstOrNull()?.toString() }
-                        .take(2)
-                        .joinToString("")
-                        .uppercase()
-                        .ifEmpty { "👋" },
-                    avatarBgIndex = (_uiState.value.recentContacts.size % 6),
-                    lastEncounterText = "Met today"
-                )
+                val addedSummary = if (repository != null) {
+                    repository.addContactWithInitialEncounter(
+                        name = event.name,
+                        circles = event.circles,
+                        tagIds = emptySet(),
+                        placeId = null,
+                        customPlaceName = null,
+                        note = event.initialNote,
+                        followUpDays = 14
+                    )
+                } else {
+                    val newContact = ContactSummary(
+                        id = UUID.randomUUID().toString(),
+                        name = event.name.trim().ifEmpty { "New Friend" },
+                        contextSubtitle = event.initialNote.trim().ifEmpty { "Added just now" },
+                        circles = event.circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
+                        avatarInitials = event.name.trim().split(" ")
+                            .mapNotNull { it.firstOrNull()?.toString() }
+                            .take(2)
+                            .joinToString("")
+                            .uppercase()
+                            .ifEmpty { "👋" },
+                        avatarBgIndex = (_uiState.value.recentContacts.size % 6),
+                        lastEncounterText = "Met today"
+                    )
+                    _uiState.update { state ->
+                        state.copy(
+                            recentContacts = listOf(newContact) + state.recentContacts
+                        )
+                    }
+                    newContact
+                }
                 _uiState.update { state ->
                     state.copy(
-                        recentContacts = listOf(newContact) + state.recentContacts,
-                        userMessage = "Added ${newContact.name} to contacts! 🤝"
+                        userMessage = "Added ${addedSummary.name} to contacts! 🤝"
                     )
                 }
             }
             is HomeUiEvent.OnQuickUpdateContact -> {
+                if (repository != null) {
+                    repository.logEncounterForContact(
+                        contactId = event.contactId,
+                        note = event.note
+                    )
+                }
                 _uiState.update { state ->
                     val updatedList = state.recentContacts.map { contact ->
                         if (contact.id == event.contactId) {

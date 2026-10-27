@@ -1,6 +1,10 @@
 package com.example.hello.ui.contacts
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.hello.data.repository.ContactRepository
+import com.example.hello.data.repository.ContactRepository.Companion.toSummary
+import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
@@ -8,10 +12,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ContactsViewModel : ViewModel() {
+class ContactsViewModel(
+    val repository: ContactRepository? = null
+) : ViewModel() {
 
     private var allContacts: List<ContactSummary> = createSampleContacts()
+    private var searchJob: kotlinx.coroutines.Job? = null
 
     private val _uiState = MutableStateFlow(
         computeState(
@@ -22,6 +30,16 @@ class ContactsViewModel : ViewModel() {
         )
     )
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
+
+    init {
+        if (repository != null) {
+            viewModelScope.launch {
+                repository.contacts.collect { contacts ->
+                    syncContacts(contacts)
+                }
+            }
+        }
+    }
 
     fun syncContacts(updatedContacts: List<ContactSummary>) {
         allContacts = updatedContacts
@@ -38,16 +56,34 @@ class ContactsViewModel : ViewModel() {
     fun onEvent(event: ContactsUiEvent) {
         when (event) {
             is ContactsUiEvent.OnSearchQueryChange -> {
+                val query = event.query
                 _uiState.update { current ->
                     computeState(
-                        searchQuery = event.query,
+                        searchQuery = query,
                         selectedCircle = current.selectedCircle,
                         sortMode = current.sortMode,
                         contacts = allContacts
                     )
                 }
+                if (repository != null && query.isNotBlank()) {
+                    searchJob?.cancel()
+                    searchJob = viewModelScope.launch {
+                        repository.searchContacts(query).collect { matchingContacts ->
+                            val matchingSummaries = matchingContacts.map { it.toEntity().toSummary() }
+                            _uiState.update { current ->
+                                computeState(
+                                    searchQuery = query,
+                                    selectedCircle = current.selectedCircle,
+                                    sortMode = current.sortMode,
+                                    contacts = matchingSummaries
+                                )
+                            }
+                        }
+                    }
+                }
             }
             is ContactsUiEvent.OnClearSearch -> {
+                searchJob?.cancel()
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",

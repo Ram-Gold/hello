@@ -1,7 +1,10 @@
 package com.example.hello.data.local
 
 import android.content.Context
+import com.example.hello.data.local.entity.ContactEntity
+import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.local.entity.SyncMetadataEntity
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -68,6 +71,49 @@ class HelloDatabaseTest {
         assertEquals(now, retrieved?.updatedAt)
 
         assertTrue("In-memory write took $writeDurationMs ms", writeDurationMs < 100.0)
+    }
+
+    @Test
+    fun contactFtsSearch_returnsMatchingContacts() = runTest {
+        database = HelloDatabase.createInMemory(context)
+        val contactDao = database.contactDao()
+
+        val contact1 = com.example.hello.data.local.entity.ContactEntity(
+            id = "c-1",
+            name = "Alex Rivera",
+            notes = "Senior Product Designer working on accessible UI design systems."
+        )
+        val contact2 = com.example.hello.data.local.entity.ContactEntity(
+            id = "c-2",
+            name = "David Kim",
+            notes = "Mobile Dev • Discussed Compose gestures and physics."
+        )
+        contactDao.insertContacts(listOf(contact1, contact2))
+
+        contactDao.insertContactFtsList(
+            listOf(
+                com.example.hello.data.local.entity.ContactFtsEntity(
+                    contactId = contact1.id,
+                    name = contact1.name,
+                    aliases = "Rivera",
+                    notes = contact1.notes
+                ),
+                com.example.hello.data.local.entity.ContactFtsEntity(
+                    contactId = contact2.id,
+                    name = contact2.name,
+                    aliases = "Dave",
+                    notes = contact2.notes
+                )
+            )
+        )
+
+        val results = contactDao.searchContactsFts("Alex*").first()
+        assertEquals(1, results.size)
+        assertEquals("Alex Rivera", results.first().name)
+
+        val results2 = contactDao.searchContactsFts("David*").first()
+        assertEquals(1, results2.size)
+        assertEquals("David Kim", results2.first().name)
     }
 
     private fun createMockContext(): Context {

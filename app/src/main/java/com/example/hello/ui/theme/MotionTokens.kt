@@ -9,6 +9,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 
 /**
  * Centralized Animation Vocabulary & Motion Tokens for "Hello".
@@ -46,8 +47,26 @@ object MotionTokens {
     // 5. Smooth Tab & Screen Transition (250ms FastOutSlowIn)
     const val TAB_TRANSITION_DURATION_MS = 250
 
+    // 6. Person Detail Screen Transitions (Full width slide, layered above)
+    const val DETAIL_SLIDE_DURATION_MS = 250
+
     fun tabTransitionTween(): TweenSpec<Float> = tween(
         durationMillis = TAB_TRANSITION_DURATION_MS,
+        easing = FastOutSlowInEasing
+    )
+
+    fun tabTransitionSizeTween(): TweenSpec<IntSize> = tween(
+        durationMillis = TAB_TRANSITION_DURATION_MS,
+        easing = FastOutSlowInEasing
+    )
+
+    fun tabTransitionOffsetTween(): TweenSpec<IntOffset> = tween(
+        durationMillis = TAB_TRANSITION_DURATION_MS,
+        easing = FastOutSlowInEasing
+    )
+
+    fun detailSlideSpec(): TweenSpec<IntOffset> = tween(
+        durationMillis = DETAIL_SLIDE_DURATION_MS,
         easing = FastOutSlowInEasing
     )
 

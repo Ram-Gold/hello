@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.ui.home.components.CircleBadge
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
@@ -77,6 +78,8 @@ fun ContactsScreen(
     onEvent: (ContactsUiEvent) -> Unit,
     onNavigateToHome: () -> Unit = {},
     onContactClick: (String) -> Unit = { onEvent(ContactsUiEvent.OnContactClick(it)) },
+    onAddContactClick: () -> Unit = {},
+    terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -93,6 +96,7 @@ fun ContactsScreen(
             onQueryChange = { onEvent(ContactsUiEvent.OnSearchQueryChange(it)) },
             onClear = { onEvent(ContactsUiEvent.OnClearSearch) },
             totalCount = uiState.totalCount,
+            terminology = terminology,
             onNavigateToHome = onNavigateToHome,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
@@ -108,9 +112,13 @@ fun ContactsScreen(
 
         // 3. Contacts List View or Empty State
         if (uiState.contacts.isEmpty()) {
+            val isFilterActive = uiState.searchQuery.isNotBlank() || uiState.selectedCircle != null
             ContactsEmptyState(
+                isFilterActive = isFilterActive,
                 query = uiState.searchQuery,
+                terminology = terminology,
                 onClearFilters = { onEvent(ContactsUiEvent.OnClearFilters) },
+                onAddContactClick = onAddContactClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 32.dp)
@@ -150,6 +158,7 @@ private fun ContactsSearchHeader(
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
     totalCount: Int,
+    terminology: RelationshipTerminology,
     onNavigateToHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -164,12 +173,12 @@ private fun ContactsSearchHeader(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "People",
+                    text = terminology.pluralTitle,
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "$totalCount contacts in your network",
+                    text = terminology.networkCounterText(totalCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -481,8 +490,11 @@ fun MinimalistContactRow(
 
 @Composable
 fun ContactsEmptyState(
+    isFilterActive: Boolean,
     query: String,
+    terminology: RelationshipTerminology,
     onClearFilters: () -> Unit,
+    onAddContactClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -504,42 +516,66 @@ fun ContactsEmptyState(
         ) {
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(if (isFilterActive) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "🔍",
+                    text = if (isFilterActive) "🔍" else "👋",
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
 
             Text(
-                text = "No matching contacts",
+                text = if (isFilterActive) {
+                    "No matching ${terminology.pluralTitle.lowercase()}"
+                } else {
+                    terminology.emptyDirectoryTitle()
+                },
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
-                text = if (query.isNotBlank()) {
-                    "No contacts found matching \"$query\". Try a different keyword or reset filters."
+                text = if (isFilterActive) {
+                    if (query.isNotBlank()) {
+                        "No ${terminology.pluralTitle.lowercase()} found matching \"$query\". Try a different keyword or reset filters."
+                    } else {
+                        "No ${terminology.pluralTitle.lowercase()} found in this circle sphere."
+                    }
                 } else {
-                    "No contacts found in this circle sphere."
+                    "Your circle is waiting! Start adding ${terminology.pluralTitle.lowercase()} and logging encounters to keep your relationships alive."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Button(
-                onClick = onClearFilters,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Text("Clear filters", style = MaterialTheme.typography.labelMedium)
+            if (isFilterActive) {
+                Button(
+                    onClick = onClearFilters,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Text("Clear filters", style = MaterialTheme.typography.labelMedium)
+                }
+            } else {
+                Button(
+                    onClick = onAddContactClick,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = terminology.emptyDirectoryPrompt(),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
     }
@@ -594,7 +630,8 @@ fun ContactsScreenEmptyPreview() {
     HelloTheme(darkTheme = false) {
         ContactsScreen(
             uiState = emptyState,
-            onEvent = {}
+            onEvent = {},
+            terminology = RelationshipTerminology.FRIENDS
         )
     }
 }
