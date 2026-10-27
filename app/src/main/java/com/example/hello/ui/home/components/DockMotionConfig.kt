@@ -151,23 +151,22 @@ object DockMotionConfig {
         }
     }
 
-    // Default home selection pill width providing ~15dp balanced inline padding
-    // Default home selection pill width providing tight, balanced ~14dp inline padding with 1:1 icon
-    const val HOME_PILL_WIDTH_DP = 90
-    const val HOME_INACTIVE_SLOT_WIDTH_DP = 58
+    // Default home selection pill width providing comfortable ~15dp balanced inline padding with 1:1 icon
+    const val HOME_PILL_WIDTH_DP = 96
+    const val HOME_INACTIVE_SLOT_WIDTH_DP = 64
 
     /**
      * Resolves pre-configured, deterministic dock and tab-specific selection pill dimensions per relationship terminology.
-     * Guarantees 100% static container geometry during tab switching (zero jitter) while ensuring unselected
-     * tabs take up space strictly for their text label without wasted footprint.
+     * Guarantees 100% static container geometry during tab switching (zero jitter) while providing comfortable
+     * breathing room for both active and unselected tabs.
      */
     fun resolveDockDimensions(label: String?): DockDimensions {
         val (dockWidth, relPill, relInactive) = when (label?.lowercase()) {
-            "connections" -> Triple(200, 126, 96)
-            "contacts" -> Triple(182, 108, 78)
-            "friends" -> Triple(172, 98, 68)
-            "people" -> Triple(168, 94, 64)
-            else -> Triple(168, 94, 64)
+            "connections" -> Triple(214, 132, 104)
+            "contacts" -> Triple(196, 114, 86)
+            "friends" -> Triple(186, 104, 76)
+            "people" -> Triple(180, 100, 72)
+            else -> Triple(180, 100, 72)
         }
         return DockDimensions(
             dockWidthDp = dockWidth,
@@ -222,8 +221,8 @@ data class DockDimensions(
     val dockWidthDp: Int,
     val homePillWidthDp: Int,
     val relationshipPillWidthDp: Int,
-    val homeInactiveSlotWidthDp: Int = 58,
-    val relationshipInactiveSlotWidthDp: Int = 62
+    val homeInactiveSlotWidthDp: Int = 64,
+    val relationshipInactiveSlotWidthDp: Int = 72
 ) {
     // Backward-compatibility property
     val pillWidthDp: Int get() = relationshipPillWidthDp

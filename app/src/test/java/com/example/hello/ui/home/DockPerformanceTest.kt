@@ -410,47 +410,47 @@ class DockPerformanceTest {
     @Test
     fun dockMotionConfig_resolveDockDimensions_preConfiguresSizingPerTerminology() {
         val peopleDims = DockMotionConfig.resolveDockDimensions("People")
-        assertEquals(168, peopleDims.dockWidthDp)
-        assertEquals(90, peopleDims.homePillWidthDp)
-        assertEquals(94, peopleDims.relationshipPillWidthDp)
-        assertEquals(58, peopleDims.homeInactiveSlotWidthDp)
-        assertEquals(64, peopleDims.relationshipInactiveSlotWidthDp)
+        assertEquals(180, peopleDims.dockWidthDp)
+        assertEquals(96, peopleDims.homePillWidthDp)
+        assertEquals(100, peopleDims.relationshipPillWidthDp)
+        assertEquals(64, peopleDims.homeInactiveSlotWidthDp)
+        assertEquals(72, peopleDims.relationshipInactiveSlotWidthDp)
 
         val friendsDims = DockMotionConfig.resolveDockDimensions("Friends")
-        assertEquals(172, friendsDims.dockWidthDp)
-        assertEquals(90, friendsDims.homePillWidthDp)
-        assertEquals(98, friendsDims.relationshipPillWidthDp)
-        assertEquals(58, friendsDims.homeInactiveSlotWidthDp)
-        assertEquals(68, friendsDims.relationshipInactiveSlotWidthDp)
+        assertEquals(186, friendsDims.dockWidthDp)
+        assertEquals(96, friendsDims.homePillWidthDp)
+        assertEquals(104, friendsDims.relationshipPillWidthDp)
+        assertEquals(64, friendsDims.homeInactiveSlotWidthDp)
+        assertEquals(76, friendsDims.relationshipInactiveSlotWidthDp)
 
         val contactsDims = DockMotionConfig.resolveDockDimensions("Contacts")
-        assertEquals(182, contactsDims.dockWidthDp)
-        assertEquals(90, contactsDims.homePillWidthDp)
-        assertEquals(108, contactsDims.relationshipPillWidthDp)
-        assertEquals(58, contactsDims.homeInactiveSlotWidthDp)
-        assertEquals(78, contactsDims.relationshipInactiveSlotWidthDp)
+        assertEquals(196, contactsDims.dockWidthDp)
+        assertEquals(96, contactsDims.homePillWidthDp)
+        assertEquals(114, contactsDims.relationshipPillWidthDp)
+        assertEquals(64, contactsDims.homeInactiveSlotWidthDp)
+        assertEquals(86, contactsDims.relationshipInactiveSlotWidthDp)
 
         val connectionsDims = DockMotionConfig.resolveDockDimensions("Connections")
-        assertEquals(200, connectionsDims.dockWidthDp)
-        assertEquals(90, connectionsDims.homePillWidthDp)
-        assertEquals(126, connectionsDims.relationshipPillWidthDp)
-        assertEquals(58, connectionsDims.homeInactiveSlotWidthDp)
-        assertEquals(96, connectionsDims.relationshipInactiveSlotWidthDp)
+        assertEquals(214, connectionsDims.dockWidthDp)
+        assertEquals(96, connectionsDims.homePillWidthDp)
+        assertEquals(132, connectionsDims.relationshipPillWidthDp)
+        assertEquals(64, connectionsDims.homeInactiveSlotWidthDp)
+        assertEquals(104, connectionsDims.relationshipInactiveSlotWidthDp)
 
         val fallbackDims = DockMotionConfig.resolveDockDimensions(null)
-        assertEquals(168, fallbackDims.dockWidthDp)
-        assertEquals(90, fallbackDims.homePillWidthDp)
-        assertEquals(94, fallbackDims.relationshipPillWidthDp)
-        assertEquals(58, fallbackDims.homeInactiveSlotWidthDp)
-        assertEquals(64, fallbackDims.relationshipInactiveSlotWidthDp)
+        assertEquals(180, fallbackDims.dockWidthDp)
+        assertEquals(96, fallbackDims.homePillWidthDp)
+        assertEquals(100, fallbackDims.relationshipPillWidthDp)
+        assertEquals(64, fallbackDims.homeInactiveSlotWidthDp)
+        assertEquals(72, fallbackDims.relationshipInactiveSlotWidthDp)
     }
 
     @Test
     fun dockMotionConfig_calculatePillBounds_interpolatesSmoothlyWithBalancedPadding() {
         val peopleDims = DockMotionConfig.resolveDockDimensions("People")
-        val containerWidth = (peopleDims.dockWidthDp - 10).toFloat() // 158f
-        val homeWidth = peopleDims.homePillWidthDp.toFloat() // 90f
-        val relWidth = peopleDims.relationshipPillWidthDp.toFloat() // 94f
+        val containerWidth = (peopleDims.dockWidthDp - 10).toFloat() // 170f
+        val homeWidth = peopleDims.homePillWidthDp.toFloat() // 96f
+        val relWidth = peopleDims.relationshipPillWidthDp.toFloat() // 100f
 
         // Progress = 0.0f (Home selected)
         val (homeLeft, homeRight) = DockMotionConfig.calculateBalancedPillBounds(
@@ -460,8 +460,8 @@ class DockPerformanceTest {
             progress = 0.0f
         )
         assertEquals("Home left margin must equal 4dp", 4f, homeLeft, 0.001f)
-        assertEquals("Home right bound must equal 94dp", 94f, homeRight, 0.001f)
-        assertEquals("Pill width at Home must be 90dp", 90f, homeRight - homeLeft, 0.001f)
+        assertEquals("Home right bound must equal 100dp", 100f, homeRight, 0.001f)
+        assertEquals("Pill width at Home must be 96dp", 96f, homeRight - homeLeft, 0.001f)
 
         // Progress = 1.0f (People selected)
         val (peopleLeft, peopleRight) = DockMotionConfig.calculateBalancedPillBounds(
@@ -470,9 +470,9 @@ class DockPerformanceTest {
             relationshipPillWidth = relWidth,
             progress = 1.0f
         )
-        assertEquals("People left bound must equal 60dp", 60f, peopleLeft, 0.001f)
+        assertEquals("People left bound must equal 66dp", 66f, peopleLeft, 0.001f)
         assertEquals("People right margin must equal 4dp", 4f, containerWidth - peopleRight, 0.001f)
-        assertEquals("Pill width at People must be 94dp", 94f, peopleRight - peopleLeft, 0.001f)
+        assertEquals("Pill width at People must be 100dp", 100f, peopleRight - peopleLeft, 0.001f)
 
         // Across all intermediate progress frames: width interpolates monotonically without spikes
         var p = 0.0f
@@ -499,8 +499,8 @@ class DockPerformanceTest {
         for (term in terminologies) {
             val dims = DockMotionConfig.resolveDockDimensions(term)
             assertTrue(
-                "Dock width (${dims.dockWidthDp}) must be compact (<= 200dp), saving space over legacy 226dp+",
-                dims.dockWidthDp in 168..200
+                "Dock width (${dims.dockWidthDp}) must be compact (<= 220dp), saving space over legacy 226dp+",
+                dims.dockWidthDp in 180..214
             )
 
             val containerWidth = (dims.dockWidthDp - 10).toFloat()
