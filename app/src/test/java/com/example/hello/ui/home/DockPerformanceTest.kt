@@ -95,14 +95,19 @@ class DockPerformanceTest {
             DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP
         )
         assertEquals(
-            "Speed dial chips must use compact height at 44dp",
-            44,
+            "Speed dial action pills must match navbar height at 60dp",
+            60,
             DockMotionConfig.SPEED_DIAL_CHIP_HEIGHT_DP
         )
         assertEquals(
-            "Speed dial chips must use 16dp rounded corner radius",
-            16,
+            "Speed dial action pills must use 30dp corner radius for stadium pill shape",
+            30,
             DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP
+        )
+        assertEquals(
+            "Speed dial action pills must provide generous 20dp horizontal inline padding",
+            20,
+            DockMotionConfig.SPEED_DIAL_CHIP_HORIZONTAL_PADDING_DP
         )
         assertEquals(
             "Speed dial vertical stack gap must be 10dp",

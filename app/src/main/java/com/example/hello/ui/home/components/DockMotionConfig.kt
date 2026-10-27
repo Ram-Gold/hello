@@ -26,8 +26,9 @@ object DockMotionConfig {
     const val DOCK_HEIGHT_DP = 60
     const val DOCK_FAB_SIZE_DP = 60
     const val DOCK_FAB_CORNER_RADIUS_DP = 20
-    const val SPEED_DIAL_CHIP_HEIGHT_DP = 44
-    const val SPEED_DIAL_CHIP_CORNER_RADIUS_DP = 16
+    const val SPEED_DIAL_CHIP_HEIGHT_DP = DOCK_HEIGHT_DP
+    const val SPEED_DIAL_CHIP_CORNER_RADIUS_DP = SPEED_DIAL_CHIP_HEIGHT_DP / 2
+    const val SPEED_DIAL_CHIP_HORIZONTAL_PADDING_DP = 20
     const val SPEED_DIAL_FAB_GAP_DP = 12
     const val SPEED_DIAL_STACK_GAP_DP = 10
     const val DOCK_CONTAINER_WIDTH_DP = 220

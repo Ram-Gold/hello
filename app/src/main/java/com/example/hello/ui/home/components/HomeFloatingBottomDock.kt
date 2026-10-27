@@ -151,8 +151,6 @@ fun HomeFloatingBottomDock(
                     SpeedDialChip(
                         label = "Met Again",
                         icon = Icons.Outlined.EditNote,
-                        warmShadowAmbient = warmShadowAmbient,
-                        warmShadowSpot = warmShadowSpot,
                         onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_STACK_GAP_DP.dp))
@@ -175,8 +173,6 @@ fun HomeFloatingBottomDock(
                     SpeedDialChip(
                         label = addContactLabel,
                         icon = Icons.Outlined.PersonAdd,
-                        warmShadowAmbient = warmShadowAmbient,
-                        warmShadowSpot = warmShadowSpot,
                         onClick = { onSpeedDialAction(SpeedDialAction.NEW_CONTACT) }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_FAB_GAP_DP.dp))
@@ -470,8 +466,6 @@ private fun NavTabItemContent(
 private fun SpeedDialChip(
     label: String,
     icon: ImageVector,
-    warmShadowAmbient: Color,
-    warmShadowSpot: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -479,35 +473,24 @@ private fun SpeedDialChip(
         onClick = onClick,
         modifier = modifier
             .wrapContentWidth(Alignment.End)
-            .height(DockMotionConfig.SPEED_DIAL_CHIP_HEIGHT_DP.dp)
-            .shadow(
-                elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
-                shape = RoundedCornerShape(DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP.dp),
-                ambientColor = warmShadowAmbient,
-                spotColor = warmShadowSpot
-            )
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP.dp)
-            ),
+            .height(DockMotionConfig.SPEED_DIAL_CHIP_HEIGHT_DP.dp),
         shape = RoundedCornerShape(DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .padding(horizontal = DockMotionConfig.SPEED_DIAL_CHIP_HORIZONTAL_PADDING_DP.dp)
                 .fillMaxHeight(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.End
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .size(20.dp)
+                    .size(22.dp)
                     .aspectRatio(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -573,8 +556,6 @@ private fun SpeedDialChipPreview() {
     SpeedDialChip(
         label = "Add Contact",
         icon = Icons.Outlined.PersonAdd,
-        warmShadowAmbient = DockMotionConfig.WARM_SHADOW_AMBIENT,
-        warmShadowSpot = DockMotionConfig.WARM_SHADOW_SPOT,
         onClick = {}
     )
 }
