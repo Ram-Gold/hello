@@ -95,14 +95,14 @@ class DockPerformanceTest {
             DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP
         )
         assertEquals(
-            "Speed dial action pills must match navbar height at 60dp",
-            60,
-            DockMotionConfig.SPEED_DIAL_PILL_HEIGHT_DP
+            "Speed dial chips must use compact height at 44dp",
+            44,
+            DockMotionConfig.SPEED_DIAL_CHIP_HEIGHT_DP
         )
         assertEquals(
-            "Speed dial action pills must use 30dp corner radius for stadium pill shape",
-            30,
-            DockMotionConfig.SPEED_DIAL_PILL_CORNER_RADIUS_DP
+            "Speed dial chips must use 16dp rounded corner radius",
+            16,
+            DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP
         )
         assertEquals(
             "Speed dial vertical stack gap must be 10dp",
@@ -110,12 +110,12 @@ class DockPerformanceTest {
             DockMotionConfig.SPEED_DIAL_STACK_GAP_DP
         )
         assertEquals(
-            "Speed dial navbar gap must be 12dp above navbar",
+            "Speed dial FAB gap must be 12dp above FAB",
             12,
-            DockMotionConfig.SPEED_DIAL_NAVBAR_GAP_DP
+            DockMotionConfig.SPEED_DIAL_FAB_GAP_DP
         )
         assertEquals(
-            "Floating dock container width must be 220.dp for a compact entire dock",
+            "Floating dock max container width boundary must be 220.dp",
             220,
             DockMotionConfig.DOCK_CONTAINER_WIDTH_DP
         )
@@ -282,19 +282,19 @@ class DockPerformanceTest {
 
         for ((term, estimatedTextWidth) in terminologies) {
             val dims = DockMotionConfig.resolveDockDimensions(term)
-            val slotWidth = dims.relationshipPillWidthDp + 8
+            val slotWidth = dims.relationshipInactiveSlotWidthDp
 
             // Unselected slot must comfortably contain text label
             assertTrue(
-                "Slot width ($slotWidth) for $term must exceed text width ($estimatedTextWidth) by at least 24dp",
-                slotWidth >= estimatedTextWidth + 24
+                "Slot width ($slotWidth) for $term must exceed text width ($estimatedTextWidth) by at least 12dp",
+                slotWidth >= estimatedTextWidth + 12
             )
 
             // When selected, content equals text width + constant 32dp icon footprint
             val activeContentWidth = estimatedTextWidth + DockMotionConfig.ICON_EXPANSION_WIDTH_DP
             assertTrue(
                 "Active pill (${dims.relationshipPillWidthDp}) must provide comfortable padding over active content ($activeContentWidth)",
-                dims.relationshipPillWidthDp >= activeContentWidth + 24
+                dims.relationshipPillWidthDp >= activeContentWidth + 16
             )
         }
     }
@@ -410,37 +410,47 @@ class DockPerformanceTest {
     @Test
     fun dockMotionConfig_resolveDockDimensions_preConfiguresSizingPerTerminology() {
         val peopleDims = DockMotionConfig.resolveDockDimensions("People")
-        assertEquals(226, peopleDims.dockWidthDp)
-        assertEquals(96, peopleDims.homePillWidthDp)
-        assertEquals(104, peopleDims.relationshipPillWidthDp)
+        assertEquals(168, peopleDims.dockWidthDp)
+        assertEquals(90, peopleDims.homePillWidthDp)
+        assertEquals(94, peopleDims.relationshipPillWidthDp)
+        assertEquals(58, peopleDims.homeInactiveSlotWidthDp)
+        assertEquals(64, peopleDims.relationshipInactiveSlotWidthDp)
 
         val friendsDims = DockMotionConfig.resolveDockDimensions("Friends")
-        assertEquals(230, friendsDims.dockWidthDp)
-        assertEquals(96, friendsDims.homePillWidthDp)
-        assertEquals(108, friendsDims.relationshipPillWidthDp)
+        assertEquals(172, friendsDims.dockWidthDp)
+        assertEquals(90, friendsDims.homePillWidthDp)
+        assertEquals(98, friendsDims.relationshipPillWidthDp)
+        assertEquals(58, friendsDims.homeInactiveSlotWidthDp)
+        assertEquals(68, friendsDims.relationshipInactiveSlotWidthDp)
 
         val contactsDims = DockMotionConfig.resolveDockDimensions("Contacts")
-        assertEquals(240, contactsDims.dockWidthDp)
-        assertEquals(96, contactsDims.homePillWidthDp)
-        assertEquals(118, contactsDims.relationshipPillWidthDp)
+        assertEquals(182, contactsDims.dockWidthDp)
+        assertEquals(90, contactsDims.homePillWidthDp)
+        assertEquals(108, contactsDims.relationshipPillWidthDp)
+        assertEquals(58, contactsDims.homeInactiveSlotWidthDp)
+        assertEquals(78, contactsDims.relationshipInactiveSlotWidthDp)
 
         val connectionsDims = DockMotionConfig.resolveDockDimensions("Connections")
-        assertEquals(260, connectionsDims.dockWidthDp)
-        assertEquals(96, connectionsDims.homePillWidthDp)
-        assertEquals(138, connectionsDims.relationshipPillWidthDp)
+        assertEquals(200, connectionsDims.dockWidthDp)
+        assertEquals(90, connectionsDims.homePillWidthDp)
+        assertEquals(126, connectionsDims.relationshipPillWidthDp)
+        assertEquals(58, connectionsDims.homeInactiveSlotWidthDp)
+        assertEquals(96, connectionsDims.relationshipInactiveSlotWidthDp)
 
         val fallbackDims = DockMotionConfig.resolveDockDimensions(null)
-        assertEquals(230, fallbackDims.dockWidthDp)
-        assertEquals(96, fallbackDims.homePillWidthDp)
-        assertEquals(108, fallbackDims.relationshipPillWidthDp)
+        assertEquals(168, fallbackDims.dockWidthDp)
+        assertEquals(90, fallbackDims.homePillWidthDp)
+        assertEquals(94, fallbackDims.relationshipPillWidthDp)
+        assertEquals(58, fallbackDims.homeInactiveSlotWidthDp)
+        assertEquals(64, fallbackDims.relationshipInactiveSlotWidthDp)
     }
 
     @Test
     fun dockMotionConfig_calculatePillBounds_interpolatesSmoothlyWithBalancedPadding() {
         val peopleDims = DockMotionConfig.resolveDockDimensions("People")
-        val containerWidth = (peopleDims.dockWidthDp - 10).toFloat() // 216f
-        val homeWidth = peopleDims.homePillWidthDp.toFloat() // 96f
-        val relWidth = peopleDims.relationshipPillWidthDp.toFloat() // 104f
+        val containerWidth = (peopleDims.dockWidthDp - 10).toFloat() // 158f
+        val homeWidth = peopleDims.homePillWidthDp.toFloat() // 90f
+        val relWidth = peopleDims.relationshipPillWidthDp.toFloat() // 94f
 
         // Progress = 0.0f (Home selected)
         val (homeLeft, homeRight) = DockMotionConfig.calculateBalancedPillBounds(
@@ -450,8 +460,8 @@ class DockPerformanceTest {
             progress = 0.0f
         )
         assertEquals("Home left margin must equal 4dp", 4f, homeLeft, 0.001f)
-        assertEquals("Home right bound must equal 100dp", 100f, homeRight, 0.001f)
-        assertEquals("Pill width at Home must be 96dp", 96f, homeRight - homeLeft, 0.001f)
+        assertEquals("Home right bound must equal 94dp", 94f, homeRight, 0.001f)
+        assertEquals("Pill width at Home must be 90dp", 90f, homeRight - homeLeft, 0.001f)
 
         // Progress = 1.0f (People selected)
         val (peopleLeft, peopleRight) = DockMotionConfig.calculateBalancedPillBounds(
@@ -460,9 +470,9 @@ class DockPerformanceTest {
             relationshipPillWidth = relWidth,
             progress = 1.0f
         )
-        assertEquals("People left bound must equal 108dp", 108f, peopleLeft, 0.001f)
+        assertEquals("People left bound must equal 60dp", 60f, peopleLeft, 0.001f)
         assertEquals("People right margin must equal 4dp", 4f, containerWidth - peopleRight, 0.001f)
-        assertEquals("Pill width at People must be 104dp", 104f, peopleRight - peopleLeft, 0.001f)
+        assertEquals("Pill width at People must be 94dp", 94f, peopleRight - peopleLeft, 0.001f)
 
         // Across all intermediate progress frames: width interpolates monotonically without spikes
         var p = 0.0f
@@ -483,28 +493,27 @@ class DockPerformanceTest {
     }
 
     @Test
-    fun dockMotionConfig_balancedSizingDesign_guaranteesExact4dpMarginsAnd8dpInterPillGap() {
+    fun dockMotionConfig_compactDesign_guaranteesExact4dpOuterMarginsAndStableWidth() {
         val terminologies = listOf("People", "Friends", "Contacts", "Connections")
 
         for (term in terminologies) {
             val dims = DockMotionConfig.resolveDockDimensions(term)
-            assertEquals(
-                "Dock width must satisfy the mathematical identity dockWidth = homePill + relPill + 26",
-                dims.homePillWidthDp + dims.relationshipPillWidthDp + 26,
-                dims.dockWidthDp
+            assertTrue(
+                "Dock width (${dims.dockWidthDp}) must be compact (<= 200dp), saving space over legacy 226dp+",
+                dims.dockWidthDp in 168..200
             )
 
             val containerWidth = (dims.dockWidthDp - 10).toFloat()
             val homePill = dims.homePillWidthDp.toFloat()
             val relPill = dims.relationshipPillWidthDp.toFloat()
 
-            val (homeLeft, homeRight) = DockMotionConfig.calculateBalancedPillBounds(
+            val (homeLeft, _) = DockMotionConfig.calculateBalancedPillBounds(
                 containerWidth = containerWidth,
                 homePillWidth = homePill,
                 relationshipPillWidth = relPill,
                 progress = 0.0f
             )
-            val (relLeft, relRight) = DockMotionConfig.calculateBalancedPillBounds(
+            val (_, relRight) = DockMotionConfig.calculateBalancedPillBounds(
                 containerWidth = containerWidth,
                 homePillWidth = homePill,
                 relationshipPillWidth = relPill,
@@ -513,11 +522,9 @@ class DockPerformanceTest {
 
             val leftMargin = homeLeft
             val rightMargin = containerWidth - relRight
-            val gap = relLeft - homeRight
 
             assertEquals("Outer left margin for $term must equal exactly 4dp", 4f, leftMargin, 0.001f)
             assertEquals("Outer right margin for $term must equal exactly 4dp", 4f, rightMargin, 0.001f)
-            assertEquals("Inter-pill gap between slots for $term must equal exactly 8dp", 8f, gap, 0.001f)
         }
     }
 }

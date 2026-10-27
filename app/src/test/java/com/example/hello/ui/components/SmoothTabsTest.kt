@@ -299,14 +299,14 @@ class SmoothTabsTest {
         val expansionDelta = DockMotionConfig.ICON_EXPANSION_WIDTH_DP
         assertEquals(32, expansionDelta)
 
-        // Pill width for selected state always accommodates text + expansionDelta + selection padding (>= 28dp)
+        // Pill width for selected state always accommodates text + expansionDelta + selection padding (>= 16dp)
         val terminologies = listOf("People" to 44, "Friends" to 48, "Contacts" to 58, "Connections" to 78)
         for ((term, textWidth) in terminologies) {
             val dims = DockMotionConfig.resolveDockDimensions(term)
-            val minRequiredPillWidth = textWidth + expansionDelta + 28
+            val minRequiredPillWidth = textWidth + expansionDelta + 16
             assertTrue(
                 "Pill width for $term (${dims.relationshipPillWidthDp}) must comfortably house text + icon footprint ($minRequiredPillWidth)",
-                dims.relationshipPillWidthDp >= minRequiredPillWidth - 4
+                dims.relationshipPillWidthDp >= minRequiredPillWidth
             )
         }
     }

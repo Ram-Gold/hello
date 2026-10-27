@@ -26,11 +26,10 @@ object DockMotionConfig {
     const val DOCK_HEIGHT_DP = 60
     const val DOCK_FAB_SIZE_DP = 60
     const val DOCK_FAB_CORNER_RADIUS_DP = 20
-    const val SPEED_DIAL_PILL_HEIGHT_DP = 60
-    // 30dp produces a full stadium pill for 60dp height (height / 2), matching the navbar's 30dp pill corners
-    const val SPEED_DIAL_PILL_CORNER_RADIUS_DP = 30
+    const val SPEED_DIAL_CHIP_HEIGHT_DP = 44
+    const val SPEED_DIAL_CHIP_CORNER_RADIUS_DP = 16
+    const val SPEED_DIAL_FAB_GAP_DP = 12
     const val SPEED_DIAL_STACK_GAP_DP = 10
-    const val SPEED_DIAL_NAVBAR_GAP_DP = 12
     const val DOCK_CONTAINER_WIDTH_DP = 220
     const val DOCK_SHADOW_ELEVATION_DP = 12
     const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 16
@@ -153,27 +152,29 @@ object DockMotionConfig {
     }
 
     // Default home selection pill width providing ~15dp balanced inline padding
-    const val HOME_PILL_WIDTH_DP = 96
+    // Default home selection pill width providing tight, balanced ~14dp inline padding with 1:1 icon
+    const val HOME_PILL_WIDTH_DP = 90
+    const val HOME_INACTIVE_SLOT_WIDTH_DP = 58
 
     /**
      * Resolves pre-configured, deterministic dock and tab-specific selection pill dimensions per relationship terminology.
-     * Guarantees 100% static container geometry during tab switching (zero jitter) while ensuring both
-     * Home and the relationship tab enjoy consistent, generous ~15dp inline padding.
+     * Guarantees 100% static container geometry during tab switching (zero jitter) while ensuring unselected
+     * tabs take up space strictly for their text label without wasted footprint.
      */
     fun resolveDockDimensions(label: String?): DockDimensions {
-        val homePill = HOME_PILL_WIDTH_DP
-        val relPill = when (label?.lowercase()) {
-            "connections" -> 138
-            "contacts" -> 118
-            "friends" -> 108
-            "people" -> 104
-            else -> 108
+        val (dockWidth, relPill, relInactive) = when (label?.lowercase()) {
+            "connections" -> Triple(200, 126, 96)
+            "contacts" -> Triple(182, 108, 78)
+            "friends" -> Triple(172, 98, 68)
+            "people" -> Triple(168, 94, 64)
+            else -> Triple(168, 94, 64)
         }
-        val dockWidth = homePill + relPill + 26
         return DockDimensions(
             dockWidthDp = dockWidth,
-            homePillWidthDp = homePill,
-            relationshipPillWidthDp = relPill
+            homePillWidthDp = HOME_PILL_WIDTH_DP,
+            relationshipPillWidthDp = relPill,
+            homeInactiveSlotWidthDp = HOME_INACTIVE_SLOT_WIDTH_DP,
+            relationshipInactiveSlotWidthDp = relInactive
         )
     }
 
@@ -220,7 +221,9 @@ object DockMotionConfig {
 data class DockDimensions(
     val dockWidthDp: Int,
     val homePillWidthDp: Int,
-    val relationshipPillWidthDp: Int
+    val relationshipPillWidthDp: Int,
+    val homeInactiveSlotWidthDp: Int = 58,
+    val relationshipInactiveSlotWidthDp: Int = 62
 ) {
     // Backward-compatibility property
     val pillWidthDp: Int get() = relationshipPillWidthDp
