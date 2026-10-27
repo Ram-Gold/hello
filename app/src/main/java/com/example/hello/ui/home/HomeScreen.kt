@@ -2,6 +2,7 @@ package com.example.hello.ui.home
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -43,6 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.HomeNavTab
+import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.UpcomingAlert
 import com.example.hello.ui.home.components.FullScreenCardDialog
 import com.example.hello.ui.home.components.GroupDrawerContent
@@ -61,7 +63,11 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     showBottomDock: Boolean = true,
     onNavigateToPeople: () -> Unit = { onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.PEOPLE)) },
-    onContactClick: (String) -> Unit = { onEvent(HomeUiEvent.OnContactClick(it)) }
+    onContactClick: (String) -> Unit = { onEvent(HomeUiEvent.OnContactClick(it)) },
+    onSettingsClick: () -> Unit = { onEvent(HomeUiEvent.OnSettingsClick) },
+    onLogEncounterClick: () -> Unit = {},
+    onAddContactClick: () -> Unit = {},
+    terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT
 ) {
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -145,7 +151,7 @@ fun HomeScreen(
                 ) {
                     // 1. Top Bar (Drawer on Left & Settings on Right)
                     HomeTopBar(
-                        onSettingsClick = { onEvent(HomeUiEvent.OnSettingsClick) },
+                        onSettingsClick = onSettingsClick,
                         onDrawerClick = {
                             coroutineScope.launch { drawerState.open() }
                             onEvent(HomeUiEvent.OnOpenDrawer)
@@ -222,7 +228,11 @@ fun HomeScreen(
                 RecentEncountersSection(
                     contacts = filteredContacts,
                     onContactClick = onContactClick,
-                    onNavigateToPeople = onNavigateToPeople
+                    onNavigateToPeople = onNavigateToPeople,
+                    hasContacts = uiState.recentContacts.isNotEmpty(),
+                    onLogEncounterClick = onLogEncounterClick,
+                    onAddContactClick = onAddContactClick,
+                    terminology = terminology
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -232,13 +242,13 @@ fun HomeScreen(
                 // Scrim to dismiss Speed Dial when tapping outside
                 AnimatedVisibility(
                     visible = uiState.isSpeedDialOpen,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                    enter = fadeIn(animationSpec = tween(200)),
+                    exit = fadeOut(animationSpec = tween(150))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.25f))
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
@@ -251,7 +261,12 @@ fun HomeScreen(
                 // 6. Floating Bottom Navigation Dock & Companion Quick-Add FAB
                 HomeFloatingBottomDock(
                     selectedTab = uiState.selectedNavTab,
-                    onTabSelect = { onEvent(HomeUiEvent.OnNavTabSelect(it)) },
+                    onTabSelect = { tab ->
+                        if (uiState.isSpeedDialOpen) {
+                            onEvent(HomeUiEvent.OnCloseSpeedDial)
+                        }
+                        onEvent(HomeUiEvent.OnNavTabSelect(tab))
+                    },
                     isSpeedDialOpen = uiState.isSpeedDialOpen,
                     onToggleSpeedDial = { onEvent(HomeUiEvent.OnToggleSpeedDial) },
                     onSpeedDialAction = { onEvent(HomeUiEvent.OnSpeedDialAction(it)) },

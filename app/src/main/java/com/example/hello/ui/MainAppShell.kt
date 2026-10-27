@@ -3,6 +3,7 @@ package com.example.hello.ui
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -300,13 +301,13 @@ fun MainAppShell(
                         // Scrim to dismiss the 2-button Speed Dial column when tapping outside
                         AnimatedVisibility(
                             visible = homeUiState.isSpeedDialOpen,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+                            enter = fadeIn(animationSpec = tween(200)),
+                            exit = fadeOut(animationSpec = tween(150))
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.25f))
+                                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
                                     .clickable(
                                         indication = null,
                                         interactionSource = remember { MutableInteractionSource() }
@@ -320,6 +321,9 @@ fun MainAppShell(
                         HomeFloatingBottomDock(
                             selectedTab = activeTab,
                             onTabSelect = { tab ->
+                                if (homeUiState.isSpeedDialOpen) {
+                                    homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
+                                }
                                 val targetPage = when (tab) {
                                     HomeNavTab.HOME -> 0
                                     HomeNavTab.PEOPLE -> 1

@@ -80,6 +80,41 @@ class DockPerformanceTest {
     @Test
     fun dockMotionConfig_hasRefinedPillGeometryAndShadowTokens() {
         assertEquals(
+            "Dock height must be 60.dp",
+            60,
+            DockMotionConfig.DOCK_HEIGHT_DP
+        )
+        assertEquals(
+            "Quick-Add FAB must maintain strict 1:1 aspect ratio with 60dp size",
+            60,
+            DockMotionConfig.DOCK_FAB_SIZE_DP
+        )
+        assertEquals(
+            "Quick-Add FAB must use modern 20dp squircle corner radius",
+            20,
+            DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP
+        )
+        assertEquals(
+            "Speed dial action pills must match navbar height at 60dp",
+            60,
+            DockMotionConfig.SPEED_DIAL_PILL_HEIGHT_DP
+        )
+        assertEquals(
+            "Speed dial action pills must use 30dp corner radius for stadium pill shape",
+            30,
+            DockMotionConfig.SPEED_DIAL_PILL_CORNER_RADIUS_DP
+        )
+        assertEquals(
+            "Speed dial vertical stack gap must be 10dp",
+            10,
+            DockMotionConfig.SPEED_DIAL_STACK_GAP_DP
+        )
+        assertEquals(
+            "Speed dial navbar gap must be 12dp above navbar",
+            12,
+            DockMotionConfig.SPEED_DIAL_NAVBAR_GAP_DP
+        )
+        assertEquals(
             "Floating dock container width must be 220.dp for a compact entire dock",
             220,
             DockMotionConfig.DOCK_CONTAINER_WIDTH_DP

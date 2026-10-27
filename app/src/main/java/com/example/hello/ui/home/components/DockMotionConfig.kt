@@ -23,6 +23,14 @@ object DockMotionConfig {
     const val USE_CLIP_PATH_REVEAL = true
 
     // Visual geometry and drop shadow elevation
+    const val DOCK_HEIGHT_DP = 60
+    const val DOCK_FAB_SIZE_DP = 60
+    const val DOCK_FAB_CORNER_RADIUS_DP = 20
+    const val SPEED_DIAL_PILL_HEIGHT_DP = 60
+    // 30dp produces a full stadium pill for 60dp height (height / 2), matching the navbar's 30dp pill corners
+    const val SPEED_DIAL_PILL_CORNER_RADIUS_DP = 30
+    const val SPEED_DIAL_STACK_GAP_DP = 10
+    const val SPEED_DIAL_NAVBAR_GAP_DP = 12
     const val DOCK_CONTAINER_WIDTH_DP = 220
     const val DOCK_SHADOW_ELEVATION_DP = 12
     const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 16
