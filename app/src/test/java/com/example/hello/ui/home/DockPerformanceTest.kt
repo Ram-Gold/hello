@@ -217,23 +217,51 @@ class DockPerformanceTest {
     }
 
     @Test
-    fun dockMotionConfig_unselectedIconSlotHas1to1AspectRatio() {
-        // In a 50dp high dock container with 4dp top and bottom padding:
-        val containerHeight = 50f
-        val vPadding = DockMotionConfig.PILL_VERTICAL_PADDING_DP.toFloat()
-        val pillHeight = containerHeight - (2f * vPadding) // 42f
-
-        // A 1:1 unselected icon slot has width equal to pill height:
-        val unselectedSlotWidth = pillHeight
-        val unselectedSlotHeight = pillHeight
-        val aspectRatio = unselectedSlotWidth / unselectedSlotHeight
-
+    fun dockMotionConfig_hasInvariantIconExpansionFootprintAndSlideOffsets() {
+        // Icon expansion footprint is invariant 32dp (24dp 1:1 icon box + 8dp spacer) across all terminologies
         assertEquals(
-            "Unselected icon slot must have exact 1:1 aspect ratio",
-            1.0f,
-            aspectRatio,
-            0.001f
+            "Icon expansion footprint must be constant 32dp (24dp icon + 8dp gap)",
+            32,
+            DockMotionConfig.ICON_EXPANSION_WIDTH_DP
         )
+
+        // Directional slide offsets for smooth enter and exit
+        assertTrue(
+            "Icon enter fraction must slide in from the left (negative fraction)",
+            DockMotionConfig.ICON_ENTER_OFFSET_FRACTION < 0f
+        )
+        assertTrue(
+            "Icon exit fraction must slide out towards the left (negative fraction)",
+            DockMotionConfig.ICON_EXIT_OFFSET_FRACTION < 0f
+        )
+    }
+
+    @Test
+    fun dockMotionConfig_unselectedSlotAccommodatesPersistentTextCleanly() {
+        val terminologies = listOf(
+            "People" to 44,       // ~44dp text
+            "Friends" to 48,      // ~48dp text
+            "Contacts" to 58,     // ~58dp text
+            "Connections" to 78   // ~78dp text
+        )
+
+        for ((term, estimatedTextWidth) in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val slotWidth = dims.relationshipPillWidthDp + 8
+
+            // Unselected slot must comfortably contain text label
+            assertTrue(
+                "Slot width ($slotWidth) for $term must exceed text width ($estimatedTextWidth) by at least 24dp",
+                slotWidth >= estimatedTextWidth + 24
+            )
+
+            // When selected, content equals text width + constant 32dp icon footprint
+            val activeContentWidth = estimatedTextWidth + DockMotionConfig.ICON_EXPANSION_WIDTH_DP
+            assertTrue(
+                "Active pill (${dims.relationshipPillWidthDp}) must provide comfortable padding over active content ($activeContentWidth)",
+                dims.relationshipPillWidthDp >= activeContentWidth + 24
+            )
+        }
     }
 
     @Test

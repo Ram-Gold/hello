@@ -378,21 +378,6 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .aspectRatio(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = displayLabel,
-                    tint = iconColor,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .aspectRatio(1f)
-                )
-            }
             AnimatedVisibility(
                 visible = isSelected,
                 enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
@@ -401,34 +386,49 @@ private fun NavTabItemContent(
                             animationSpec = MotionTokens.tabTransitionSizeTween()
                         ) +
                         slideInHorizontally(
-                            initialOffsetX = { (it * DockMotionConfig.TEXT_ENTER_OFFSET_FRACTION).toInt() },
+                            initialOffsetX = { (it * DockMotionConfig.ICON_ENTER_OFFSET_FRACTION).toInt() },
                             animationSpec = MotionTokens.tabTransitionOffsetTween()
                         ),
                 exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
                        shrinkHorizontally(
-                           shrinkTowards = Alignment.End,
+                           shrinkTowards = Alignment.Start,
                            animationSpec = MotionTokens.tabTransitionSizeTween()
                        ) +
                        slideOutHorizontally(
-                           targetOffsetX = { (it * DockMotionConfig.TEXT_EXIT_OFFSET_FRACTION).toInt() },
+                           targetOffsetX = { (it * DockMotionConfig.ICON_EXIT_OFFSET_FRACTION).toInt() },
                            animationSpec = MotionTokens.tabTransitionOffsetTween()
                        )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .aspectRatio(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null, // Label is displayed by adjacent Text to avoid duplicate TalkBack readout
+                            tint = iconColor,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .aspectRatio(1f)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = displayLabel,
-                        maxLines = 1,
-                        softWrap = false,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = textColor
-                    )
                 }
             }
+            Text(
+                text = displayLabel,
+                maxLines = 1,
+                softWrap = false,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = textColor
+            )
         }
     }
 }

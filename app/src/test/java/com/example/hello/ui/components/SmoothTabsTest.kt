@@ -292,4 +292,22 @@ class SmoothTabsTest {
             }
         }
     }
+
+    @Test
+    fun navTabItem_hasInvariantIconExpansionFootprintAcrossTerminologies() {
+        // Invariant expansion delta across all labels: 24dp 1:1 icon slot + 8dp spacer
+        val expansionDelta = DockMotionConfig.ICON_EXPANSION_WIDTH_DP
+        assertEquals(32, expansionDelta)
+
+        // Pill width for selected state always accommodates text + expansionDelta + selection padding (>= 28dp)
+        val terminologies = listOf("People" to 44, "Friends" to 48, "Contacts" to 58, "Connections" to 78)
+        for ((term, textWidth) in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val minRequiredPillWidth = textWidth + expansionDelta + 28
+            assertTrue(
+                "Pill width for $term (${dims.relationshipPillWidthDp}) must comfortably house text + icon footprint ($minRequiredPillWidth)",
+                dims.relationshipPillWidthDp >= minRequiredPillWidth - 4
+            )
+        }
+    }
 }

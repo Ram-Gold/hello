@@ -36,8 +36,15 @@ object DockMotionConfig {
     val WARM_SHADOW_AMBIENT = Color(0x802B1F14)
     val WARM_SHADOW_SPOT = Color(0xA6140D07)
 
-    // Unified left-to-right text transition offsets
-    const val TEXT_ENTER_OFFSET_FRACTION = -0.5f
+    // Invariant 1:1 icon expansion footprint: 24dp square icon slot + 8dp spacer
+    const val ICON_EXPANSION_WIDTH_DP = 32
+
+    // Directional icon horizontal slide fractions
+    const val ICON_ENTER_OFFSET_FRACTION = -0.5f
+    const val ICON_EXIT_OFFSET_FRACTION = -0.5f
+
+    // Backward-compatible aliases
+    const val TEXT_ENTER_OFFSET_FRACTION = ICON_ENTER_OFFSET_FRACTION
     const val TEXT_EXIT_OFFSET_FRACTION = 0.5f
 
     /**
