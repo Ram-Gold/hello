@@ -1,17 +1,22 @@
 package com.example.hello.ui.quickaction
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.platform.location.LocationService
+import com.example.hello.platform.location.LocationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class QuickActionViewModel(
-    val repository: ContactRepository = ContactRepository()
+    val repository: ContactRepository = ContactRepository(),
+    val locationService: LocationService? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(createDefaultState())
@@ -268,6 +273,22 @@ class QuickActionViewModel(
             }
 
             is QuickActionUiEvent.OnLocationPermissionResult -> {
+                val currentPlaces = _uiState.value.suggestedPlaces
+                if (event.granted && locationService != null) {
+                    viewModelScope.launch {
+                        locationService.getLocationFlow(currentPlaces).collect { locState ->
+                            if (locState is LocationState.Success && locState.nearbyPlaces.isNotEmpty()) {
+                                val nearest = locState.nearbyPlaces.first().place
+                                _uiState.update { st ->
+                                    st.copy(
+                                        selectedPlaceId = if (st.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT) nearest.id else st.selectedPlaceId,
+                                        encounterPlaceId = if (st.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER) nearest.id else st.encounterPlaceId
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 _uiState.update { state ->
                     val nearestPlaceId = if (event.granted) {
                         state.suggestedPlaces.firstOrNull()?.id

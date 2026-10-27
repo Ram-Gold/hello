@@ -2,10 +2,14 @@ package com.example.hello.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.example.hello.data.preferences.UserPreferencesRepository
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
+import com.example.hello.platform.portability.ExportDataWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +18,8 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository,
-    private val contactRepository: ContactRepository
+    private val contactRepository: ContactRepository,
+    private val workManager: WorkManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -112,6 +117,25 @@ class SettingsViewModel(
                         editingTag = null,
                         userMessage = "Deleted tag #${tag?.name ?: "tag"}"
                     )
+                }
+            }
+
+            is SettingsUiEvent.OnStartExportBundle -> {
+                if (workManager != null) {
+                    val request = OneTimeWorkRequestBuilder<ExportDataWorker>()
+                        .addTag(ExportDataWorker.WORK_TAG_EXPORT)
+                        .setInputData(
+                            workDataOf(ExportDataWorker.KEY_OUTPUT_URI to (event.outputUri ?: ""))
+                        )
+                        .build()
+                    workManager.enqueue(request)
+                    _uiState.update {
+                        it.copy(userMessage = "Assembling Export Bundle via WorkManager... 📦")
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(userMessage = "Export Bundle scheduled 📦")
+                    }
                 }
             }
 

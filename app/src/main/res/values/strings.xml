@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Hello</string>
+    <string name="quick_add_widget_description">Quick Add Contact widget for Hello</string>
 </resources>

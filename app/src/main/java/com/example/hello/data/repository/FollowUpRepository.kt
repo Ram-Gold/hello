@@ -4,6 +4,7 @@ import com.example.hello.data.local.HelloDatabase
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.model.FollowUp
+import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -22,7 +23,8 @@ interface FollowUpRepository {
 }
 
 class RoomFollowUpRepository(
-    private val database: HelloDatabase
+    private val database: HelloDatabase,
+    private val alarmScheduler: FollowUpAlarmScheduler? = null
 ) : FollowUpRepository {
 
     override fun getPendingFollowUpsFlow(): Flow<List<FollowUp>> {
@@ -41,6 +43,7 @@ class RoomFollowUpRepository(
 
     override suspend fun markDone(id: String, doneAt: Instant) {
         database.followUpDao().markDone(id, doneAt)
+        alarmScheduler?.cancelAlarm(id)
     }
 
     override suspend fun snooze(id: String, newDueAt: Instant) {
@@ -49,5 +52,6 @@ class RoomFollowUpRepository(
 
     override suspend fun deleteFollowUp(id: String) {
         database.followUpDao().deleteFollowUpById(id)
+        alarmScheduler?.cancelAlarm(id)
     }
 }

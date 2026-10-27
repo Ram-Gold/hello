@@ -39,3 +39,7 @@ _Avoid_: Interval, Frequency, Ping schedule
 **My Card**:
 The user's own shareable digital identity card profile (supporting Work or Social contexts), presenting quick contact details and offline exchange capabilities.
 _Avoid_: User Profile, ID Card, Business Card
+
+**Export Bundle**:
+A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
+_Avoid_: Backup dump, Database export, System dump

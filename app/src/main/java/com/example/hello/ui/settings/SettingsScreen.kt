@@ -2,6 +2,8 @@ package com.example.hello.ui.settings
 
 import android.content.Intent
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -136,6 +138,14 @@ fun SettingsScreen(
         }
     }
 
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            onEvent(SettingsUiEvent.OnStartExportBundle(uri.toString()))
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -186,9 +196,10 @@ fun SettingsScreen(
                 )
             }
 
-            // 4. Section 3: Data & Local Storage (Markdown is Truth)
+            // 4. Section 3: Data & Local Storage (ADR-0006 SQLite as Truth + Multi-Format Portability)
             item {
                 DataStorageSection(
+                    onExportBundle = { exportLauncher.launch("hello-export-${System.currentTimeMillis()}.zip") },
                     onExportMarkdown = { onEvent(SettingsUiEvent.OnExportMarkdownZip) },
                     onExportJson = { onEvent(SettingsUiEvent.OnExportBackupJson) },
                     onRebuildCache = { onEvent(SettingsUiEvent.OnRebuildCache) },
@@ -480,6 +491,7 @@ private fun TagRowItem(
 
 @Composable
 private fun DataStorageSection(
+    onExportBundle: () -> Unit,
     onExportMarkdown: () -> Unit,
     onExportJson: () -> Unit,
     onRebuildCache: () -> Unit,
@@ -520,7 +532,7 @@ private fun DataStorageSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "🔒 Markdown is Truth, Room is Disposable.\nAll data is stored directly on your device. You can export or rebuild your SQLite search cache at any time.",
+                    text = "🔒 SQLite is Canonical Truth, with Multi-Format Portability (ADR-0006).\nAll mutations persist with sub-2ms guarantees. You can generate an on-demand Export Bundle (JSON, Markdown, and CSV) directly to device storage via WorkManager at any time.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.padding(12.dp)
@@ -528,6 +540,20 @@ private fun DataStorageSection(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onExportBundle,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Outlined.FileDownload, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Export Multi-Format Bundle (.zip: JSON, MD, CSV)")
+                }
+
                 OutlinedButton(
                     onClick = onExportMarkdown,
                     shape = RoundedCornerShape(14.dp),

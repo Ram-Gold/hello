@@ -45,6 +45,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.work.WorkManager
 import com.example.hello.data.local.HelloDatabase
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.UserPreferencesRepository
@@ -54,6 +55,8 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.platform.location.LocationService
+import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.contacts.ContactsScreen
 import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel
@@ -89,14 +92,21 @@ fun MainAppShell(
     initialHomeViewModel: HomeViewModel? = null,
     initialContactsViewModel: ContactsViewModel? = null,
     initialQuickActionViewModel: QuickActionViewModel? = null,
+    initialContactId: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val repository = remember(contactRepository) {
-        contactRepository ?: ContactRepository(database = HelloDatabase.getInstance(context))
+        contactRepository ?: ContactRepository(
+            database = HelloDatabase.getInstance(context),
+            alarmScheduler = FollowUpAlarmScheduler(context)
+        )
     }
     val quickActionViewModel = remember(initialQuickActionViewModel, repository) {
-        initialQuickActionViewModel ?: QuickActionViewModel(repository = repository)
+        initialQuickActionViewModel ?: QuickActionViewModel(
+            repository = repository,
+            locationService = LocationService(context)
+        )
     }
     val homeViewModel = remember(initialHomeViewModel, repository) {
         initialHomeViewModel ?: HomeViewModel(repository = repository)
@@ -132,6 +142,13 @@ fun MainAppShell(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Deep link from FollowUp notification content tap
+    LaunchedEffect(initialContactId, hasCompletedOnboarding) {
+        if (!initialContactId.isNullOrBlank() && hasCompletedOnboarding) {
+            navController.navigate(PersonDetailRoute.createRoute(initialContactId))
+        }
+    }
 
     // Single source of truth: PagerState is the authority for active tab when on Root screen
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
@@ -385,7 +402,8 @@ fun MainAppShell(
                     }
                 ) {
                     val settingsViewModel = remember {
-                        SettingsViewModel(preferencesRepository, quickActionViewModel.repository)
+                        val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
+                        SettingsViewModel(preferencesRepository, quickActionViewModel.repository, wm)
                     }
                     val settingsUiState by settingsViewModel.uiState.collectAsState()
 

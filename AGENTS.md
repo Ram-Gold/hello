@@ -29,9 +29,9 @@ Every AI agent and contributor working on this codebase **MUST** uphold these no
     - Do not introduce network calls, cloud authentication, or remote analytics.
     - The user's device is the sovereign home of all data.
 
-2. **Storage Invariant: Markdown is Truth, Room is Disposable:**
-    - **Canonical Store:** Individual Markdown files (one per person) stored in user-designated storage via Storage Access Framework (`ACTION_OPEN_DOCUMENT_TREE`). Frontmatter contains structured YAML; the body contains notes.
-    - **Room DB (SQLite + FTS5):** Merely a fast, rebuildable query and full-text search cache. The entire database must be reconstructible from the Markdown files in under 2 seconds. Never write logic where Room holds data that isn't reflected in the Markdown files.
+2. **Storage Invariant: SQLite as Canonical Truth with Multi-Format Portability (ADR-0006):**
+    - **Canonical Store:** Room DB (SQLite + FTS5) is the authoritative, zero-latency local store on device. All mutations execute transactionally with sub-2ms persistence.
+    - **Portability & Export Bundle:** Absolute data sovereignty is guaranteed via an on-demand `WorkManager` export pipeline that packages all data into a timestamped `Export Bundle` (machine-readable JSON schemas, individual Obsidian-compatible `.md` notes with YAML frontmatter, and CSV tabular sheets) saved to user-designated storage via Storage Access Framework (`ACTION_CREATE_DOCUMENT`).
 
 3. **Strict Permission Discipline:**
     - **NEVER** request `READ_CONTACTS` or `WRITE_CONTACTS`. Hello maintains a completely independent people directory to protect user trust.

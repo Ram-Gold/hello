@@ -2,6 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Foreground-only location permissions (Prime Directive 3: strictly NO background location) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Alarm & Notification permissions for FollowUp reminders -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +31,35 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Dedicated ultra-fast (<50ms) QuickCaptureActivity -->
+        <activity
+            android:name=".ui.quickaction.QuickCaptureActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Hello.QuickCapture"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+
+        <!-- Notification & Alarm BroadcastReceivers for FollowUps -->
+        <receiver
+            android:name=".platform.notification.FollowUpAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".platform.notification.FollowUpActionReceiver"
+            android:exported="false" />
+
+        <!-- Glance 1x1 App Widget Receiver -->
+        <receiver
+            android:name=".platform.widget.QuickAddWidgetReceiver"
+            android:exported="true"
+            android:label="Quick Add Contact">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_add_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

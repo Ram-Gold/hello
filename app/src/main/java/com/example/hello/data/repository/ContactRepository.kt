@@ -16,6 +16,7 @@ import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.UpcomingAlert
+import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -47,12 +48,13 @@ import java.util.UUID
  */
 class ContactRepository(
     val database: HelloDatabase? = null,
+    val alarmScheduler: FollowUpAlarmScheduler? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val coroutineScope: CoroutineScope = CoroutineScope(ioDispatcher + SupervisorJob())
 ) {
 
     val encounterRepository: EncounterRepository? = database?.let { RoomEncounterRepository(it) }
-    val followUpRepository: FollowUpRepository? = database?.let { RoomFollowUpRepository(it) }
+    val followUpRepository: FollowUpRepository? = database?.let { RoomFollowUpRepository(it, alarmScheduler) }
 
     private val _fullContacts = MutableStateFlow<Map<String, Contact>>(initialFullContacts())
     val fullContacts: StateFlow<Map<String, Contact>> = _fullContacts.asStateFlow()
@@ -306,6 +308,9 @@ class ContactRepository(
     }
 
     fun deleteContact(contactId: String) {
+        val contactFollowUps = _followUps.value.filter { it.contactId == contactId }
+        contactFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
+
         val existing = _fullContacts.value[contactId]
         _fullContacts.update { it - contactId }
         _contacts.update { list -> list.filterNot { it.id == contactId } }
@@ -544,6 +549,7 @@ class ContactRepository(
                 dueText = "In $followUpDays days"
             )
             _upcomingAlerts.update { listOf(alert) + it }
+            alarmScheduler?.scheduleFollowUp(followUp, newContact.name)
         }
 
         val db = database
@@ -667,6 +673,7 @@ class ContactRepository(
     fun markFollowUpDone(alertId: String) {
         _upcomingAlerts.update { alerts -> alerts.filterNot { it.id == alertId } }
         _followUps.update { followUps -> followUps.filterNot { it.id == alertId } }
+        alarmScheduler?.cancelAlarm(alertId)
 
         val db = database
         if (db != null) {
@@ -680,6 +687,18 @@ class ContactRepository(
         _upcomingAlerts.update { alerts -> alerts.filterNot { it.id == alertId } }
 
         val newDueAt = Instant.now().plus(days, ChronoUnit.DAYS)
+        val targetFollowUp = _followUps.value.firstOrNull { it.id == alertId }
+        val contactName = targetFollowUp?.let { _fullContacts.value[it.contactId]?.name } ?: "Contact"
+        if (targetFollowUp != null) {
+            alarmScheduler?.scheduleAlarm(
+                followUpId = alertId,
+                contactId = targetFollowUp.contactId,
+                contactName = contactName,
+                note = targetFollowUp.note,
+                dueAt = newDueAt
+            )
+        }
+
         _followUps.update { followUps ->
             followUps.map {
                 if (it.id == alertId) it.copy(dueAt = newDueAt) else it
