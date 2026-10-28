@@ -707,6 +707,7 @@ private fun FloatingDockOverlay(
                 if (isSpeedDialOpen) {
                     homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
                 }
+                homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
                 val targetRoute = when (tab) {
                     HomeNavTab.HOME -> HomeRoute.ROUTE_NAME
                     HomeNavTab.PEOPLE -> PeopleRoute.ROUTE_NAME

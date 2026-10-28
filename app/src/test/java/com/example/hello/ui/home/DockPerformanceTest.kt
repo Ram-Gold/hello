@@ -194,10 +194,10 @@ class DockPerformanceTest {
 
     @Test
     fun dockMotionConfig_textTransitionSlidesLeftToRight() {
-        // Negative enter fraction means entering from left (-x) to 0
+        // Positive enter fraction means entering from right (+x) to 0
         assertTrue(
-            "Text enter offset fraction must start from the left (negative fraction)",
-            DockMotionConfig.TEXT_ENTER_OFFSET_FRACTION < 0f
+            "Text enter offset fraction must start from the right (positive fraction) for right-to-left entrance",
+            DockMotionConfig.TEXT_ENTER_OFFSET_FRACTION > 0f
         )
         // Positive exit fraction means exiting towards the right (+x)
         assertTrue(
@@ -265,10 +265,10 @@ class DockPerformanceTest {
             DockMotionConfig.ICON_EXPANSION_WIDTH_DP
         )
 
-        // Directional slide offsets for smooth enter and exit
+        // Directional slide offsets for smooth enter and exit (enters from right to left)
         assertTrue(
-            "Icon enter fraction must slide in from the left (negative fraction)",
-            DockMotionConfig.ICON_ENTER_OFFSET_FRACTION < 0f
+            "Icon enter fraction must slide in from the right (positive fraction) for right-to-left entrance",
+            DockMotionConfig.ICON_ENTER_OFFSET_FRACTION > 0f
         )
         assertTrue(
             "Icon exit fraction must slide out towards the left (negative fraction)",

@@ -47,8 +47,8 @@ object DockMotionConfig {
     // Invariant 1:1 icon expansion footprint: 24dp square icon slot + 8dp spacer
     const val ICON_EXPANSION_WIDTH_DP = 32
 
-    // Directional icon horizontal slide fractions
-    const val ICON_ENTER_OFFSET_FRACTION = -0.5f
+    // Directional icon horizontal slide fractions (positive enters from right to left)
+    const val ICON_ENTER_OFFSET_FRACTION = 0.5f
     const val ICON_EXIT_OFFSET_FRACTION = -0.5f
 
     // Backward-compatible aliases
@@ -63,6 +63,25 @@ object DockMotionConfig {
     fun resolveTabIcon(tab: HomeNavTab, isSelected: Boolean): ImageVector = when (tab) {
         HomeNavTab.HOME -> if (isSelected) Icons.Filled.Home else Icons.Outlined.Home
         HomeNavTab.PEOPLE -> if (isSelected) Icons.Filled.People else Icons.Outlined.People
+    }
+
+    /**
+     * Resolves the solid filled navigation tab icon. The dock maintains filled icons during
+     * transitions to eliminate jarring vector swaps, collapsing and fading out smoothly to zero width.
+     */
+    fun tabFilledIcon(tab: HomeNavTab): ImageVector = when (tab) {
+        HomeNavTab.HOME -> Icons.Filled.Home
+        HomeNavTab.PEOPLE -> Icons.Filled.People
+    }
+
+    /**
+     * Resolves directional horizontal slide offset fraction for tab icons during transitions.
+     * When entering People or exiting Home (moving right): enters right-to-left (+0.5f) and exits left-to-right (+0.5f).
+     * When entering Home or exiting People (moving left): enters left-to-right (-0.5f) and exits right-to-left (-0.5f).
+     */
+    fun resolveIconOffsetFraction(tab: HomeNavTab, isSelected: Boolean): Float = when (tab) {
+        HomeNavTab.PEOPLE -> if (isSelected) 0.5f else -0.5f
+        HomeNavTab.HOME -> if (isSelected) -0.5f else 0.5f
     }
 
     /**

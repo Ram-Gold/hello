@@ -107,6 +107,48 @@ class SmoothTabsTest {
     }
 
     @Test
+    fun tabFilledIcon_alwaysReturnsFilledIconsForSmoothTransitions() {
+        assertEquals(
+            "Home tab must always use filled icon during transitions",
+            Icons.Filled.Home,
+            DockMotionConfig.tabFilledIcon(HomeNavTab.HOME)
+        )
+        assertEquals(
+            "People tab must always use filled icon during transitions",
+            Icons.Filled.People,
+            DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE)
+        )
+    }
+
+    @Test
+    fun resolveIconOffsetFraction_providesDirectionalEnterAndExitOffsets() {
+        // When entering People (moving right): enters right-to-left (+0.5f)
+        assertEquals(
+            0.5f,
+            DockMotionConfig.resolveIconOffsetFraction(HomeNavTab.PEOPLE, isSelected = true),
+            0.001f
+        )
+        // When exiting Home (moving right): exits left-to-right (+0.5f)
+        assertEquals(
+            0.5f,
+            DockMotionConfig.resolveIconOffsetFraction(HomeNavTab.HOME, isSelected = false),
+            0.001f
+        )
+        // When entering Home (moving left): enters left-to-right (-0.5f)
+        assertEquals(
+            -0.5f,
+            DockMotionConfig.resolveIconOffsetFraction(HomeNavTab.HOME, isSelected = true),
+            0.001f
+        )
+        // When exiting People (moving left): exits right-to-left (-0.5f)
+        assertEquals(
+            -0.5f,
+            DockMotionConfig.resolveIconOffsetFraction(HomeNavTab.PEOPLE, isSelected = false),
+            0.001f
+        )
+    }
+
+    @Test
     fun calculatePillBounds_tightlyHugsContentWidthRatherThanHalfWidthSlot() {
         val slotWidth = 140f
         val slotCenterX = 70f

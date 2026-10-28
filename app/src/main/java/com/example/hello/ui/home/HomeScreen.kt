@@ -1,6 +1,7 @@
 package com.example.hello.ui.home
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -71,23 +73,32 @@ fun HomeScreen(
 ) {
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
     val coroutineScope = rememberCoroutineScope()
     val activeCard = uiState.myCards[uiState.activeCardType]
         ?: uiState.myCards.values.firstOrNull()
 
-    // Synchronize UI state drawer open/closed with Material 3 DrawerState
-    LaunchedEffect(uiState.isDrawerOpen) {
-        if (uiState.isDrawerOpen && drawerState.isClosed) {
-            drawerState.open()
-        } else if (!uiState.isDrawerOpen && drawerState.isOpen) {
-            drawerState.close()
+    val isDrawerActive = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
+
+    // Intercept system back press when drawer is open
+    BackHandler(enabled = isDrawerActive) {
+        coroutineScope.launch { drawerState.close() }
+        onEvent(HomeUiEvent.OnCloseDrawer)
+    }
+
+    // Synchronize ViewModel state when drawer finishes closing
+    LaunchedEffect(drawerState.currentValue) {
+        if (drawerState.currentValue == DrawerValue.Closed && uiState.isDrawerOpen) {
+            onEvent(HomeUiEvent.OnCloseDrawer)
         }
     }
 
-    LaunchedEffect(drawerState.isOpen) {
-        if (drawerState.isOpen != uiState.isDrawerOpen) {
-            if (drawerState.isOpen) onEvent(HomeUiEvent.OnOpenDrawer) else onEvent(HomeUiEvent.OnCloseDrawer)
+    // Allow external requests to open or close drawer
+    LaunchedEffect(uiState.isDrawerOpen) {
+        if (uiState.isDrawerOpen && drawerState.isClosed) {
+            drawerState.open()
+        } else if (!uiState.isDrawerOpen && isDrawerActive) {
+            drawerState.close()
         }
     }
 
@@ -101,34 +112,29 @@ fun HomeScreen(
         }
     }
 
-    val isDrawerVisible = uiState.isDrawerOpen ||
-        drawerState.isOpen ||
-        drawerState.targetValue == DrawerValue.Open
-
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = true,
+        gesturesEnabled = isDrawerActive,
         drawerContent = {
-            if (isDrawerVisible) {
-                ModalDrawerSheet(
-                    drawerContainerColor = MaterialTheme.colorScheme.surface,
-                    drawerTonalElevation = 2.dp
-                ) {
-                    GroupDrawerContent(
-                        selectedCircle = uiState.selectedCircle,
-                        circleConfigs = uiState.circleConfigs,
-                        onSelectCircle = { circle ->
-                            onEvent(HomeUiEvent.OnSelectCircle(circle))
-                        },
-                        onUpdateCircleConfig = { config ->
-                            onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
-                        },
-                        onCloseDrawer = {
-                            coroutineScope.launch { drawerState.close() }
-                            onEvent(HomeUiEvent.OnCloseDrawer)
-                        }
-                    )
-                }
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerTonalElevation = 2.dp
+            ) {
+                GroupDrawerContent(
+                    selectedCircle = uiState.selectedCircle,
+                    circleConfigs = uiState.circleConfigs,
+                    onSelectCircle = { circle ->
+                        onEvent(HomeUiEvent.OnSelectCircle(circle))
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    onUpdateCircleConfig = { config ->
+                        onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
+                    },
+                    onCloseDrawer = {
+                        coroutineScope.launch { drawerState.close() }
+                        onEvent(HomeUiEvent.OnCloseDrawer)
+                    }
+                )
             }
         }
     ) {

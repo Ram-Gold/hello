@@ -276,8 +276,12 @@ private fun DockTabsLayer(
         dimensions.relationshipPillWidthDp.toFloat()
     }
 
-    val homeIconFractionProvider = remember { { (1f - pillProgressState.value).coerceIn(0f, 1f) } }
-    val relIconFractionProvider = remember { { pillProgressState.value.coerceIn(0f, 1f) } }
+    val homeIconFractionProvider = remember {
+        { (1f - pillProgressState.value).coerceIn(0f, 1f) }
+    }
+    val relIconFractionProvider = remember {
+        { pillProgressState.value.coerceIn(0f, 1f) }
+    }
 
     Box(
         modifier = Modifier
@@ -292,7 +296,7 @@ private fun DockTabsLayer(
             relationshipWeight = relWeight,
             homeIconFractionProvider = homeIconFractionProvider,
             relationshipIconFractionProvider = relIconFractionProvider,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconColor = Color.Transparent,
             textColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
@@ -401,8 +405,9 @@ private fun TabsRow(
             NavTabItemContent(
                 tab = HomeNavTab.HOME,
                 customLabel = null,
+                isSelected = selectedTab == HomeNavTab.HOME,
                 iconFractionProvider = homeIconFractionProvider,
-                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, selectedTab == HomeNavTab.HOME),
+                icon = DockMotionConfig.tabFilledIcon(HomeNavTab.HOME),
                 iconColor = iconColor,
                 textColor = textColor
             )
@@ -418,8 +423,9 @@ private fun TabsRow(
             NavTabItemContent(
                 tab = HomeNavTab.PEOPLE,
                 customLabel = peopleLabel,
+                isSelected = selectedTab == HomeNavTab.PEOPLE,
                 iconFractionProvider = relationshipIconFractionProvider,
-                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, selectedTab == HomeNavTab.PEOPLE),
+                icon = DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE),
                 iconColor = iconColor,
                 textColor = textColor
             )
@@ -431,6 +437,7 @@ private fun TabsRow(
 private fun NavTabItemContent(
     tab: HomeNavTab,
     customLabel: String?,
+    isSelected: Boolean,
     iconFractionProvider: () -> Float,
     icon: ImageVector,
     iconColor: Color,
@@ -438,6 +445,7 @@ private fun NavTabItemContent(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = customLabel ?: tab.label
+    val offsetFraction = DockMotionConfig.resolveIconOffsetFraction(tab, isSelected)
 
     Box(
         modifier = modifier,
@@ -454,29 +462,33 @@ private fun NavTabItemContent(
                     val fraction = iconFractionProvider().coerceIn(0f, 1f)
                     val currentWidth = (placeable.width * fraction).roundToInt()
                     layout(currentWidth, placeable.height) {
-                        if (fraction > 0.01f) {
-                            val offsetX = ((1f - fraction) * placeable.width * DockMotionConfig.ICON_ENTER_OFFSET_FRACTION).roundToInt()
+                        if (fraction > 0.001f) {
+                            val offsetX = ((1f - fraction) * placeable.width * offsetFraction).roundToInt()
                             placeable.placeRelativeWithLayer(offsetX, 0) {
-                                alpha = fraction
+                                alpha = if (isSelected) 1f else fraction
                             }
                         }
                     }
                 }
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .aspectRatio(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconColor,
+                if (iconColor != Color.Transparent) {
+                    Box(
                         modifier = Modifier
-                            .size(22.dp)
-                            .aspectRatio(1f)
-                    )
+                            .size(24.dp)
+                            .aspectRatio(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .aspectRatio(1f)
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.size(24.dp))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
