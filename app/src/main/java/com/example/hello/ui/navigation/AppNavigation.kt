@@ -6,8 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavOptionsBuilder
 import com.example.hello.ui.theme.MotionTokens
 
 data object HomeRoute {
@@ -32,12 +34,49 @@ data object PersonDetailRoute {
     fun createRoute(contactId: String) = "detail/$contactId"
 }
 
+data object PersonEditRoute {
+    const val ROUTE_PATTERN = "edit/{contactId}"
+    const val ARG_CONTACT_ID = "contactId"
+    fun createRoute(contactId: String) = "edit/$contactId"
+}
+
+/**
+ * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute] or [PeopleRoute]).
+ * Matches PixelPlayer's `MainRootRoutes.kt`.
+ */
+fun isMainRootRoute(route: String?): Boolean = when (route) {
+    HomeRoute.ROUTE_NAME,
+    PeopleRoute.ROUTE_NAME -> true
+    else -> false
+}
+
+/**
+ * Returns the 0-based horizontal index of a main root route, or null if [route] is not a root tab.
+ * Matches PixelPlayer's `MainRootRoutes.kt`.
+ */
+fun mainRootRouteIndex(route: String?): Int? = when (route) {
+    HomeRoute.ROUTE_NAME -> 0
+    PeopleRoute.ROUTE_NAME -> 1
+    else -> null
+}
+
+/**
+ * Determines whether the floating bottom navigation dock should be hidden for [currentRoute].
+ * Visible on [HomeRoute] and [PeopleRoute] (and while route is null during initial composition);
+ * hidden on deeper or supporting screens ([SettingsRoute], [PersonDetailRoute], [PersonEditRoute], [OnboardingRoute]).
+ */
+fun shouldHideFloatingDock(currentRoute: String?): Boolean {
+    if (currentRoute == null) return false
+    return !isMainRootRoute(currentRoute)
+}
+
 /**
  * Evaluates whether BackHandler should intercept system back to scroll from People (page 1) to Home (page 0).
- * MUST only intercept when the user is actively on the "root" screen so it never delays exiting PersonDetailScreen.
+ * Retained for backward compatibility with pager tests; with direct NavHost routes, NavController handles
+ * back from PeopleRoute -> HomeRoute natively.
  */
 fun shouldInterceptPeopleBack(currentRoute: String?, currentPage: Int, targetPage: Int): Boolean {
-    val isAtRoot = currentRoute == "root"
+    val isAtRoot = currentRoute == "root" || isMainRootRoute(currentRoute)
     return isAtRoot && (currentPage == 1 || targetPage == 1)
 }
 
@@ -57,12 +96,6 @@ object PersonDetailMotionConfig {
     fun rootPopEnterTransition(): EnterTransition = EnterTransition.None
 
     fun rootExitTransition(): ExitTransition = ExitTransition.None
-}
-
-data object PersonEditRoute {
-    const val ROUTE_PATTERN = "edit/{contactId}"
-    const val ARG_CONTACT_ID = "contactId"
-    fun createRoute(contactId: String) = "edit/$contactId"
 }
 
 object SharedAxisMotionConfig {
@@ -90,36 +123,23 @@ class NavigationDebouncer(
 }
 
 fun resolveRouteSlideDirection(fromRoute: String?, toRoute: String?): NavigationTabDirection {
-    if (fromRoute == toRoute || fromRoute == null || toRoute == null) {
-        return NavigationTabDirection.NONE
-    }
-    val isFromRoot = fromRoute == HomeRoute.ROUTE_NAME || fromRoute == PeopleRoute.ROUTE_NAME
-    val isToRoot = toRoute == HomeRoute.ROUTE_NAME || toRoute == PeopleRoute.ROUTE_NAME
-    if (!isFromRoot || !isToRoot) {
-        return NavigationTabDirection.NONE
-    }
-    return if (fromRoute == HomeRoute.ROUTE_NAME && toRoute == PeopleRoute.ROUTE_NAME) {
-        NavigationTabDirection.FORWARD
-    } else if (fromRoute == PeopleRoute.ROUTE_NAME && toRoute == HomeRoute.ROUTE_NAME) {
-        NavigationTabDirection.BACKWARD
-    } else {
-        NavigationTabDirection.NONE
-    }
+    val fromIndex = mainRootRouteIndex(fromRoute) ?: return NavigationTabDirection.NONE
+    val toIndex = mainRootRouteIndex(toRoute) ?: return NavigationTabDirection.NONE
+    if (fromIndex == toIndex) return NavigationTabDirection.NONE
+    return if (toIndex > fromIndex) NavigationTabDirection.FORWARD else NavigationTabDirection.BACKWARD
 }
 
 fun sharedAxisEnterTransition(direction: NavigationTabDirection): EnterTransition {
-    val slideSpec = MotionTokens.screenSlideSpec()
-    val fadeSpec = MotionTokens.screenFadeSpec()
+    val slideSpec = MotionTokens.MAIN_ROOT_TRANSITION_SPEC
+    val fadeSpec = MotionTokens.MAIN_ROOT_FADE_SPEC
     val divisor = SharedAxisMotionConfig.SLIDE_OFFSET_DIVISOR
 
     return when (direction) {
         NavigationTabDirection.FORWARD -> {
-            // Home -> People: People enters from subtle 25% right offset to center
             slideInHorizontally(animationSpec = slideSpec, initialOffsetX = { it / divisor }) +
                 fadeIn(animationSpec = fadeSpec, initialAlpha = 0f)
         }
         NavigationTabDirection.BACKWARD -> {
-            // People -> Home: Home enters from subtle 25% left offset to center
             slideInHorizontally(animationSpec = slideSpec, initialOffsetX = { -it / divisor }) +
                 fadeIn(animationSpec = fadeSpec, initialAlpha = 0f)
         }
@@ -128,18 +148,16 @@ fun sharedAxisEnterTransition(direction: NavigationTabDirection): EnterTransitio
 }
 
 fun sharedAxisExitTransition(direction: NavigationTabDirection): ExitTransition {
-    val slideSpec = MotionTokens.screenSlideSpec()
-    val fadeSpec = MotionTokens.screenFadeSpec()
+    val slideSpec = MotionTokens.MAIN_ROOT_TRANSITION_SPEC
+    val fadeSpec = MotionTokens.MAIN_ROOT_FADE_SPEC
     val divisor = SharedAxisMotionConfig.SLIDE_OFFSET_DIVISOR
 
     return when (direction) {
         NavigationTabDirection.FORWARD -> {
-            // Home -> People: Home exits from center to subtle 25% left offset
             slideOutHorizontally(animationSpec = slideSpec, targetOffsetX = { -it / divisor }) +
                 fadeOut(animationSpec = fadeSpec, targetAlpha = 0f)
         }
         NavigationTabDirection.BACKWARD -> {
-            // People -> Home: People exits from center to subtle 25% right offset
             slideOutHorizontally(animationSpec = slideSpec, targetOffsetX = { it / divisor }) +
                 fadeOut(animationSpec = fadeSpec, targetAlpha = 0f)
         }
@@ -147,18 +165,55 @@ fun sharedAxisExitTransition(direction: NavigationTabDirection): ExitTransition 
     }
 }
 
+private fun NavController.isReadyForNavigation(): Boolean {
+    return runCatching {
+        currentBackStackEntry?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
+    }.getOrDefault(false)
+}
+
 /**
- * High-leverage navigation extension ensuring debounced, singleTop, and state-preserving navigation.
+ * Lifecycle-gated singleTop navigation helper matching PixelPlayer's `NavControllerExtensions.kt`.
  */
-fun NavController.navigateToRootTab(targetRoute: String) {
-    if (currentDestination?.route == targetRoute) {
-        return // deduplicate redundant tap
+fun NavController.navigateSafely(route: String): Boolean {
+    if (!isReadyForNavigation()) return false
+    navigate(route) {
+        launchSingleTop = true
     }
-    navigate(targetRoute) {
-        popUpTo(graph.findStartDestination().id) {
+    return true
+}
+
+fun NavController.navigateSafely(
+    route: String,
+    builder: NavOptionsBuilder.() -> Unit
+): Boolean {
+    if (!isReadyForNavigation()) return false
+    navigate(route) {
+        launchSingleTop = true
+        builder()
+    }
+    return true
+}
+
+/**
+ * Top-level tab navigation extension matching PixelPlayer's `navigateToTopLevelSafely`.
+ * Deduplicates redundant taps and preserves state across HomeRoute <-> PeopleRoute switches.
+ */
+fun NavController.navigateToTopLevelSafely(route: String): Boolean {
+    if (currentDestination?.route == route) return false
+    val startDestinationId = runCatching { graph.findStartDestination().id }.getOrNull() ?: return false
+    navigate(route) {
+        popUpTo(startDestinationId) {
             saveState = true
         }
         launchSingleTop = true
         restoreState = true
     }
+    return true
+}
+
+/**
+ * High-leverage navigation extension delegating to [navigateToTopLevelSafely].
+ */
+fun NavController.navigateToRootTab(targetRoute: String) {
+    navigateToTopLevelSafely(targetRoute)
 }

@@ -130,7 +130,10 @@ fun ContactsScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 uiState.groupedContacts.forEach { (header, contactsInGroup) ->
-                    stickyHeader(key = "header-$header") {
+                    stickyHeader(
+                        key = "header-$header",
+                        contentType = "group_header"
+                    ) {
                         ContactGroupHeader(
                             title = header,
                             count = contactsInGroup.size
@@ -139,7 +142,8 @@ fun ContactsScreen(
 
                     items(
                         items = contactsInGroup,
-                        key = { it.id }
+                        key = { it.id },
+                        contentType = { "contact_row" }
                     ) { contact ->
                         MinimalistContactRow(
                             contact = contact,
@@ -309,7 +313,10 @@ private fun ContactsFilterBar(
                 )
             }
 
-            items(Circle.entries.toTypedArray()) { circle ->
+            items(
+                items = Circle.entries,
+                key = { it.name }
+            ) { circle ->
                 val isSelected = selectedCircle == circle
                 FilterChip(
                     selected = isSelected,
@@ -475,9 +482,9 @@ fun MinimalistContactRow(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // Circle Badges
-                FlowRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     contact.circles.forEach { circle ->
                         CircleBadge(circle = circle)

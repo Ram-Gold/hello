@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -73,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.ui.theme.MotionTokens
+import kotlin.math.roundToInt
 
 @Composable
 fun HomeFloatingBottomDock(
@@ -84,7 +86,7 @@ fun HomeFloatingBottomDock(
     modifier: Modifier = Modifier,
     peopleTabLabel: String = "People",
     addContactLabel: String = "Add Contact",
-    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.dockPillProgressSpring()
+    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween()
 ) {
     // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
     val isDark = isSystemInDarkTheme()
@@ -200,106 +202,15 @@ fun HomeFloatingBottomDock(
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 3.dp
                 ) {
-                    BoxWithConstraints(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(5.dp)
-                    ) {
-                        val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
-                        val pillProgress by animateFloatAsState(
-                            targetValue = targetProgress,
-                            animationSpec = pillAnimationSpec,
-                            label = "dockSlidingPillProgress"
-                        )
-
-                        val homeWeight = ((1f - pillProgress) * dimensions.homePillWidthDp + pillProgress * dimensions.homeInactiveSlotWidthDp).coerceAtLeast(1f)
-                        val relWeight = ((1f - pillProgress) * dimensions.relationshipInactiveSlotWidthDp + pillProgress * dimensions.relationshipPillWidthDp).coerceAtLeast(1f)
-
-                        // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
-                        TabsRow(
-                            selectedTab = selectedTab,
-                            peopleLabel = peopleTabLabel,
-                            homeWeight = homeWeight,
-                            relationshipWeight = relWeight,
-                            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
-                        // clipped dynamically in the GPU draw phase to the moving centered pill shape.
-                        val pillShape = remember(dimensions.homePillWidthDp, dimensions.relationshipPillWidthDp) {
-                            CenteredPillClipShape(
-                                progressProvider = { pillProgress },
-                                homePillWidthDp = dimensions.homePillWidthDp,
-                                relationshipPillWidthDp = dimensions.relationshipPillWidthDp
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    clip = true
-                                    shape = pillShape
-                                }
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                        ) {
-                            TabsRow(
-                                selectedTab = selectedTab,
-                                peopleLabel = peopleTabLabel,
-                                homeWeight = homeWeight,
-                                relationshipWeight = relWeight,
-                                iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                textColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-
-                        // Interactive Touch Layer on top (48dp+ accessible touch target)
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(homeWeight)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(25.dp))
-                                    .semantics {
-                                        role = Role.Tab
-                                        selected = selectedTab == HomeNavTab.HOME
-                                    }
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null, // Only the sliding pill appears; no click ripple/background
-                                        onClick = {
-                                            if (isSpeedDialOpen) {
-                                                onToggleSpeedDial()
-                                            }
-                                            onTabSelect(HomeNavTab.HOME)
-                                        }
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(relWeight)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(25.dp))
-                                    .semantics {
-                                        role = Role.Tab
-                                        selected = selectedTab == HomeNavTab.PEOPLE
-                                    }
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            if (isSpeedDialOpen) {
-                                                onToggleSpeedDial()
-                                            }
-                                            onTabSelect(HomeNavTab.PEOPLE)
-                                        }
-                                    )
-                            )
-                        }
-                    }
+                    DockTabsLayer(
+                        selectedTab = selectedTab,
+                        peopleTabLabel = peopleTabLabel,
+                        dimensions = dimensions,
+                        pillAnimationSpec = pillAnimationSpec,
+                        isSpeedDialOpen = isSpeedDialOpen,
+                        onToggleSpeedDial = onToggleSpeedDial,
+                        onTabSelect = onTabSelect
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -338,11 +249,140 @@ fun HomeFloatingBottomDock(
 }
 
 @Composable
+private fun DockTabsLayer(
+    selectedTab: HomeNavTab,
+    peopleTabLabel: String,
+    dimensions: DockDimensions,
+    pillAnimationSpec: AnimationSpec<Float>,
+    isSpeedDialOpen: Boolean,
+    onToggleSpeedDial: () -> Unit,
+    onTabSelect: (HomeNavTab) -> Unit
+) {
+    val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
+    val pillProgressState = animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = pillAnimationSpec,
+        label = "dockSlidingPillProgress"
+    )
+
+    val homeWeight = if (selectedTab == HomeNavTab.HOME) {
+        dimensions.homePillWidthDp.toFloat()
+    } else {
+        dimensions.homeInactiveSlotWidthDp.toFloat()
+    }
+    val relWeight = if (selectedTab == HomeNavTab.HOME) {
+        dimensions.relationshipInactiveSlotWidthDp.toFloat()
+    } else {
+        dimensions.relationshipPillWidthDp.toFloat()
+    }
+
+    val homeIconFractionProvider = remember { { (1f - pillProgressState.value).coerceIn(0f, 1f) } }
+    val relIconFractionProvider = remember { { pillProgressState.value.coerceIn(0f, 1f) } }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(5.dp)
+    ) {
+        // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
+        TabsRow(
+            selectedTab = selectedTab,
+            peopleLabel = peopleTabLabel,
+            homeWeight = homeWeight,
+            relationshipWeight = relWeight,
+            homeIconFractionProvider = homeIconFractionProvider,
+            relationshipIconFractionProvider = relIconFractionProvider,
+            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            textColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
+        // clipped dynamically in the GPU draw phase to the moving centered pill shape.
+        val pillShape = remember(dimensions.homePillWidthDp, dimensions.relationshipPillWidthDp) {
+            CenteredPillClipShape(
+                progressProvider = { pillProgressState.value },
+                homePillWidthDp = dimensions.homePillWidthDp,
+                relationshipPillWidthDp = dimensions.relationshipPillWidthDp
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    clip = true
+                    shape = pillShape
+                }
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            TabsRow(
+                selectedTab = selectedTab,
+                peopleLabel = peopleTabLabel,
+                homeWeight = homeWeight,
+                relationshipWeight = relWeight,
+                homeIconFractionProvider = homeIconFractionProvider,
+                relationshipIconFractionProvider = relIconFractionProvider,
+                iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                textColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+
+        // Interactive Touch Layer on top (48dp+ accessible touch target)
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(homeWeight)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(25.dp))
+                    .semantics {
+                        role = Role.Tab
+                        selected = selectedTab == HomeNavTab.HOME
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (isSpeedDialOpen) {
+                                onToggleSpeedDial()
+                            }
+                            onTabSelect(HomeNavTab.HOME)
+                        }
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .weight(relWeight)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(25.dp))
+                    .semantics {
+                        role = Role.Tab
+                        selected = selectedTab == HomeNavTab.PEOPLE
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (isSpeedDialOpen) {
+                                onToggleSpeedDial()
+                            }
+                            onTabSelect(HomeNavTab.PEOPLE)
+                        }
+                    )
+            )
+        }
+    }
+}
+
+@Composable
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
     homeWeight: Float,
     relationshipWeight: Float,
+    homeIconFractionProvider: () -> Float,
+    relationshipIconFractionProvider: () -> Float,
     iconColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier
@@ -361,7 +401,7 @@ private fun TabsRow(
             NavTabItemContent(
                 tab = HomeNavTab.HOME,
                 customLabel = null,
-                isSelected = selectedTab == HomeNavTab.HOME,
+                iconFractionProvider = homeIconFractionProvider,
                 icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, selectedTab == HomeNavTab.HOME),
                 iconColor = iconColor,
                 textColor = textColor
@@ -378,7 +418,7 @@ private fun TabsRow(
             NavTabItemContent(
                 tab = HomeNavTab.PEOPLE,
                 customLabel = peopleLabel,
-                isSelected = selectedTab == HomeNavTab.PEOPLE,
+                iconFractionProvider = relationshipIconFractionProvider,
                 icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, selectedTab == HomeNavTab.PEOPLE),
                 iconColor = iconColor,
                 textColor = textColor
@@ -391,7 +431,7 @@ private fun TabsRow(
 private fun NavTabItemContent(
     tab: HomeNavTab,
     customLabel: String?,
-    isSelected: Boolean,
+    iconFractionProvider: () -> Float,
     icon: ImageVector,
     iconColor: Color,
     textColor: Color,
@@ -407,47 +447,38 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            AnimatedVisibility(
-                visible = isSelected,
-                enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
-                        expandHorizontally(
-                            expandFrom = Alignment.Start,
-                            animationSpec = MotionTokens.tabTransitionSizeTween()
-                        ) +
-                        slideInHorizontally(
-                            initialOffsetX = { (it * DockMotionConfig.ICON_ENTER_OFFSET_FRACTION).toInt() },
-                            animationSpec = MotionTokens.tabTransitionOffsetTween()
-                        ),
-                exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
-                       shrinkHorizontally(
-                           shrinkTowards = Alignment.Start,
-                           animationSpec = MotionTokens.tabTransitionSizeTween()
-                       ) +
-                       slideOutHorizontally(
-                           targetOffsetX = { (it * DockMotionConfig.ICON_EXIT_OFFSET_FRACTION).toInt() },
-                           animationSpec = MotionTokens.tabTransitionOffsetTween()
-                       )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .aspectRatio(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null, // Label is displayed by adjacent Text to avoid duplicate TalkBack readout
-                            tint = iconColor,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .aspectRatio(1f)
-                        )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val fraction = iconFractionProvider().coerceIn(0f, 1f)
+                    val currentWidth = (placeable.width * fraction).roundToInt()
+                    layout(currentWidth, placeable.height) {
+                        if (fraction > 0.01f) {
+                            val offsetX = ((1f - fraction) * placeable.width * DockMotionConfig.ICON_ENTER_OFFSET_FRACTION).roundToInt()
+                            placeable.placeRelativeWithLayer(offsetX, 0) {
+                                alpha = fraction
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                 }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .aspectRatio(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .aspectRatio(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
                 text = displayLabel,

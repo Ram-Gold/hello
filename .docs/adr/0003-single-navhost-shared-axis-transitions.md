@@ -1,16 +1,16 @@
 # 3. Single NavHost Architecture with Route-Aware Shared-Axis Transitions
 
 ## Context
-When navigating between primary tabs (`Home` and `People`), users experienced noticeable delays and frame drops on entry-level Android devices. Previously, `MainAppShell` relied on bespoke `AnimatedContent` switching that either executed heavy unclipped dual-screen layout container measurements (`slideIntoContainer`) or sacrificed directional motion for an instantaneous crossfade. Furthermore, navigation state was redundantly duplicated inside `HomeViewModel`.
+When navigating between primary tabs (`Home` and the `Relationship Terminology` tab: `People` / `Friends` / `Connections` / `Contacts`), entry-level Android devices suffer frame drops if both full screens are kept permanently composed in a `HorizontalPager(beyondViewportPageCount = 1)` or if offscreen GPU buffers (`CompositingStrategy.Offscreen`), blur shaders, or path clipping are active during root tab switches.
 
 ## Decision
-1. **Single `NavHost` with Type-Safe Routes**:
-   Adopt `androidx.navigation.compose` as the single source of navigation truth. Routes are declared as type-safe Kotlin objects (`HomeRoute`, `PeopleRoute`).
-2. **Route-Aware Shared-Axis Transitions**:
-   Restrict horizontal directional slide animations (`slideInHorizontally` / `slideOutHorizontally`) exclusively between root tabs (`Home` $\leftrightarrow$ `People`). Deeper screens or non-root destinations do not animate the root tabs.
-3. **GPU Hardware Layer Clipping**:
-   Apply `Modifier.graphicsLayer { clip = true }` across animated screen containers to ensure pixel clipping occurs on the GPU without triggering expensive layout measurement passes across full composable subtrees.
-4. **`navigateSafely` Backstack Policy**:
-   Provide a centralized `navigateSafely` extension that enforces `popUpTo(startDestination) { saveState = true }`, `launchSingleTop = true`, and `restoreState = true`, coupled with a debounced tap guard to prevent duplicate pushes or backstack churn.
-5. **Decoupled ViewModel Ownership**:
-   Purge `selectedNavTab` and tab switching events from `HomeViewModel`. The `NavController` owns navigation hierarchy and backstack state, while the bottom dock directly observes the current destination.
+1. **Single `NavHost` with Direct Root Routes (`HomeRoute`, `PeopleRoute`)**:
+   Adopt `androidx.navigation.compose` as the single source of navigation truth. Root tabs (`HomeRoute`, `PeopleRoute`) are direct top-level composable destinations in the `NavHost` (no nested `"root"` `HorizontalPager`), ensuring only the active tab is composed at rest while ViewModels remain shell-scoped.
+2. **MD3 Expressive Root-Tab Transitions (`mainRootEnterTransition` / `mainRootExitTransition`)**:
+   Between `HomeRoute` and `PeopleRoute`, apply a `380ms` horizontal slide (`±50%` width offset) paired with a `190ms` (`duration / 2`) fade using the Material 3 Expressive emphasized easing curve `CubicBezierEasing(0.2f, 0f, 0f, 1f)` and pre-allocated static `TweenSpec` instances. The floating bottom dock's sliding pill and tab icon/label expansion are synchronized to the same `380ms` `CubicBezierEasing(0.2f, 0f, 0f, 1f)` curve.
+3. **Hierarchical Push/Pop Transitions for Non-Root Destinations**:
+   The `NavHost` defaults to `350ms` AOSP shared-axis transitions (`1/3` width slide + fade/`scaleOut(0.92f..0.85f)` on `CubicBezierEasing(0.2f, 0f, 0f, 1f)`), while `HomeRoute` and `PeopleRoute` delegate non-root push/pop transitions to `450ms` MD3 Expressive decelerate/accelerate curves (`25%` parallax exit/pop-enter and `0.95f` pop-enter scale).
+4. **Low-End GPU Compositing Discipline (`CompositingStrategy.Auto`)**:
+   Skip offscreen buffer allocation (`CompositingStrategy.Auto`), blur shaders, dim scrims, and corner-radius clipping during root tab switches. `HomeFloatingBottomDock` is hosted in the outer `MainAppShell` above `NavHost` so it remains stationary during tab switches, and hides/shows on non-root routes via pure GPU `graphicsLayer` `translationY` + `alpha` (`220ms` `LinearOutSlowInEasing`).
+5. **`navigateToTopLevelSafely` & `navigateSafely` Backstack Policy**:
+   Gate navigation on `Lifecycle.State.STARTED` and enforce `popUpTo(HomeRoute.ROUTE_NAME) { saveState = true }`, `launchSingleTop = true`, and `restoreState = true` for top-level tab switches.

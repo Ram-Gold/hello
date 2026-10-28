@@ -286,9 +286,9 @@ fun ContactItemRow(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // Circle pill tags
-                FlowRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     contact.circles.forEach { circle ->
                         CircleBadge(circle = circle)

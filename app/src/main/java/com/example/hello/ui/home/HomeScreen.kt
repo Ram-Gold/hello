@@ -91,52 +91,52 @@ fun HomeScreen(
         }
     }
 
-    // Display feedback messages via Snackbar
-    LaunchedEffect(uiState.userMessage) {
-        uiState.userMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            onEvent(HomeUiEvent.OnDismissUserMessage)
+    // Display feedback messages via Snackbar only when standalone (MainAppShell handles it otherwise)
+    if (showBottomDock) {
+        LaunchedEffect(uiState.userMessage) {
+            uiState.userMessage?.let { message ->
+                snackbarHostState.showSnackbar(message)
+                onEvent(HomeUiEvent.OnDismissUserMessage)
+            }
         }
     }
+
+    val isDrawerVisible = uiState.isDrawerOpen ||
+        drawerState.isOpen ||
+        drawerState.targetValue == DrawerValue.Open
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = true,
         drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                drawerTonalElevation = 2.dp
-            ) {
-                GroupDrawerContent(
-                    selectedCircle = uiState.selectedCircle,
-                    circleConfigs = uiState.circleConfigs,
-                    onSelectCircle = { circle ->
-                        onEvent(HomeUiEvent.OnSelectCircle(circle))
-                    },
-                    onUpdateCircleConfig = { config ->
-                        onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
-                    },
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                        onEvent(HomeUiEvent.OnCloseDrawer)
-                    }
-                )
+            if (isDrawerVisible) {
+                ModalDrawerSheet(
+                    drawerContainerColor = MaterialTheme.colorScheme.surface,
+                    drawerTonalElevation = 2.dp
+                ) {
+                    GroupDrawerContent(
+                        selectedCircle = uiState.selectedCircle,
+                        circleConfigs = uiState.circleConfigs,
+                        onSelectCircle = { circle ->
+                            onEvent(HomeUiEvent.OnSelectCircle(circle))
+                        },
+                        onUpdateCircleConfig = { config ->
+                            onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
+                        },
+                        onCloseDrawer = {
+                            coroutineScope.launch { drawerState.close() }
+                            onEvent(HomeUiEvent.OnCloseDrawer)
+                        }
+                    )
+                }
             }
         }
     ) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = {
-                Box {
-                    SnackbarHost(hostState = snackbarHostState)
-                }
-            }
-        ) { innerPadding ->
+        val mainContent: @Composable (Modifier) -> Unit = { contentModifier ->
             Box(
-                modifier = Modifier
+                modifier = contentModifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 // Main Vertically Scrollable Content
                 Column(
@@ -159,135 +159,151 @@ fun HomeScreen(
                         activeCircle = uiState.selectedCircle
                     )
 
-                // 2. Greeting Column (under the top bar)
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    // 2. Greeting Column (under the top bar)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Hello, ${uiState.userName}",
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "👋",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
                         Text(
-                            text = "Hello, ${uiState.userName}",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "👋",
-                            style = MaterialTheme.typography.titleLarge
+                            text = "Cultivate your circle today",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "Cultivate your circle today",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
 
-                // 3. The "My Card" Widget (Hero Component)
-                activeCard?.let { card ->
-                    MyCardWidget(
-                        cardData = card,
-                        activeCardType = uiState.activeCardType,
-                        onCardTypeSelect = { onEvent(HomeUiEvent.OnCardTypeSelect(it)) },
-                        onExpandClick = { onEvent(HomeUiEvent.OnExpandQr(true)) },
-                        modifier = Modifier.padding(horizontal = 20.dp)
-                    )
-                }
-
-                // Filter feed and contacts when a specific circle is active
-                val filteredContacts = remember(uiState.recentContacts, uiState.selectedCircle) {
-                    if (uiState.selectedCircle == null) {
-                        uiState.recentContacts
-                    } else {
-                        uiState.recentContacts.filter { it.circles.contains(uiState.selectedCircle) }
+                    // 3. The "My Card" Widget (Hero Component)
+                    activeCard?.let { card ->
+                        MyCardWidget(
+                            cardData = card,
+                            activeCardType = uiState.activeCardType,
+                            onCardTypeSelect = remember(onEvent) { { onEvent(HomeUiEvent.OnCardTypeSelect(it)) } },
+                            onExpandClick = remember(onEvent) { { onEvent(HomeUiEvent.OnExpandQr(true)) } },
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
                     }
-                }
-                val filteredAlerts = remember(uiState.upcomingAlerts, uiState.selectedCircle) {
-                    if (uiState.selectedCircle == null) {
-                        uiState.upcomingAlerts
-                    } else {
-                        uiState.upcomingAlerts.filter { alert ->
-                            when (alert) {
-                                is UpcomingAlert.BirthdayAlert -> alert.circle == null || alert.circle == uiState.selectedCircle
-                                else -> true
+
+                    // Filter feed and contacts when a specific circle is active
+                    val filteredContacts = remember(uiState.recentContacts, uiState.selectedCircle) {
+                        if (uiState.selectedCircle == null) {
+                            uiState.recentContacts
+                        } else {
+                            uiState.recentContacts.filter { it.circles.contains(uiState.selectedCircle) }
+                        }
+                    }
+                    val filteredAlerts = remember(uiState.upcomingAlerts, uiState.selectedCircle) {
+                        if (uiState.selectedCircle == null) {
+                            uiState.upcomingAlerts
+                        } else {
+                            uiState.upcomingAlerts.filter { alert ->
+                                when (alert) {
+                                    is UpcomingAlert.BirthdayAlert -> alert.circle == null || alert.circle == uiState.selectedCircle
+                                    else -> true
+                                }
                             }
                         }
                     }
+
+                    // 3. "Upcoming" Feed (Horizontal Alert Carousel)
+                    UpcomingFeedSection(
+                        alerts = filteredAlerts,
+                        onReminderDone = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderDone(it)) } },
+                        onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } }
+                    )
+
+                    // 4. Recent Encounters List
+                    RecentEncountersSection(
+                        contacts = filteredContacts,
+                        onContactClick = onContactClick,
+                        onNavigateToPeople = onNavigateToPeople,
+                        hasContacts = uiState.recentContacts.isNotEmpty(),
+                        onLogEncounterClick = onLogEncounterClick,
+                        onAddContactClick = onAddContactClick,
+                        terminology = terminology
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // 3. "Upcoming" Feed (Horizontal Alert Carousel)
-                UpcomingFeedSection(
-                    alerts = filteredAlerts,
-                    onReminderDone = { onEvent(HomeUiEvent.OnReminderDone(it)) },
-                    onReminderSnooze = { onEvent(HomeUiEvent.OnReminderSnooze(it)) }
-                )
+                if (showBottomDock) {
+                    // Scrim to dismiss Speed Dial when tapping outside
+                    AnimatedVisibility(
+                        visible = uiState.isSpeedDialOpen,
+                        enter = fadeIn(animationSpec = tween(200)),
+                        exit = fadeOut(animationSpec = tween(150))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    onEvent(HomeUiEvent.OnCloseSpeedDial)
+                                }
+                        )
+                    }
 
-                // 4. Recent Encounters List
-                RecentEncountersSection(
-                    contacts = filteredContacts,
-                    onContactClick = onContactClick,
-                    onNavigateToPeople = onNavigateToPeople,
-                    hasContacts = uiState.recentContacts.isNotEmpty(),
-                    onLogEncounterClick = onLogEncounterClick,
-                    onAddContactClick = onAddContactClick,
-                    terminology = terminology
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            if (showBottomDock) {
-                // Scrim to dismiss Speed Dial when tapping outside
-                AnimatedVisibility(
-                    visible = uiState.isSpeedDialOpen,
-                    enter = fadeIn(animationSpec = tween(200)),
-                    exit = fadeOut(animationSpec = tween(150))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
+                    // 6. Floating Bottom Navigation Dock & Companion Quick-Add FAB
+                    HomeFloatingBottomDock(
+                        selectedTab = uiState.selectedNavTab,
+                        onTabSelect = { tab ->
+                            if (uiState.isSpeedDialOpen) {
                                 onEvent(HomeUiEvent.OnCloseSpeedDial)
                             }
+                            onEvent(HomeUiEvent.OnNavTabSelect(tab))
+                        },
+                        isSpeedDialOpen = uiState.isSpeedDialOpen,
+                        onToggleSpeedDial = { onEvent(HomeUiEvent.OnToggleSpeedDial) },
+                        onSpeedDialAction = { onEvent(HomeUiEvent.OnSpeedDialAction(it)) },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(
+                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                            )
                     )
                 }
 
-                // 6. Floating Bottom Navigation Dock & Companion Quick-Add FAB
-                HomeFloatingBottomDock(
-                    selectedTab = uiState.selectedNavTab,
-                    onTabSelect = { tab ->
-                        if (uiState.isSpeedDialOpen) {
-                            onEvent(HomeUiEvent.OnCloseSpeedDial)
-                        }
-                        onEvent(HomeUiEvent.OnNavTabSelect(tab))
-                    },
-                    isSpeedDialOpen = uiState.isSpeedDialOpen,
-                    onToggleSpeedDial = { onEvent(HomeUiEvent.OnToggleSpeedDial) },
-                    onSpeedDialAction = { onEvent(HomeUiEvent.OnSpeedDialAction(it)) },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(
-                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                        )
-                )
-            }
-
-            // Full-Screen QR Dialog Preview
-            if (uiState.isQrExpanded && activeCard != null) {
-                FullScreenCardDialog(
-                    cardData = activeCard,
-                    onDismiss = { onEvent(HomeUiEvent.OnExpandQr(false)) }
-                )
+                // Full-Screen QR Dialog Preview
+                if (uiState.isQrExpanded && activeCard != null) {
+                    FullScreenCardDialog(
+                        cardData = activeCard,
+                        onDismiss = { onEvent(HomeUiEvent.OnExpandQr(false)) }
+                    )
+                }
             }
         }
+
+        if (showBottomDock) {
+            Scaffold(
+                modifier = modifier.fillMaxSize(),
+                containerColor = MaterialTheme.colorScheme.background,
+                snackbarHost = {
+                    Box {
+                        SnackbarHost(hostState = snackbarHostState)
+                    }
+                }
+            ) { innerPadding ->
+                mainContent(Modifier.padding(innerPadding))
+            }
+        } else {
+            mainContent(modifier)
+        }
     }
-}
 }
 
 // -------------------------------------------------------------

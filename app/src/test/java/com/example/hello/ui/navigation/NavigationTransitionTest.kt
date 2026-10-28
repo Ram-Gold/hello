@@ -1,8 +1,13 @@
 package com.example.hello.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.theme.MotionTokens
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,7 +40,7 @@ class NavigationTransitionTest {
     }
 
     @Test
-    fun sameTab_resolvesToNoneDirection() {
+    fun sameTabOrNonRootRoute_resolvesToNoneDirection() {
         assertEquals(
             NavigationTabDirection.NONE,
             resolveTabSlideDirection(HomeNavTab.HOME, HomeNavTab.HOME)
@@ -48,54 +53,104 @@ class NavigationTransitionTest {
             NavigationTabDirection.NONE,
             resolveRouteSlideDirection(HomeRoute.ROUTE_NAME, HomeRoute.ROUTE_NAME)
         )
+        assertEquals(
+            NavigationTabDirection.NONE,
+            resolveRouteSlideDirection(HomeRoute.ROUTE_NAME, SettingsRoute.ROUTE_NAME)
+        )
+        assertEquals(
+            NavigationTabDirection.NONE,
+            resolveRouteSlideDirection(PeopleRoute.ROUTE_NAME, PersonDetailRoute.ROUTE_PATTERN)
+        )
     }
 
     @Test
-    fun screenTransition_hasSynchronizedSpringPhysicsAndSlideEnabled() {
-        assertTrue(
-            "Directional container slide must be enabled",
-            NavigationTransitionConfig.USE_CONTAINER_SLIDE
-        )
-        assertTrue(
-            "Hardware layer clipping must be enabled for smooth GPU rendering",
-            SharedAxisMotionConfig.ENABLE_HARDWARE_LAYER_CLIP
+    fun mainRootRoutes_identifyHomeAndPeopleCorrectly() {
+        assertTrue(isMainRootRoute(HomeRoute.ROUTE_NAME))
+        assertTrue(isMainRootRoute(PeopleRoute.ROUTE_NAME))
+        assertFalse(isMainRootRoute(SettingsRoute.ROUTE_NAME))
+        assertFalse(isMainRootRoute(PersonDetailRoute.ROUTE_PATTERN))
+        assertFalse(isMainRootRoute(OnboardingRoute.ROUTE_NAME))
+        assertFalse(isMainRootRoute(null))
+
+        assertEquals(0, mainRootRouteIndex(HomeRoute.ROUTE_NAME))
+        assertEquals(1, mainRootRouteIndex(PeopleRoute.ROUTE_NAME))
+        assertEquals(null, mainRootRouteIndex(SettingsRoute.ROUTE_NAME))
+    }
+
+    @Test
+    fun pixelPlayerRootTransition_uses380msSlide50PercentOffsetAnd190msHalfDurationFade() {
+        assertEquals(
+            "Bottom nav root transition duration must match PixelPlayer (380ms)",
+            380,
+            MotionTokens.BOTTOM_NAV_TRANSITION_DURATION
         )
         assertEquals(
-            "Screen slide and dock pill stiffness are synchronized",
-            MotionTokens.PILL_SPRING_STIFFNESS,
-            SharedAxisMotionConfig.SLIDE_SPRING_STIFFNESS,
-            0.001f
+            "Bottom nav fade duration must be half of slide duration (190ms)",
+            190,
+            MotionTokens.BOTTOM_NAV_FADE_DURATION
         )
         assertEquals(
-            "Screen slide and dock pill damping are synchronized",
-            MotionTokens.PILL_SPRING_DAMPING,
-            SharedAxisMotionConfig.SLIDE_SPRING_DAMPING,
-            0.001f
-        )
-        assertEquals(
-            "Subtle shared-axis slide offset divisor is 4 (25% screen width)",
-            4,
+            "Root slide offset fraction must be 50% (divisor 2)",
+            2,
             SharedAxisMotionConfig.SLIDE_OFFSET_DIVISOR
         )
-        assertTrue(
-            "Slide duration is snappy (<= 200ms) to eliminate delay and lag",
-            SharedAxisMotionConfig.SLIDE_DURATION_MS <= 200
+        assertEquals(
+            0.5f,
+            NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION,
+            0.001f
         )
-        assertTrue(
-            "Slide spring stiffness is tuned for visible, tactile motion (250f..600f)",
-            SharedAxisMotionConfig.SLIDE_SPRING_STIFFNESS in 250f..600f
-        )
+
+        // Pre-allocated static TweenSpecs must be reused to avoid allocations on low-end devices
+        assertSame(MotionTokens.MAIN_ROOT_TRANSITION_SPEC, MotionTokens.screenSlideSpec())
+        assertSame(MotionTokens.MAIN_ROOT_FADE_SPEC, MotionTokens.screenFadeSpec())
+        assertEquals(380, MotionTokens.MAIN_ROOT_TRANSITION_SPEC.durationMillis)
+        assertEquals(190, MotionTokens.MAIN_ROOT_FADE_SPEC.durationMillis)
+        assertEquals(MotionTokens.BottomNavEasing, MotionTokens.MAIN_ROOT_TRANSITION_SPEC.easing)
+        assertEquals(MotionTokens.BottomNavEasing, MotionTokens.MAIN_ROOT_FADE_SPEC.easing)
     }
 
     @Test
-    fun homeAndPeopleTransitions_areSymmetricInBothDirections() {
-        // Home -> People: Forward slide (People enters right, Home exits left)
-        val forwardDir = resolveRouteSlideDirection(HomeRoute.ROUTE_NAME, PeopleRoute.ROUTE_NAME)
-        assertEquals(NavigationTabDirection.FORWARD, forwardDir)
+    fun mainRootTransitions_useRootSlideBetweenTabsAndFallbackForNonRootRoutes() {
+        val fallbackEnter = EnterTransition.None
+        val fallbackExit = ExitTransition.None
 
-        // People -> Home: Backward slide (Home enters left, People exits right)
-        val backwardDir = resolveRouteSlideDirection(PeopleRoute.ROUTE_NAME, HomeRoute.ROUTE_NAME)
-        assertEquals(NavigationTabDirection.BACKWARD, backwardDir)
+        // Root -> Root (Home -> People) must NOT return the fallback
+        val rootEnter = mainRootEnterTransition(
+            fromRoute = HomeRoute.ROUTE_NAME,
+            toRoute = PeopleRoute.ROUTE_NAME,
+            fallback = fallbackEnter
+        )
+        val rootExit = mainRootExitTransition(
+            fromRoute = HomeRoute.ROUTE_NAME,
+            toRoute = PeopleRoute.ROUTE_NAME,
+            fallback = fallbackExit
+        )
+        assertNotEquals(fallbackEnter, rootEnter)
+        assertNotEquals(fallbackExit, rootExit)
+
+        // Root -> Non-Root (Home -> Settings) MUST delegate to fallback
+        val nonRootEnter = mainRootEnterTransition(
+            fromRoute = SettingsRoute.ROUTE_NAME,
+            toRoute = HomeRoute.ROUTE_NAME,
+            fallback = fallbackEnter
+        )
+        val nonRootExit = mainRootExitTransition(
+            fromRoute = HomeRoute.ROUTE_NAME,
+            toRoute = SettingsRoute.ROUTE_NAME,
+            fallback = fallbackExit
+        )
+        assertEquals(fallbackEnter, nonRootEnter)
+        assertEquals(fallbackExit, nonRootExit)
+    }
+
+    @Test
+    fun shouldHideFloatingDock_hidesOnNonRootRoutesAndShowsOnHomeAndPeople() {
+        assertFalse(shouldHideFloatingDock(HomeRoute.ROUTE_NAME))
+        assertFalse(shouldHideFloatingDock(PeopleRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(PersonDetailRoute.createRoute("123")))
+        assertTrue(shouldHideFloatingDock(PersonEditRoute.createRoute("123")))
+        assertTrue(shouldHideFloatingDock(OnboardingRoute.ROUTE_NAME))
     }
 
     @Test

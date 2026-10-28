@@ -56,23 +56,23 @@ class DockPerformanceTest {
         val offsetSpec = MotionTokens.tabTransitionOffsetTween()
 
         assertEquals(
-            "Size expansion spec must match pill travel duration (250ms)",
+            "Size expansion spec must match pill travel duration (380ms)",
             MotionTokens.TAB_TRANSITION_DURATION_MS,
             sizeSpec.durationMillis
         )
         assertEquals(
-            "Offset slide spec must match pill travel duration (250ms)",
+            "Offset slide spec must match pill travel duration (380ms)",
             MotionTokens.TAB_TRANSITION_DURATION_MS,
             offsetSpec.durationMillis
         )
         assertEquals(
-            "Size spec easing must be FastOutSlowInEasing for natural deceleration",
-            androidx.compose.animation.core.FastOutSlowInEasing,
+            "Size spec easing must be M3EmphasizedEasing for natural deceleration",
+            MotionTokens.M3EmphasizedEasing,
             sizeSpec.easing
         )
         assertEquals(
-            "Offset spec easing must be FastOutSlowInEasing for natural deceleration",
-            androidx.compose.animation.core.FastOutSlowInEasing,
+            "Offset spec easing must be M3EmphasizedEasing for natural deceleration",
+            MotionTokens.M3EmphasizedEasing,
             offsetSpec.easing
         )
     }

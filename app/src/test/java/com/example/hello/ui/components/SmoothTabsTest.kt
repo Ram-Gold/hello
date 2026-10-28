@@ -21,18 +21,18 @@ class SmoothTabsTest {
     fun tabTransitionTween_matchesAgreedSpecifications() {
         val tweenSpec = MotionTokens.tabTransitionTween()
         assertEquals(
-            "Tab and screen transition must be exactly 250ms",
-            250,
+            "Tab and screen transition must be 380ms matching PixelPlayer root transition",
+            380,
             MotionTokens.TAB_TRANSITION_DURATION_MS
         )
         assertEquals(
-            "Tween durationMillis must match 250ms token",
-            250,
+            "Tween durationMillis must match 380ms token",
+            380,
             tweenSpec.durationMillis
         )
         assertEquals(
-            "Tween easing must be FastOutSlowInEasing for smooth organic deceleration",
-            FastOutSlowInEasing,
+            "Tween easing must be M3EmphasizedEasing for smooth organic deceleration",
+            MotionTokens.M3EmphasizedEasing,
             tweenSpec.easing
         )
     }
