@@ -47,6 +47,10 @@ object DockMotionConfig {
     // Invariant 1:1 icon expansion footprint: 24dp square icon slot + 8dp spacer
     const val ICON_EXPANSION_WIDTH_DP = 32
 
+    // Bounded micro-translation constants for GPU motion (zero layout re-measurements)
+    const val ICON_SLIDE_DISTANCE_DP = 16
+    const val TEXT_CENTER_SHIFT_DP = 16
+
     // Directional icon horizontal slide fractions (positive enters from right to left)
     const val ICON_ENTER_OFFSET_FRACTION = 0.5f
     const val ICON_EXIT_OFFSET_FRACTION = -0.5f
@@ -54,6 +58,32 @@ object DockMotionConfig {
     // Backward-compatible aliases
     const val TEXT_ENTER_OFFSET_FRACTION = ICON_ENTER_OFFSET_FRACTION
     const val TEXT_EXIT_OFFSET_FRACTION = 0.5f
+
+    /**
+     * Resolves the directional multiplier for tab icon translation during transitions.
+     * When navigating towards People (moving right): multiplier is +1.0f (enters from right, exits to right).
+     * When navigating towards Home (moving left): multiplier is -1.0f (enters from left, exits to left).
+     */
+    fun resolveDirectionMultiplier(selectedTab: HomeNavTab): Float = when (selectedTab) {
+        HomeNavTab.PEOPLE -> 1.0f
+        HomeNavTab.HOME -> -1.0f
+    }
+
+    /**
+     * Calculates the stationary slot centers for Home (Slot 0) and Relationship (Slot 1)
+     * within the dock container. These centers match where the selection pill lands at progress 0.0
+     * and 1.0, ensuring zero layout jumping or clipping.
+     */
+    fun calculateSlotCenters(
+        containerWidth: Float,
+        homePillWidth: Float,
+        relationshipPillWidth: Float,
+        slotPadding: Float = PILL_VERTICAL_PADDING_DP.toFloat()
+    ): Pair<Float, Float> {
+        val homeCenter = slotPadding + (homePillWidth / 2f)
+        val relCenter = containerWidth - slotPadding - (relationshipPillWidth / 2f)
+        return Pair(homeCenter, relCenter)
+    }
 
     /**
      * Resolves the navigation tab icon based on destination and active selection state.

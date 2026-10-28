@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -265,17 +266,6 @@ private fun DockTabsLayer(
         label = "dockSlidingPillProgress"
     )
 
-    val homeWeight = if (selectedTab == HomeNavTab.HOME) {
-        dimensions.homePillWidthDp.toFloat()
-    } else {
-        dimensions.homeInactiveSlotWidthDp.toFloat()
-    }
-    val relWeight = if (selectedTab == HomeNavTab.HOME) {
-        dimensions.relationshipInactiveSlotWidthDp.toFloat()
-    } else {
-        dimensions.relationshipPillWidthDp.toFloat()
-    }
-
     val homeIconFractionProvider = remember {
         { (1f - pillProgressState.value).coerceIn(0f, 1f) }
     }
@@ -292,8 +282,7 @@ private fun DockTabsLayer(
         TabsRow(
             selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
-            homeWeight = homeWeight,
-            relationshipWeight = relWeight,
+            dimensions = dimensions,
             homeIconFractionProvider = homeIconFractionProvider,
             relationshipIconFractionProvider = relIconFractionProvider,
             iconColor = Color.Transparent,
@@ -321,8 +310,7 @@ private fun DockTabsLayer(
             TabsRow(
                 selectedTab = selectedTab,
                 peopleLabel = peopleTabLabel,
-                homeWeight = homeWeight,
-                relationshipWeight = relWeight,
+                dimensions = dimensions,
                 homeIconFractionProvider = homeIconFractionProvider,
                 relationshipIconFractionProvider = relIconFractionProvider,
                 iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -337,7 +325,7 @@ private fun DockTabsLayer(
         ) {
             Box(
                 modifier = Modifier
-                    .weight(homeWeight)
+                    .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -357,7 +345,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .weight(relWeight)
+                    .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -383,29 +371,30 @@ private fun DockTabsLayer(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
-    homeWeight: Float,
-    relationshipWeight: Float,
+    dimensions: DockDimensions,
     homeIconFractionProvider: () -> Float,
     relationshipIconFractionProvider: () -> Float,
     iconColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        // Slot 0 (Home): weighted slot, permanently centered at homeCenter
+        // Slot 0 (Home): anchored at start with exact 4dp padding, width = homePillWidthDp
+        // Permanently centered at homeCenter = 4dp + (homePillWidthDp / 2)
         Box(
             modifier = Modifier
-                .weight(homeWeight)
+                .align(Alignment.CenterStart)
+                .padding(start = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp)
+                .width(dimensions.homePillWidthDp.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             NavTabItemContent(
                 tab = HomeNavTab.HOME,
                 customLabel = null,
-                isSelected = selectedTab == HomeNavTab.HOME,
+                selectedTab = selectedTab,
                 iconFractionProvider = homeIconFractionProvider,
                 icon = DockMotionConfig.tabFilledIcon(HomeNavTab.HOME),
                 iconColor = iconColor,
@@ -413,17 +402,20 @@ private fun TabsRow(
             )
         }
 
-        // Slot 1 (Relationship): weighted slot, permanently centered at relCenter
+        // Slot 1 (Relationship): anchored at end with exact 4dp padding, width = relationshipPillWidthDp
+        // Permanently centered at relCenter = containerWidth - 4dp - (relationshipPillWidthDp / 2)
         Box(
             modifier = Modifier
-                .weight(relationshipWeight)
+                .align(Alignment.CenterEnd)
+                .padding(end = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp)
+                .width(dimensions.relationshipPillWidthDp.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             NavTabItemContent(
                 tab = HomeNavTab.PEOPLE,
                 customLabel = peopleLabel,
-                isSelected = selectedTab == HomeNavTab.PEOPLE,
+                selectedTab = selectedTab,
                 iconFractionProvider = relationshipIconFractionProvider,
                 icon = DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE),
                 iconColor = iconColor,
@@ -437,7 +429,7 @@ private fun TabsRow(
 private fun NavTabItemContent(
     tab: HomeNavTab,
     customLabel: String?,
-    isSelected: Boolean,
+    selectedTab: HomeNavTab,
     iconFractionProvider: () -> Float,
     icon: ImageVector,
     iconColor: Color,
@@ -445,53 +437,48 @@ private fun NavTabItemContent(
     modifier: Modifier = Modifier
 ) {
     val displayLabel = customLabel ?: tab.label
-    val offsetFraction = DockMotionConfig.resolveIconOffsetFraction(tab, isSelected)
+    val directionMultiplier = DockMotionConfig.resolveDirectionMultiplier(selectedTab)
+    val density = LocalDensity.current
+    val slideDistancePx = with(density) { DockMotionConfig.ICON_SLIDE_DISTANCE_DP.dp.toPx() }
+    val textShiftPx = with(density) { DockMotionConfig.TEXT_CENTER_SHIFT_DP.dp.toPx() }
 
     Box(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val fraction = iconFractionProvider().coerceIn(0f, 1f)
-                    val currentWidth = (placeable.width * fraction).roundToInt()
-                    layout(currentWidth, placeable.height) {
-                        if (fraction > 0.001f) {
-                            val offsetX = ((1f - fraction) * placeable.width * offsetFraction).roundToInt()
-                            placeable.placeRelativeWithLayer(offsetX, 0) {
-                                alpha = if (isSelected) 1f else fraction
-                            }
-                        }
-                    }
-                }
+            // Icon slot: fixed 24dp size, motion applied 100% via GPU graphicsLayer
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer {
+                        val fraction = iconFractionProvider().coerceIn(0f, 1f)
+                        alpha = fraction
+                        val scale = 0.85f + (0.15f * fraction)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = (1f - fraction) * slideDistancePx * directionMultiplier
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 if (iconColor != Color.Transparent) {
-                    Box(
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
                         modifier = Modifier
-                            .size(24.dp)
-                            .aspectRatio(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = iconColor,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .aspectRatio(1f)
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.size(24.dp))
+                            .size(22.dp)
+                            .aspectRatio(1f)
+                    )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Label text: stable layout, micro-translated on GPU to remain centered when unselected
             Text(
                 text = displayLabel,
                 maxLines = 1,
@@ -499,7 +486,13 @@ private fun NavTabItemContent(
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
-                color = textColor
+                color = textColor,
+                modifier = Modifier.graphicsLayer {
+                    val fraction = iconFractionProvider().coerceIn(0f, 1f)
+                    // At fraction = 1 (selected): translationX = 0 (centered together with icon)
+                    // At fraction = 0 (unselected): translationX = -textShiftPx (shifts text by -16dp, centering it in the slot)
+                    translationX = -textShiftPx * (1f - fraction)
+                }
             )
         }
     }

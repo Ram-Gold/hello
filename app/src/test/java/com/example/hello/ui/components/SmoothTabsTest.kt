@@ -352,4 +352,93 @@ class SmoothTabsTest {
             )
         }
     }
+
+    @Test
+    fun resolveDirectionMultiplier_providesCorrectSignForTabNavigationDirection() {
+        assertEquals(
+            "Navigating towards People (moving right) must have positive +1.0f multiplier",
+            1.0f,
+            DockMotionConfig.resolveDirectionMultiplier(HomeNavTab.PEOPLE),
+            0.001f
+        )
+        assertEquals(
+            "Navigating towards Home (moving left) must have negative -1.0f multiplier",
+            -1.0f,
+            DockMotionConfig.resolveDirectionMultiplier(HomeNavTab.HOME),
+            0.001f
+        )
+    }
+
+    @Test
+    fun calculateSlotCenters_exactlyMatchesPillCentersAtTerminalStates() {
+        val terminologies = listOf("People", "Friends", "Contacts", "Connections")
+        for (term in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val containerWidth = (dims.dockWidthDp - 10).toFloat()
+            val homePillWidth = dims.homePillWidthDp.toFloat()
+            val relPillWidth = dims.relationshipPillWidthDp.toFloat()
+
+            val (slot0Center, slot1Center) = DockMotionConfig.calculateSlotCenters(
+                containerWidth = containerWidth,
+                homePillWidth = homePillWidth,
+                relationshipPillWidth = relPillWidth
+            )
+
+            // Pill center at progress 0.0 (Home)
+            val (homeLeft, homeRight) = DockMotionConfig.calculateBalancedPillBounds(
+                containerWidth = containerWidth,
+                homePillWidth = homePillWidth,
+                relationshipPillWidth = relPillWidth,
+                progress = 0.0f
+            )
+            val pillCenterAtHome = (homeLeft + homeRight) / 2f
+            assertEquals(
+                "Slot 0 center must exactly match pill center at progress 0.0 for $term",
+                pillCenterAtHome,
+                slot0Center,
+                0.001f
+            )
+
+            // Pill center at progress 1.0 (Relationship)
+            val (relLeft, relRight) = DockMotionConfig.calculateBalancedPillBounds(
+                containerWidth = containerWidth,
+                homePillWidth = homePillWidth,
+                relationshipPillWidth = relPillWidth,
+                progress = 1.0f
+            )
+            val pillCenterAtRel = (relLeft + relRight) / 2f
+            assertEquals(
+                "Slot 1 center must exactly match pill center at progress 1.0 for $term",
+                pillCenterAtRel,
+                slot1Center,
+                0.001f
+            )
+        }
+    }
+
+    @Test
+    fun gpuMicroTranslation_preservesBreathingRoomInsidePillAcrossAllTerminologies() {
+        val terminologies = listOf(
+            "People" to 46f,
+            "Friends" to 50f,
+            "Contacts" to 60f,
+            "Connections" to 75f
+        )
+        for ((term, textWidth) in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val relPillWidth = dims.relationshipPillWidthDp.toFloat()
+            val halfPillWidth = relPillWidth / 2f
+
+            // Maximum lateral excursion of text from slot center:
+            // When selected, text center is at +TEXT_CENTER_SHIFT_DP (16dp).
+            // Right edge of text is 16dp + (textWidth / 2f).
+            val maxTextRightExtent = DockMotionConfig.TEXT_CENTER_SHIFT_DP + (textWidth / 2f)
+            val safetyMargin = halfPillWidth - maxTextRightExtent
+
+            assertTrue(
+                "Text for $term must maintain >= 10dp margin inside pill boundary to prevent clipping (actual: $safetyMargin dp)",
+                safetyMargin >= 10f
+            )
+        }
+    }
 }
