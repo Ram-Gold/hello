@@ -266,6 +266,15 @@ private fun DockTabsLayer(
         label = "dockSlidingPillProgress"
     )
 
+    val homeActiveW = dimensions.homePillWidthDp.toFloat()
+    val homeInactiveW = dimensions.homeInactiveSlotWidthDp.toFloat()
+    val relActiveW = dimensions.relationshipPillWidthDp.toFloat()
+    val relInactiveW = dimensions.relationshipInactiveSlotWidthDp.toFloat()
+
+    val progress = pillProgressState.value
+    val homeWeight = (1f - progress) * homeActiveW + progress * homeInactiveW
+    val relWeight = (1f - progress) * relInactiveW + progress * relActiveW
+
     val homeIconFractionProvider = remember {
         { (1f - pillProgressState.value).coerceIn(0f, 1f) }
     }
@@ -282,7 +291,8 @@ private fun DockTabsLayer(
         TabsRow(
             selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
-            dimensions = dimensions,
+            homeWeight = homeWeight,
+            relationshipWeight = relWeight,
             homeIconFractionProvider = homeIconFractionProvider,
             relationshipIconFractionProvider = relIconFractionProvider,
             iconColor = Color.Transparent,
@@ -294,6 +304,14 @@ private fun DockTabsLayer(
         val pillShape = remember(dimensions.homePillWidthDp, dimensions.relationshipPillWidthDp) {
             CenteredPillClipShape(
                 progressProvider = { pillProgressState.value },
+                homeWeightProvider = {
+                    val p = pillProgressState.value
+                    (1f - p) * homeActiveW + p * homeInactiveW
+                },
+                relWeightProvider = {
+                    val p = pillProgressState.value
+                    (1f - p) * relInactiveW + p * relActiveW
+                },
                 homePillWidthDp = dimensions.homePillWidthDp,
                 relationshipPillWidthDp = dimensions.relationshipPillWidthDp
             )
@@ -310,7 +328,8 @@ private fun DockTabsLayer(
             TabsRow(
                 selectedTab = selectedTab,
                 peopleLabel = peopleTabLabel,
-                dimensions = dimensions,
+                homeWeight = homeWeight,
+                relationshipWeight = relWeight,
                 homeIconFractionProvider = homeIconFractionProvider,
                 relationshipIconFractionProvider = relIconFractionProvider,
                 iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -325,7 +344,7 @@ private fun DockTabsLayer(
         ) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(homeWeight)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -345,7 +364,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(relWeight)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -371,23 +390,22 @@ private fun DockTabsLayer(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
-    dimensions: DockDimensions,
+    homeWeight: Float,
+    relationshipWeight: Float,
     homeIconFractionProvider: () -> Float,
     relationshipIconFractionProvider: () -> Float,
     iconColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize()
+    Row(
+        modifier = modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Slot 0 (Home): anchored at start with exact 4dp padding, width = homePillWidthDp
-        // Permanently centered at homeCenter = 4dp + (homePillWidthDp / 2)
+        // Slot 0 (Home): weighted slot in Row, never overlaps Slot 1
         Box(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp)
-                .width(dimensions.homePillWidthDp.dp)
+                .weight(homeWeight)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
@@ -402,13 +420,10 @@ private fun TabsRow(
             )
         }
 
-        // Slot 1 (Relationship): anchored at end with exact 4dp padding, width = relationshipPillWidthDp
-        // Permanently centered at relCenter = containerWidth - 4dp - (relationshipPillWidthDp / 2)
+        // Slot 1 (Relationship): weighted slot in Row, never overlaps Slot 0
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp)
-                .width(dimensions.relationshipPillWidthDp.dp)
+                .weight(relationshipWeight)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
@@ -547,6 +562,8 @@ private fun SpeedDialChip(
  */
 private class CenteredPillClipShape(
     private val progressProvider: () -> Float,
+    private val homeWeightProvider: () -> Float,
+    private val relWeightProvider: () -> Float,
     private val homePillWidthDp: Int,
     private val relationshipPillWidthDp: Int,
     private val verticalPaddingDp: Dp = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp
@@ -557,16 +574,19 @@ private class CenteredPillClipShape(
         density: Density
     ): Outline {
         val progress = progressProvider()
+        val homeWeight = homeWeightProvider()
+        val relWeight = relWeightProvider()
         val homeWidthPx = with(density) { homePillWidthDp.dp.toPx() }
         val relWidthPx = with(density) { relationshipPillWidthDp.dp.toPx() }
         val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
 
-        val (left, right) = DockMotionConfig.calculateBalancedPillBounds(
+        val (left, right) = DockMotionConfig.calculateRowWeightedPillBounds(
             containerWidth = size.width,
+            homeWeight = homeWeight,
+            relationshipWeight = relWeight,
             homePillWidth = homeWidthPx,
             relationshipPillWidth = relWidthPx,
-            progress = progress,
-            slotPadding = vPaddingPx
+            progress = progress
         )
 
         val top = vPaddingPx

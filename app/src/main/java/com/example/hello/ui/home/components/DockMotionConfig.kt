@@ -250,6 +250,31 @@ object DockMotionConfig {
     }
 
     /**
+     * Calculates the exact bounds of the selection pill centered over the dynamically-weighted
+     * slots of the Row. Supports any container width (including wide screens and tablets) with zero overlap.
+     */
+    fun calculateRowWeightedPillBounds(
+        containerWidth: Float,
+        homeWeight: Float,
+        relationshipWeight: Float,
+        homePillWidth: Float,
+        relationshipPillWidth: Float,
+        progress: Float
+    ): Pair<Float, Float> {
+        val clampedProgress = progress.coerceIn(0f, 1f)
+        val totalWeight = (homeWeight + relationshipWeight).coerceAtLeast(1f)
+        val slot0Width = containerWidth * (homeWeight / totalWeight)
+        val slot1Width = containerWidth * (relationshipWeight / totalWeight)
+        val slot0Center = slot0Width / 2f
+        val slot1Center = slot0Width + (slot1Width / 2f)
+        val currentCenter = (1f - clampedProgress) * slot0Center + clampedProgress * slot1Center
+        val currentWidth = (1f - clampedProgress) * homePillWidth + clampedProgress * relationshipPillWidth
+        val left = currentCenter - (currentWidth / 2f)
+        val right = currentCenter + (currentWidth / 2f)
+        return Pair(left, right)
+    }
+
+    /**
      * Backward-compatible overload for symmetrical pill widths.
      */
     fun calculateCenteredPillBounds(

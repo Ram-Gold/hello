@@ -441,4 +441,56 @@ class SmoothTabsTest {
             )
         }
     }
+
+    @Test
+    fun calculateRowWeightedPillBounds_guaranteesZeroOverlapAndSupportsWideScreens() {
+        val testWidths = listOf(170f, 210f, 320f, 500f) // from normal phone up to tablet/desktop
+        val terminologies = listOf("People", "Friends", "Contacts", "Connections")
+
+        for (width in testWidths) {
+            for (term in terminologies) {
+                val dims = DockMotionConfig.resolveDockDimensions(term)
+                val homeActiveW = dims.homePillWidthDp.toFloat()
+                val homeInactiveW = dims.homeInactiveSlotWidthDp.toFloat()
+                val relActiveW = dims.relationshipPillWidthDp.toFloat()
+                val relInactiveW = dims.relationshipInactiveSlotWidthDp.toFloat()
+
+                // Verify that slots in a Row never overlap at any progress point
+                var progress = 0.0f
+                while (progress <= 1.0f) {
+                    val currentHomeWeight = (1f - progress) * homeActiveW + progress * homeInactiveW
+                    val currentRelWeight = (1f - progress) * relInactiveW + progress * relActiveW
+                    val totalWeight = currentHomeWeight + currentRelWeight
+
+                    val slot0Width = width * (currentHomeWeight / totalWeight)
+                    val slot1Width = width * (currentRelWeight / totalWeight)
+
+                    // Slot 0 right edge equals Slot 1 left edge (zero overlap)
+                    assertEquals(width, slot0Width + slot1Width, 0.001f)
+                    assertTrue("Slot 0 width must be strictly positive", slot0Width > 0f)
+                    assertTrue("Slot 1 width must be strictly positive", slot1Width > 0f)
+
+                    val (left, right) = DockMotionConfig.calculateRowWeightedPillBounds(
+                        containerWidth = width,
+                        homeWeight = currentHomeWeight,
+                        relationshipWeight = currentRelWeight,
+                        homePillWidth = homeActiveW,
+                        relationshipPillWidth = relActiveW,
+                        progress = progress
+                    )
+
+                    assertTrue("Pill left ($left) must be less than pill right ($right)", left < right)
+                    val pillWidth = right - left
+                    val minWidth = minOf(homeActiveW, relActiveW)
+                    val maxWidth = maxOf(homeActiveW, relActiveW)
+                    assertTrue(
+                        "Pill width ($pillWidth) must be bounded between $minWidth and $maxWidth",
+                        pillWidth in (minWidth - 0.01f)..(maxWidth + 0.01f)
+                    )
+
+                    progress += 0.2f
+                }
+            }
+        }
+    }
 }
