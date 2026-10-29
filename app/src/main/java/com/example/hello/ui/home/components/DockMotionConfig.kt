@@ -203,7 +203,7 @@ object DockMotionConfig {
 
     // Default home selection pill width providing comfortable ~15dp balanced inline padding with 1:1 icon
     const val HOME_PILL_WIDTH_DP = 96
-    const val HOME_INACTIVE_SLOT_WIDTH_DP = 64
+    const val HOME_INACTIVE_SLOT_WIDTH_DP = 96
 
     /**
      * Resolves pre-configured, deterministic dock and tab-specific selection pill dimensions per relationship terminology.
@@ -212,11 +212,11 @@ object DockMotionConfig {
      */
     fun resolveDockDimensions(label: String?): DockDimensions {
         val (dockWidth, relPill, relInactive) = when (label?.lowercase()) {
-            "connections" -> Triple(214, 132, 104)
-            "contacts" -> Triple(196, 114, 86)
-            "friends" -> Triple(186, 104, 76)
-            "people" -> Triple(180, 100, 72)
-            else -> Triple(180, 100, 72)
+            "connections" -> Triple(238, 132, 132)
+            "contacts" -> Triple(220, 114, 114)
+            "friends" -> Triple(210, 104, 104)
+            "people" -> Triple(206, 100, 100)
+            else -> Triple(206, 100, 100)
         }
         return DockDimensions(
             dockWidthDp = dockWidth,
@@ -225,6 +225,25 @@ object DockMotionConfig {
             homeInactiveSlotWidthDp = HOME_INACTIVE_SLOT_WIDTH_DP,
             relationshipInactiveSlotWidthDp = relInactive
         )
+    }
+
+    /**
+     * Calculates deterministic position and width coordinates for the sliding selection pill
+     * over static asymmetric slots.
+     * At progress = 0f (Home): left = slotPadding, width = homePillWidth
+     * At progress = 1f (Relationship): left = slotPadding + homePillWidth, width = relationshipPillWidth
+     */
+    fun calculateStaticPillBounds(
+        homePillWidth: Float,
+        relationshipPillWidth: Float,
+        progress: Float,
+        slotPadding: Float = 0f
+    ): Pair<Float, Float> {
+        val clampedProgress = progress.coerceIn(0f, 1f)
+        val left = slotPadding + (homePillWidth * clampedProgress)
+        val width = homePillWidth + (relationshipPillWidth - homePillWidth) * clampedProgress
+        val right = left + width
+        return Pair(left, right)
     }
 
     /**

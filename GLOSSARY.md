@@ -43,3 +43,13 @@ _Avoid_: User Profile, ID Card, Business Card
 **Export Bundle**:
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
 _Avoid_: Backup dump, Database export, System dump
+
+## Presentation & Navigation
+
+**Floating Bottom Dock**:
+The floating bottom navigation bar that houses the primary navigation tabs (Home Tab and Relationship Tab) alongside the companion Quick-Add Floating Action Button.
+_Avoid_: Navbar, Bottom bar, Tab bar
+
+**Relationship Tab**:
+The primary navigation tab within the Floating Bottom Dock that opens the contacts surface, dynamically labeled and styled according to the active Relationship Terminology (People, Friends, Connections, or Contacts).
+_Avoid_: People Tab, Contacts Tab, Navbar item

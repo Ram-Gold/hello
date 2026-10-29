@@ -493,4 +493,47 @@ class SmoothTabsTest {
             }
         }
     }
+
+    @Test
+    fun calculateStaticPillBounds_glidesDeterministicallyBetweenStaticSlots() {
+        val terminologies = listOf("People", "Friends", "Contacts", "Connections")
+        for (term in terminologies) {
+            val dims = DockMotionConfig.resolveDockDimensions(term)
+            val homeW = dims.homePillWidthDp.toFloat()
+            val relW = dims.relationshipPillWidthDp.toFloat()
+
+            // At progress 0.0 (Home)
+            val (homeLeft, homeRight) = DockMotionConfig.calculateStaticPillBounds(
+                homePillWidth = homeW,
+                relationshipPillWidth = relW,
+                progress = 0f
+            )
+            assertEquals(0f, homeLeft, 0.001f)
+            assertEquals(homeW, homeRight - homeLeft, 0.001f)
+
+            // At progress 1.0 (Relationship)
+            val (relLeft, relRight) = DockMotionConfig.calculateStaticPillBounds(
+                homePillWidth = homeW,
+                relationshipPillWidth = relW,
+                progress = 1f
+            )
+            assertEquals(homeW, relLeft, 0.001f)
+            assertEquals(relW, relRight - relLeft, 0.001f)
+
+            // Across progress steps: left and right increase monotonically
+            var prevLeft = 0f
+            var p = 0.0f
+            while (p <= 1.0f) {
+                val (left, right) = DockMotionConfig.calculateStaticPillBounds(
+                    homePillWidth = homeW,
+                    relationshipPillWidth = relW,
+                    progress = p
+                )
+                assertTrue(left >= prevLeft)
+                assertTrue(right > left)
+                prevLeft = left
+                p += 0.2f
+            }
+        }
+    }
 }

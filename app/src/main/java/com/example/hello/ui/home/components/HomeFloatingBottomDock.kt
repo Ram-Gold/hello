@@ -51,15 +51,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
@@ -266,76 +269,40 @@ private fun DockTabsLayer(
         label = "dockSlidingPillProgress"
     )
 
-    val homeActiveW = dimensions.homePillWidthDp.toFloat()
-    val homeInactiveW = dimensions.homeInactiveSlotWidthDp.toFloat()
-    val relActiveW = dimensions.relationshipPillWidthDp.toFloat()
-    val relInactiveW = dimensions.relationshipInactiveSlotWidthDp.toFloat()
-
-    val progress = pillProgressState.value
-    val homeWeight = (1f - progress) * homeActiveW + progress * homeInactiveW
-    val relWeight = (1f - progress) * relInactiveW + progress * relActiveW
-
-    val homeIconFractionProvider = remember {
-        { (1f - pillProgressState.value).coerceIn(0f, 1f) }
-    }
-    val relIconFractionProvider = remember {
-        { pillProgressState.value.coerceIn(0f, 1f) }
-    }
+    val homeSlotWidthDp = dimensions.homePillWidthDp
+    val relSlotWidthDp = dimensions.relationshipPillWidthDp
+    val pillColor = MaterialTheme.colorScheme.secondaryContainer
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(5.dp)
+            .padding(horizontal = 5.dp)
+            .drawBehind {
+                val progress = pillProgressState.value.coerceIn(0f, 1f)
+                val homeWidthPx = homeSlotWidthDp.dp.toPx()
+                val relWidthPx = relSlotWidthDp.dp.toPx()
+                val left = homeWidthPx * progress
+                val currentWidth = homeWidthPx + (relWidthPx - homeWidthPx) * progress
+                val vPaddingPx = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp.toPx()
+                val top = vPaddingPx
+                val height = size.height - (vPaddingPx * 2f)
+                val radius = height / 2f
+                drawRoundRect(
+                    color = pillColor,
+                    topLeft = Offset(left, top),
+                    size = Size(currentWidth, height),
+                    cornerRadius = CornerRadius(radius, radius)
+                )
+            }
     ) {
-        // Base Layer: Inactive styled tabs (onSurfaceVariant color, identical typography)
+        // Foreground Single TabsRow (static slots, zero weight recalculation)
         TabsRow(
             selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
-            homeWeight = homeWeight,
-            relationshipWeight = relWeight,
-            homeIconFractionProvider = homeIconFractionProvider,
-            relationshipIconFractionProvider = relIconFractionProvider,
-            iconColor = Color.Transparent,
-            textColor = MaterialTheme.colorScheme.onSurfaceVariant
+            homeSlotWidthDp = homeSlotWidthDp,
+            relationshipSlotWidthDp = relSlotWidthDp,
+            pillProgressProvider = { pillProgressState.value }
         )
-
-        // Active Layer: SecondaryContainer pill background + active styled tabs (onSecondaryContainer),
-        // clipped dynamically in the GPU draw phase to the moving centered pill shape.
-        val pillShape = remember(dimensions.homePillWidthDp, dimensions.relationshipPillWidthDp) {
-            CenteredPillClipShape(
-                progressProvider = { pillProgressState.value },
-                homeWeightProvider = {
-                    val p = pillProgressState.value
-                    (1f - p) * homeActiveW + p * homeInactiveW
-                },
-                relWeightProvider = {
-                    val p = pillProgressState.value
-                    (1f - p) * relInactiveW + p * relActiveW
-                },
-                homePillWidthDp = dimensions.homePillWidthDp,
-                relationshipPillWidthDp = dimensions.relationshipPillWidthDp
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    clip = true
-                    shape = pillShape
-                }
-                .background(MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            TabsRow(
-                selectedTab = selectedTab,
-                peopleLabel = peopleTabLabel,
-                homeWeight = homeWeight,
-                relationshipWeight = relWeight,
-                homeIconFractionProvider = homeIconFractionProvider,
-                relationshipIconFractionProvider = relIconFractionProvider,
-                iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                textColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
 
         // Interactive Touch Layer on top (48dp+ accessible touch target)
         Row(
@@ -344,7 +311,7 @@ private fun DockTabsLayer(
         ) {
             Box(
                 modifier = Modifier
-                    .weight(homeWeight)
+                    .width(homeSlotWidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -364,7 +331,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .weight(relWeight)
+                    .width(relSlotWidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -390,51 +357,56 @@ private fun DockTabsLayer(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
-    homeWeight: Float,
-    relationshipWeight: Float,
-    homeIconFractionProvider: () -> Float,
-    relationshipIconFractionProvider: () -> Float,
-    iconColor: Color,
-    textColor: Color,
+    homeSlotWidthDp: Int,
+    relationshipSlotWidthDp: Int,
+    pillProgressProvider: () -> Float,
     modifier: Modifier = Modifier
 ) {
+    val progress = pillProgressProvider()
+    val homeColor = lerp(
+        MaterialTheme.colorScheme.onSurfaceVariant,
+        MaterialTheme.colorScheme.onSecondaryContainer,
+        (1f - progress).coerceIn(0f, 1f)
+    )
+    val relColor = lerp(
+        MaterialTheme.colorScheme.onSurfaceVariant,
+        MaterialTheme.colorScheme.onSecondaryContainer,
+        progress.coerceIn(0f, 1f)
+    )
+
     Row(
         modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Slot 0 (Home): weighted slot in Row, never overlaps Slot 1
+        // Slot 0 (Home): fixed width, permanently locked during transitions
         Box(
             modifier = Modifier
-                .weight(homeWeight)
+                .width(homeSlotWidthDp.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             NavTabItemContent(
                 tab = HomeNavTab.HOME,
                 customLabel = null,
-                selectedTab = selectedTab,
-                iconFractionProvider = homeIconFractionProvider,
+                isSelected = selectedTab == HomeNavTab.HOME,
                 icon = DockMotionConfig.tabFilledIcon(HomeNavTab.HOME),
-                iconColor = iconColor,
-                textColor = textColor
+                contentColor = homeColor
             )
         }
 
-        // Slot 1 (Relationship): weighted slot in Row, never overlaps Slot 0
+        // Slot 1 (Relationship Tab): fixed width, permanently locked during transitions
         Box(
             modifier = Modifier
-                .weight(relationshipWeight)
+                .width(relationshipSlotWidthDp.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
             NavTabItemContent(
                 tab = HomeNavTab.PEOPLE,
                 customLabel = peopleLabel,
-                selectedTab = selectedTab,
-                iconFractionProvider = relationshipIconFractionProvider,
+                isSelected = selectedTab == HomeNavTab.PEOPLE,
                 icon = DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE),
-                iconColor = iconColor,
-                textColor = textColor
+                contentColor = relColor
             )
         }
     }
@@ -444,18 +416,12 @@ private fun TabsRow(
 private fun NavTabItemContent(
     tab: HomeNavTab,
     customLabel: String?,
-    selectedTab: HomeNavTab,
-    iconFractionProvider: () -> Float,
+    isSelected: Boolean,
     icon: ImageVector,
-    iconColor: Color,
-    textColor: Color,
+    contentColor: Color,
     modifier: Modifier = Modifier
 ) {
     val displayLabel = customLabel ?: tab.label
-    val directionMultiplier = DockMotionConfig.resolveDirectionMultiplier(selectedTab)
-    val density = LocalDensity.current
-    val slideDistancePx = with(density) { DockMotionConfig.ICON_SLIDE_DISTANCE_DP.dp.toPx() }
-    val textShiftPx = with(density) { DockMotionConfig.TEXT_CENTER_SHIFT_DP.dp.toPx() }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -465,35 +431,36 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Icon slot: fixed 24dp size, motion applied 100% via GPU graphicsLayer
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        val fraction = iconFractionProvider().coerceIn(0f, 1f)
-                        alpha = fraction
-                        val scale = 0.85f + (0.15f * fraction)
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = (1f - fraction) * slideDistancePx * directionMultiplier
-                    },
-                contentAlignment = Alignment.Center
+            // Icon slot: only visible when active! Fades and expands horizontally
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
+                        expandHorizontally(
+                            animationSpec = MotionTokens.tabTransitionSizeTween(),
+                            expandFrom = Alignment.End
+                        ),
+                exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
+                       shrinkHorizontally(
+                           animationSpec = MotionTokens.tabTransitionSizeTween(),
+                           shrinkTowards = Alignment.End
+                       )
             ) {
-                if (iconColor != Color.Transparent) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = iconColor,
+                        tint = contentColor,
                         modifier = Modifier
                             .size(22.dp)
                             .aspectRatio(1f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Label text: stable layout, micro-translated on GPU to remain centered when unselected
+            // Label text: ALWAYS visible on both tabs! Centered naturally when unselected
             Text(
                 text = displayLabel,
                 maxLines = 1,
@@ -501,13 +468,7 @@ private fun NavTabItemContent(
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
-                color = textColor,
-                modifier = Modifier.graphicsLayer {
-                    val fraction = iconFractionProvider().coerceIn(0f, 1f)
-                    // At fraction = 1 (selected): translationX = 0 (centered together with icon)
-                    // At fraction = 0 (unselected): translationX = -textShiftPx (shifts text by -16dp, centering it in the slot)
-                    translationX = -textShiftPx * (1f - fraction)
-                }
+                color = contentColor
             )
         }
     }
@@ -553,56 +514,6 @@ private fun SpeedDialChip(
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
-    }
-}
-
-/**
- * Reusable zero-allocation shape that dynamically outlines the centered sliding pill in the draw phase.
- * Translates between Slot 0 center and Slot 1 center with deterministic width interpolation (zero jitter).
- */
-private class CenteredPillClipShape(
-    private val progressProvider: () -> Float,
-    private val homeWeightProvider: () -> Float,
-    private val relWeightProvider: () -> Float,
-    private val homePillWidthDp: Int,
-    private val relationshipPillWidthDp: Int,
-    private val verticalPaddingDp: Dp = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp
-) : Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density
-    ): Outline {
-        val progress = progressProvider()
-        val homeWeight = homeWeightProvider()
-        val relWeight = relWeightProvider()
-        val homeWidthPx = with(density) { homePillWidthDp.dp.toPx() }
-        val relWidthPx = with(density) { relationshipPillWidthDp.dp.toPx() }
-        val vPaddingPx = with(density) { verticalPaddingDp.toPx() }
-
-        val (left, right) = DockMotionConfig.calculateRowWeightedPillBounds(
-            containerWidth = size.width,
-            homeWeight = homeWeight,
-            relationshipWeight = relWeight,
-            homePillWidth = homeWidthPx,
-            relationshipPillWidth = relWidthPx,
-            progress = progress
-        )
-
-        val top = vPaddingPx
-        val bottom = size.height - vPaddingPx
-        val pillHeight = (bottom - top).coerceAtLeast(0f)
-        val radius = pillHeight / 2f
-
-        return Outline.Rounded(
-            RoundRect(
-                left = left,
-                top = top,
-                right = right,
-                bottom = bottom,
-                cornerRadius = CornerRadius(radius, radius)
-            )
-        )
     }
 }
 
