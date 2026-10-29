@@ -129,10 +129,7 @@ fun PersonDetailScreen(
                 item(key = "header") {
                     DetailCollapsingHeader(
                         contact = uiState.contact,
-                        summary = uiState.contactSummary,
-                        onPhoneClick = { onEvent(PersonDetailUiEvent.OnPhoneClick) },
-                        onMessageClick = { onEvent(PersonDetailUiEvent.OnMessageClick) },
-                        onEmailClick = { onEvent(PersonDetailUiEvent.OnEmailClick) }
+                        summary = uiState.contactSummary
                     )
                 }
 

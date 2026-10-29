@@ -106,4 +106,26 @@ class ContactsViewModelTest {
         assertNotNull(viewModel.uiState.value.userMessage)
         assertTrue(viewModel.uiState.value.userMessage!!.contains(targetId))
     }
+
+    @Test
+    fun searchQuery_filtersByNotesAndTags() {
+        // Filter by note keyword
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("Ethiopian"))
+        assertEquals(1, viewModel.uiState.value.contacts.size)
+        assertEquals("Alex Rivera", viewModel.uiState.value.contacts.first().name)
+
+        // Filter by tag name
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("Coffee"))
+        val coffeeContacts = viewModel.uiState.value.contacts
+        assertTrue(coffeeContacts.isNotEmpty())
+        assertTrue(coffeeContacts.any { it.name == "Elena Rostova" || it.name == "Liam Chen" })
+    }
+
+    @Test
+    fun contactSummary_containsEnrichedNotesAndTags() {
+        val alex = viewModel.uiState.value.contacts.first { it.name == "Alex Rivera" }
+        assertTrue(alex.notes.isNotBlank())
+        assertTrue(alex.tags.isNotEmpty())
+        assertTrue(alex.tags.any { it.name == "Design" })
+    }
 }

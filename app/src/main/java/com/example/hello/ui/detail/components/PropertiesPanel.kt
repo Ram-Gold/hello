@@ -69,11 +69,7 @@ fun PropertiesPanel(
         if (circles.isNotEmpty() || matchingTags.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                ),
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -131,11 +127,7 @@ fun PropertiesPanel(
         if (notes.isNotBlank()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                ),
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -164,7 +156,7 @@ fun PropertiesPanel(
 
 @Composable
 private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
-    val (statusColor, containerColor, icon) = when (cadenceStatus.health) {
+    val (statusColor, _, icon) = when (cadenceStatus.health) {
         CadenceHealth.ON_TRACK -> Triple(
             WarmSageTertiary,
             AvatarSage.copy(alpha = 0.35f),
@@ -189,8 +181,7 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = containerColor,
-        border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.35f)),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -247,11 +238,7 @@ private fun CirclePillChip(circle: Circle) {
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        )
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -278,8 +265,7 @@ private fun TagPillChip(tag: Tag) {
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = parsedColor.copy(alpha = 0.12f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, parsedColor.copy(alpha = 0.3f))
+        color = parsedColor.copy(alpha = 0.14f)
     ) {
         Text(
             text = "#${tag.name}",

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.data.repository.ContactRepository.Companion.toSummary
 import com.example.hello.data.local.entity.toEntity
+import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
@@ -144,7 +145,9 @@ class ContactsViewModel(
                     true
                 } else {
                     contact.name.contains(searchQuery, ignoreCase = true) ||
-                            contact.contextSubtitle.contains(searchQuery, ignoreCase = true)
+                            contact.contextSubtitle.contains(searchQuery, ignoreCase = true) ||
+                            contact.notes.contains(searchQuery, ignoreCase = true) ||
+                            contact.tags.any { it.name.contains(searchQuery, ignoreCase = true) }
                 }
                 val matchesCircle = if (selectedCircle == null) {
                     true
@@ -191,7 +194,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.WORK),
                     avatarInitials = "AR",
                     avatarBgIndex = 0,
-                    lastEncounterText = "Met today"
+                    lastEncounterText = "Met today",
+                    notes = "Working on design system tokens and micro-interactions. Loves pour-over Ethiopian roast.",
+                    tags = listOf(MockDataProvider.tagDesign, MockDataProvider.tagTech)
                 ),
                 ContactSummary(
                     id = "c-2",
@@ -200,7 +205,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.WORK, Circle.UNI),
                     avatarInitials = "DK",
                     avatarBgIndex = 1,
-                    lastEncounterText = "10 days ago"
+                    lastEncounterText = "10 days ago",
+                    notes = "Discussed Compose gestures and physics-based spring transitions.",
+                    tags = listOf(MockDataProvider.tagTech)
                 ),
                 ContactSummary(
                     id = "c-3",
@@ -209,7 +216,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.FRIENDS, Circle.FAMILY),
                     avatarInitials = "ER",
                     avatarBgIndex = 2,
-                    lastEncounterText = "Last Sunday"
+                    lastEncounterText = "Last Sunday",
+                    notes = "Exchanged monstera cuttings and discussed balcony gardening setup.",
+                    tags = listOf(MockDataProvider.tagCoffee)
                 ),
                 ContactSummary(
                     id = "c-4",
@@ -218,7 +227,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.FRIENDS),
                     avatarInitials = "LC",
                     avatarBgIndex = 3,
-                    lastEncounterText = "2 weeks ago"
+                    lastEncounterText = "2 weeks ago",
+                    notes = "Architect exploring urban geometry and brutalist structures.",
+                    tags = listOf(MockDataProvider.tagDesign, MockDataProvider.tagCoffee)
                 ),
                 ContactSummary(
                     id = "c-5",
@@ -227,7 +238,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.WORK),
                     avatarInitials = "MV",
                     avatarBgIndex = 4,
-                    lastEncounterText = "4 days ago"
+                    lastEncounterText = "4 days ago",
+                    notes = "Founder at Studio Arc. Brainstormed local-first privacy models.",
+                    tags = listOf(MockDataProvider.tagTech, MockDataProvider.tagAi)
                 ),
                 ContactSummary(
                     id = "c-6",
@@ -236,7 +249,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.UNI, Circle.FRIENDS),
                     avatarInitials = "MP",
                     avatarBgIndex = 5,
-                    lastEncounterText = "Met yesterday"
+                    lastEncounterText = "Met yesterday",
+                    notes = "Hackathon project on on-device vector search without cloud sync.",
+                    tags = listOf(MockDataProvider.tagAi, MockDataProvider.tagTech)
                 ),
                 ContactSummary(
                     id = "c-7",
@@ -245,7 +260,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.FRIENDS),
                     avatarInitials = "NA",
                     avatarBgIndex = 0,
-                    lastEncounterText = "1 month ago"
+                    lastEncounterText = "1 month ago",
+                    notes = "High School Friend catching up quarterly over dinner.",
+                    tags = emptyList()
                 ),
                 ContactSummary(
                     id = "c-8",
@@ -254,7 +271,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.FAMILY, Circle.FRIENDS),
                     avatarInitials = "SL",
                     avatarBgIndex = 1,
-                    lastEncounterText = "45 days ago"
+                    lastEncounterText = "45 days ago",
+                    notes = "Biotech Researcher and tea tasting buddy. Exploring fermented oolong varieties.",
+                    tags = listOf(MockDataProvider.tagCoffee)
                 ),
                 ContactSummary(
                     id = "c-9",
@@ -263,7 +282,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.WORK),
                     avatarInitials = "SM",
                     avatarBgIndex = 2,
-                    lastEncounterText = "Yesterday"
+                    lastEncounterText = "Yesterday",
+                    notes = "UX Researcher working on tactile accessibility tooling.",
+                    tags = listOf(MockDataProvider.tagDesign)
                 ),
                 ContactSummary(
                     id = "c-10",
@@ -272,7 +293,9 @@ class ContactsViewModel(
                     circles = listOf(Circle.FRIENDS),
                     avatarInitials = "ZW",
                     avatarBgIndex = 3,
-                    lastEncounterText = "3 weeks ago"
+                    lastEncounterText = "3 weeks ago",
+                    notes = "Ceramics artist and studio host. Firing stoneware pottery.",
+                    tags = listOf(MockDataProvider.tagCoffee, MockDataProvider.tagDesign)
                 )
             )
         }

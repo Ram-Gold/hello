@@ -478,6 +478,8 @@ class ContactRepository(
         }
         val subtitle = contextParts.joinToString(" • ").ifEmpty { "Met today" }
 
+        val resolvedTags = _tags.value.filter { it.id in tagIds }
+
         val newContact = ContactSummary(
             id = "c-${UUID.randomUUID()}",
             name = cleanName,
@@ -490,7 +492,9 @@ class ContactRepository(
                 .uppercase()
                 .ifEmpty { "👋" },
             avatarBgIndex = (_contacts.value.size % 6),
-            lastEncounterText = "Met today"
+            lastEncounterText = "Met today",
+            notes = note.trim(),
+            tags = resolvedTags
         )
 
         val now = Instant.now()
@@ -800,6 +804,9 @@ class ContactRepository(
                     }
                 }
             }
+            val resolvedTags = tagIds.mapNotNull { tagId ->
+                MockDataProvider.tags.find { it.id == tagId }
+            }
             return ContactSummary(
                 id = id,
                 name = name,
@@ -810,6 +817,8 @@ class ContactRepository(
                 lastEncounterText = lastMet,
                 phone = phone,
                 email = email,
+                notes = notes,
+                tags = resolvedTags,
                 isArchived = isArchived
             )
         }

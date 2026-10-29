@@ -156,12 +156,8 @@ private fun TimelineNodeItem(
 
         // Encounter Content Card
         Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            ),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = 16.dp)
@@ -184,7 +180,7 @@ private fun TimelineNodeItem(
                     if (!placeLabel.isNullOrBlank()) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -224,11 +220,7 @@ private fun TimelineNodeItem(
 private fun EmptyTimelineCard(onLogEncounterClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        ),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -242,7 +234,7 @@ private fun EmptyTimelineCard(onLogEncounterClick: () -> Unit) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

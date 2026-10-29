@@ -55,6 +55,8 @@ data class ContactSummary(
     val lastEncounterText: String? = null,
     val phone: String? = null,
     val email: String? = null,
+    val notes: String = "",
+    val tags: List<Tag> = emptyList(),
     val isArchived: Boolean = false
 )
 

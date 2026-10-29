@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,7 +40,7 @@ fun DoodleAvatar(
     bgIndex: Int,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp)
+    shape: Shape = RoundedCornerShape(16.dp)
 ) {
     val bgColor = AvatarColors.getOrElse(bgIndex % AvatarColors.size) { AvatarPeach }
 

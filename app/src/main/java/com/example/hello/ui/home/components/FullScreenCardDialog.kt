@@ -1,7 +1,6 @@
 package com.example.hello.ui.home.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +34,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.hello.domain.model.MyCardData
 
+/**
+ * Material 3 Expressive Full Screen QR Dialog (ADR-0010):
+ * - Surface color: surfaceContainer with 0dp border and 28dp squircle corners
+ * - Dedicated to fast offline exchange; removed contact detail rows
+ */
 @Composable
 fun FullScreenCardDialog(
     cardData: MyCardData,
@@ -53,8 +52,8 @@ fun FullScreenCardDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .clip(RoundedCornerShape(28.dp)),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
@@ -86,7 +85,7 @@ fun FullScreenCardDialog(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
@@ -121,17 +120,12 @@ fun FullScreenCardDialog(
                         .size(200.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.White)
-                        .border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = RoundedCornerShape(20.dp)
-                        )
                         .padding(14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     SimulatedQrContainer(
                         onClick = {},
-                        modifier = Modifier.size(170.dp)
+                        modifier = Modifier.size(172.dp)
                     )
                 }
 
@@ -142,28 +136,7 @@ fun FullScreenCardDialog(
                     textAlign = TextAlign.Center
                 )
 
-                // Contact Details
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Outlined.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                            Text(cardData.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Outlined.Phone, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                            Text(cardData.phone, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Close Button
                 Button(

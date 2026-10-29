@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.ContactCard
+import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.MotionTokens
 
 @Composable
@@ -132,11 +134,12 @@ fun RecentEncountersSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                contacts.forEach { contact ->
-                    ContactItemRow(
+                contacts.forEachIndexed { index, contact ->
+                    ContactCard(
                         contact = contact,
+                        shape = shapeFor(index, contacts.size),
                         onClick = { onContactClick(contact.id) }
                     )
                 }
@@ -153,13 +156,10 @@ fun EncountersEmptyState(
     terminology: RelationshipTerminology,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp)),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -214,89 +214,19 @@ fun EncountersEmptyState(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ContactItemRow(
     contact: ContactSummary,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
 ) {
-    Card(
+    ContactCard(
+        contact = contact,
+        onClick = onClick,
+        shape = shape,
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Tactile doodle/initials avatar
-            DoodleAvatar(
-                initials = contact.avatarInitials,
-                bgIndex = contact.avatarBgIndex,
-                size = 50.dp,
-                shape = RoundedCornerShape(16.dp)
-            )
-
-            // Contact Info & Context
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = contact.name,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    contact.lastEncounterText?.let { encounter ->
-                        Text(
-                            text = "• $encounter",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Text(
-                    text = contact.contextSubtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // Circle pill tags
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    contact.circles.forEach { circle ->
-                        CircleBadge(circle = circle)
-                    }
-                }
-            }
-        }
-    }
+    )
 }
 
 @Composable

@@ -5,14 +5,15 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,8 +30,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Snooze
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -124,6 +123,22 @@ fun UpcomingFeedSection(
     }
 }
 
+private data class AlertVisualConfig(
+    val icon: ImageVector,
+    val iconContainerColor: Color,
+    val iconContentColor: Color,
+    val badgeText: String,
+    val descriptionText: String
+)
+
+/**
+ * Material 3 Expressive connected Upcoming Alert Card (ADR-0009):
+ * - Surface color: surfaceContainer with 0dp elevation and zero borders
+ * - Fixed uniform dimensions (260dp width, 156dp height) to avoid layout shifts in the carousel
+ * - 40dp circular tonal icon container matching alert type
+ * - Strict 1-line truncation on contact name and description
+ * - Bottom-pinned action buttons row via flexible Spacer weight
+ */
 @Composable
 fun UpcomingAlertCard(
     alert: UpcomingAlert,
@@ -131,84 +146,135 @@ fun UpcomingAlertCard(
     onSnooze: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val config = when (alert) {
+        is UpcomingAlert.BirthdayAlert -> AlertVisualConfig(
+            icon = Icons.Outlined.Cake,
+            iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            badgeText = alert.dateText.ifBlank { "Birthday" },
+            descriptionText = "Wish them well on their birthday 🎉"
+        )
+        is UpcomingAlert.FollowUpReminder -> AlertVisualConfig(
+            icon = Icons.Outlined.Notifications,
+            iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            badgeText = alert.dueText.uppercase(),
+            descriptionText = alert.taskDescription
+        )
+        is UpcomingAlert.CadenceAlert -> AlertVisualConfig(
+            icon = Icons.Outlined.Refresh,
+            iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            badgeText = "Stay in touch",
+            descriptionText = alert.promptText
+        )
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
             .width(260.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .height(156.dp)
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp)
         ) {
-            when (alert) {
-                is UpcomingAlert.BirthdayAlert -> {
-                    BadgeHeader(
-                        icon = Icons.Outlined.Cake,
-                        badgeText = "BIRTHDAY",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = alert.contactName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${alert.dateText} • Wish them well 🎉",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
+            // Header Row: 40dp Tonal Icon + Contact Name & Badge Pill
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = config.iconContainerColor,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = config.icon,
+                            contentDescription = null,
+                            tint = config.iconContentColor,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = alert.contactName,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        Text(
+                            text = config.badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Body: Context / Task Description strictly 1 line
+            Text(
+                text = config.descriptionText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // Pinned to bottom: Actions Row
+            Spacer(modifier = Modifier.weight(1f))
+
+            when (alert) {
+                is UpcomingAlert.BirthdayAlert -> {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         FilledTonalButton(
                             onClick = onDone,
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
-                            Text("Sent Wish", style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                text = "Sent Wish",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
 
                 is UpcomingAlert.FollowUpReminder -> {
-                    BadgeHeader(
-                        icon = Icons.Outlined.Notifications,
-                        badgeText = alert.dueText.uppercase(),
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = alert.contactName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = alert.taskDescription,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -217,9 +283,10 @@ fun UpcomingAlertCard(
                         OutlinedButton(
                             onClick = onSnooze,
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Icon(Icons.Outlined.Snooze, null, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Outlined.Snooze, null, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Snooze", style = MaterialTheme.typography.labelSmall)
                         }
@@ -227,42 +294,24 @@ fun UpcomingAlertCard(
                         FilledTonalButton(
                             onClick = onDone,
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
-                            Icon(Icons.Outlined.Check, null, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Outlined.Check, null, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Done", style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                text = "Done",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
 
                 is UpcomingAlert.CadenceAlert -> {
-                    BadgeHeader(
-                        icon = Icons.Outlined.Refresh,
-                        badgeText = "STAY IN TOUCH",
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = alert.contactName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = alert.promptText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -271,7 +320,8 @@ fun UpcomingAlertCard(
                         OutlinedButton(
                             onClick = onSnooze,
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Text("Later", style = MaterialTheme.typography.labelSmall)
                         }
@@ -279,13 +329,17 @@ fun UpcomingAlertCard(
                         FilledTonalButton(
                             onClick = onDone,
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
-                            Text("Reconnect", style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                text = "Reconnect",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -295,48 +349,13 @@ fun UpcomingAlertCard(
 }
 
 @Composable
-private fun BadgeHeader(
-    icon: ImageVector,
-    badgeText: String,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = containerColor
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(13.dp)
-            )
-            Text(
-                text = badgeText,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = contentColor
-            )
-        }
-    }
-}
-
-@Composable
 fun UpcomingEmptyState(
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier

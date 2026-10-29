@@ -53,3 +53,15 @@ _Avoid_: Navbar, Bottom bar, Tab bar
 **Relationship Tab**:
 The primary navigation tab within the Floating Bottom Dock that opens the contacts surface, dynamically labeled and styled according to the active Relationship Terminology (People, Friends, Connections, or Contacts).
 _Avoid_: People Tab, Contacts Tab, Navbar item
+
+**Contact Card**:
+The Material 3 Expressive connected surface representing a Contact across the Relationship Tab and Home Screen, featuring a 56dp circular avatar, prominent name, tonal recency badge, contextual notes preview, and relationship tags.
+_Avoid_: People Card, Person Card, Contact Row, Contact Tile
+
+**Upcoming Alert Card**:
+The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Cadence) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons.
+_Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
+
+**Contact Profile Screen**:
+The dedicated Material 3 Expressive view displaying a Contact's relationship status, Cadence health, circles, tags, notes, and the living timeline of past encounters, intentionally stripped of dialer/messaging quick actions to emphasize relationship context over utility dialers.
+_Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry

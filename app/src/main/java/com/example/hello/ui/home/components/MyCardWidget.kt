@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,8 +22,6 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.QrCode
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,6 +42,12 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.MyCardData
 
+/**
+ * Material 3 Expressive connected "My Card" Widget (ADR-0009):
+ * - Surface color: surfaceContainer with 0dp elevation and zero borders
+ * - 24dp rounded corners matching ContactCard system
+ * - Tonal segment switchers and QR container in surfaceContainerHigh
+ */
 @Composable
 fun MyCardWidget(
     cardData: MyCardData,
@@ -54,152 +56,135 @@ fun MyCardWidget(
     onExpandClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(22.dp)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth()
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
-                .padding(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Header: Card Type Switcher & Expand Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Header: Card Type Switcher & Expand Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CardTypeSelector(
+                    selectedType = activeCardType,
+                    onSelect = onCardTypeSelect
+                )
+
+                IconButton(
+                    onClick = onExpandClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
-                    CardTypeSelector(
-                        selectedType = activeCardType,
-                        onSelect = onCardTypeSelect
-                    )
-
-                    IconButton(
-                        onClick = onExpandClick,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Fullscreen,
-                            contentDescription = "Expand QR Code",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Middle: User Info & Simulated QR Code
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = cardData.userName,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 21.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = cardData.headline,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Email,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = cardData.email,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Phone,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = cardData.phone,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Simulated QR Matrix Container
-                    SimulatedQrContainer(
-                        onClick = onExpandClick,
-                        modifier = Modifier.size(86.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.Fullscreen,
+                        contentDescription = "Expand QR Code",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
+            }
 
-                // Bottom Tag Pill
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            // Middle: User Info & Simulated QR Code
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Text(
+                        text = cardData.userName,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 21.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = cardData.headline,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.QrCode,
+                            imageVector = Icons.Outlined.Email,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = cardData.circleLabel,
-                            style = MaterialTheme.typography.labelSmall,
+                            text = cardData.email,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Phone,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = cardData.phone,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Simulated QR Matrix Container
+                SimulatedQrContainer(
+                    onClick = onExpandClick,
+                    modifier = Modifier.size(86.dp)
+                )
+            }
+
+            // Bottom Tag Pill
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.QrCode,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = cardData.circleLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -212,41 +197,44 @@ private fun CardTypeSelector(
     onSelect: (CardType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        CardType.entries.forEach { type ->
-            val isSelected = type == selectedType
-            val bg by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
-                animationSpec = tween(200),
-                label = "cardTypeBg"
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(200),
-                label = "cardTypeText"
-            )
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(bg)
-                    .clickable { onSelect(type) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${type.iconEmoji} ${type.title}",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    ),
-                    color = textColor
+        Row(
+            modifier = Modifier.padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            CardType.entries.forEach { type ->
+                val isSelected = type == selectedType
+                val bg by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                    animationSpec = tween(200),
+                    label = "cardTypeBg"
                 )
+                val textColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(200),
+                    label = "cardTypeText"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(bg)
+                        .clickable { onSelect(type) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${type.iconEmoji} ${type.title}",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        ),
+                        color = textColor
+                    )
+                }
             }
         }
     }
@@ -263,11 +251,6 @@ fun SimulatedQrContainer(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(16.dp)
-            )
             .clickable(onClick = onClick)
             .padding(8.dp),
         contentAlignment = Alignment.Center

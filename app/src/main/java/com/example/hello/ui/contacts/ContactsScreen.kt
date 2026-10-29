@@ -31,9 +31,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
@@ -41,10 +43,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -56,6 +60,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,10 +71,11 @@ import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.home.components.CircleBadge
 import com.example.hello.ui.home.components.DoodleAvatar
+import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.HelloTheme
-import com.example.hello.ui.theme.MotionTokens
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -98,7 +104,7 @@ fun ContactsScreen(
             totalCount = uiState.totalCount,
             terminology = terminology,
             onNavigateToHome = onNavigateToHome,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         // 2. Circle Filter Chips & Sort Toggle
@@ -121,13 +127,13 @@ fun ContactsScreen(
                 onAddContactClick = onAddContactClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 32.dp)
+                    .padding(horizontal = 16.dp, vertical = 32.dp)
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 uiState.groupedContacts.forEach { (header, contactsInGroup) ->
                     stickyHeader(
@@ -136,17 +142,19 @@ fun ContactsScreen(
                     ) {
                         ContactGroupHeader(
                             title = header,
-                            count = contactsInGroup.size
+                            count = contactsInGroup.size,
+                            modifier = Modifier.padding(top = 14.dp, bottom = 4.dp)
                         )
                     }
 
-                    items(
+                    itemsIndexed(
                         items = contactsInGroup,
-                        key = { it.id },
-                        contentType = { "contact_row" }
-                    ) { contact ->
-                        MinimalistContactRow(
+                        key = { _, contact -> contact.id },
+                        contentType = { _, _ -> "contact_card" }
+                    ) { index, contact ->
+                        ContactCard(
                             contact = contact,
+                            shape = shapeFor(index, contactsInGroup.size),
                             onClick = { onContactClick(contact.id) }
                         )
                     }
@@ -168,76 +176,59 @@ private fun ContactsSearchHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Material 3 Expressive Top Bar Row matching Settings PixelStyleTopBar
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = terminology.pluralTitle,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = terminology.networkCounterText(totalCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            FilledIconButton(
+                onClick = onNavigateToHome,
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back to Home",
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            // Quick shortcut back to Home (animates dock pill to Home)
-            val homeBadgeInteractionSource = remember { MutableInteractionSource() }
-            val isHomeBadgePressed by homeBadgeInteractionSource.collectIsPressedAsState()
-            val homeBadgeScale by animateFloatAsState(
-                targetValue = if (isHomeBadgePressed) MotionTokens.BADGE_PRESSED_SCALE else 1.0f,
-                animationSpec = MotionTokens.badgePressSpring(),
-                label = "homeBadgeScale"
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                text = terminology.pluralTitle,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
             )
 
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                modifier = Modifier
-                    .graphicsLayer {
-                        scaleX = homeBadgeScale
-                        scaleY = homeBadgeScale
-                    }
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = homeBadgeInteractionSource,
-                        indication = null,
-                        onClick = onNavigateToHome
-                    )
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "←",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Text(
-                        text = "Home",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
+                Text(
+                    text = "$totalCount",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
             }
         }
 
-        // Rounded Organic Search Bar
+        // Material 3 Expressive Pill Search Bar (Zero Border, surfaceContainer)
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             placeholder = {
                 Text(
-                    text = "Search contacts, notes, roles...",
+                    text = "Search ${terminology.pluralTitle.lowercase()}, notes, tags...",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -267,12 +258,15 @@ private fun ContactsSearchHeader(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(20.dp),
+            shape = CircleShape,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -290,7 +284,7 @@ private fun ContactsFilterBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -306,6 +300,7 @@ private fun ContactsFilterBar(
                     onClick = { onSelectCircle(null) },
                     label = { Text("All") },
                     shape = RoundedCornerShape(14.dp),
+                    border = null,
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -325,6 +320,7 @@ private fun ContactsFilterBar(
                     },
                     label = { Text(circle.displayName) },
                     shape = RoundedCornerShape(14.dp),
+                    border = null,
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -333,11 +329,12 @@ private fun ContactsFilterBar(
             }
         }
 
-        // Sort Mode Toggle Pill
+        // Sort Mode Toggle Pill (Zero Border, surfaceContainerHigh)
         Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
                 .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                 .clickable {
                     val next = if (sortMode == ContactSortMode.ALPHABETICAL) {
                         ContactSortMode.RECENTLY_ENCOUNTERED
@@ -345,8 +342,7 @@ private fun ContactsFilterBar(
                         ContactSortMode.ALPHABETICAL
                     }
                     onToggleSort(next)
-                },
-            color = MaterialTheme.colorScheme.surface
+                }
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
@@ -409,90 +405,19 @@ private fun ContactGroupHeader(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MinimalistContactRow(
     contact: ContactSummary,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
 ) {
-    Card(
+    ContactCard(
+        contact = contact,
+        onClick = onClick,
+        shape = shape,
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Tactile Avatar
-            DoodleAvatar(
-                initials = contact.avatarInitials,
-                bgIndex = contact.avatarBgIndex,
-                size = 48.dp,
-                shape = RoundedCornerShape(16.dp)
-            )
-
-            // Info & Tags
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = contact.name,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    contact.lastEncounterText?.let { encounter ->
-                        Text(
-                            text = "• $encounter",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Text(
-                    text = contact.contextSubtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // Circle Badges
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    contact.circles.forEach { circle ->
-                        CircleBadge(circle = circle)
-                    }
-                }
-            }
-        }
-    }
+    )
 }
 
 @Composable
@@ -504,15 +429,10 @@ fun ContactsEmptyState(
     onAddContactClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp)),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
