@@ -20,4 +20,28 @@ class FakeUserPreferencesRepository(
     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {
         _prefs.update { it.copy(preferredTerminology = terminology) }
     }
+
+    override suspend fun setThemeMode(themeMode: ThemeMode) {
+        _prefs.update { it.copy(themeMode = themeMode) }
+    }
+
+    override suspend fun setDynamicColor(enabled: Boolean) {
+        _prefs.update { it.copy(dynamicColor = enabled) }
+    }
+
+    override suspend fun setReduceAnimations(enabled: Boolean) {
+        _prefs.update { it.copy(reduceAnimations = enabled) }
+    }
+
+    override suspend fun setDefaultCadenceDays(days: Int) {
+        _prefs.update { it.copy(defaultCadenceDays = days) }
+    }
+
+    override suspend fun setNotificationTime(hour: Int, minute: Int) {
+        _prefs.update { it.copy(notificationHour = hour, notificationMinute = minute) }
+    }
+
+    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {
+        _prefs.update { it.copy(defaultIncludeLocation = enabled) }
+    }
 }

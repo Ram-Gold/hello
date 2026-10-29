@@ -26,10 +26,21 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
-        // Collect terminology from preferences
+        // Collect preferences from repository
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
-                _uiState.update { it.copy(terminology = prefs.preferredTerminology) }
+                _uiState.update {
+                    it.copy(
+                        terminology = prefs.preferredTerminology,
+                        themeMode = prefs.themeMode,
+                        dynamicColor = prefs.dynamicColor,
+                        reduceAnimations = prefs.reduceAnimations,
+                        defaultCadenceDays = prefs.defaultCadenceDays,
+                        notificationHour = prefs.notificationHour,
+                        notificationMinute = prefs.notificationMinute,
+                        defaultIncludeLocation = prefs.defaultIncludeLocation
+                    )
+                }
             }
         }
 
@@ -185,6 +196,47 @@ class SettingsViewModel(
 
             SettingsUiEvent.OnClearExportPayload -> {
                 _uiState.update { it.copy(exportSharePayload = null) }
+            }
+
+            is SettingsUiEvent.OnSelectThemeMode -> {
+                viewModelScope.launch {
+                    preferencesRepository.setThemeMode(event.themeMode)
+                }
+            }
+
+            is SettingsUiEvent.OnToggleDynamicColor -> {
+                viewModelScope.launch {
+                    preferencesRepository.setDynamicColor(event.enabled)
+                }
+            }
+
+            is SettingsUiEvent.OnToggleReduceAnimations -> {
+                viewModelScope.launch {
+                    preferencesRepository.setReduceAnimations(event.enabled)
+                    _uiState.update {
+                        it.copy(
+                            userMessage = if (event.enabled) "Reduced animations enabled" else "Standard animations enabled"
+                        )
+                    }
+                }
+            }
+
+            is SettingsUiEvent.OnSetDefaultCadenceDays -> {
+                viewModelScope.launch {
+                    preferencesRepository.setDefaultCadenceDays(event.days)
+                }
+            }
+
+            is SettingsUiEvent.OnSetNotificationTime -> {
+                viewModelScope.launch {
+                    preferencesRepository.setNotificationTime(event.hour, event.minute)
+                }
+            }
+
+            is SettingsUiEvent.OnToggleDefaultIncludeLocation -> {
+                viewModelScope.launch {
+                    preferencesRepository.setDefaultIncludeLocation(event.enabled)
+                }
             }
         }
     }

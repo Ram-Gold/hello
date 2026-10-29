@@ -10,9 +10,24 @@ class SupportingScreensNavigationTest {
     @Test
     fun routes_haveExpectedNames() {
         assertEquals("settings", SettingsRoute.ROUTE_NAME)
+        assertEquals("settings/terminology", SettingsTerminologyRoute.ROUTE_NAME)
+        assertEquals("settings/tags", SettingsTagsRoute.ROUTE_NAME)
+        assertEquals("settings/data", SettingsDataRoute.ROUTE_NAME)
+        assertEquals("settings/appearance", SettingsAppearanceRoute.ROUTE_NAME)
+        assertEquals("settings/preferences", SettingsPreferencesRoute.ROUTE_NAME)
+        assertEquals("settings/about", SettingsAboutRoute.ROUTE_NAME)
         assertEquals("onboarding", OnboardingRoute.ROUTE_NAME)
         assertEquals("home", HomeRoute.ROUTE_NAME)
         assertEquals("people", PeopleRoute.ROUTE_NAME)
+
+        // All settings routes must hide the floating bottom dock
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsTerminologyRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsTagsRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsDataRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsAppearanceRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsPreferencesRoute.ROUTE_NAME))
+        org.junit.Assert.assertTrue(shouldHideFloatingDock(SettingsAboutRoute.ROUTE_NAME))
     }
 
     @Test

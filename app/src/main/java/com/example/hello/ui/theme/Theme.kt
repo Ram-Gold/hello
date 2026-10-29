@@ -12,6 +12,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -38,7 +39,12 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkSandstoneGrayText,
     outline = DarkSandstoneGrayText,
-    outlineVariant = DarkWarmBorder
+    outlineVariant = DarkWarmBorder,
+    surfaceContainerLowest = Color(0xFF1E1C1A),
+    surfaceContainerLow = Color(0xFF23201E),
+    surfaceContainer = Color(0xFF2B2724),
+    surfaceContainerHigh = Color(0xFF332F2C),
+    surfaceContainerHighest = DarkSurfaceContainerHighest
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -61,7 +67,12 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = WarmSurfaceVariant,
     onSurfaceVariant = SandstoneGrayText,
     outline = SandstoneGrayText,
-    outlineVariant = WarmBorder
+    outlineVariant = WarmBorder,
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFFAF5EE),
+    surfaceContainer = Color(0xFFF3ECE3),
+    surfaceContainerHigh = Color(0xFFEDE5DC),
+    surfaceContainerHighest = WarmSurfaceContainerHighest
 )
 
 // MD3 Expressive organic shapes for Hello

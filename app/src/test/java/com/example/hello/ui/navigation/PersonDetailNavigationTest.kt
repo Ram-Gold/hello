@@ -1,5 +1,6 @@
 package com.example.hello.ui.navigation
 
+import com.example.hello.ui.theme.MotionTokens
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,6 +59,19 @@ class PersonDetailNavigationTest {
         val testWidth = 1080
         val fullWidthOffset = testWidth
         assertEquals(1080, fullWidthOffset)
+
+        // Symmetrical transition tokens: 350ms duration with M3EmphasizedEasing
+        assertEquals(350, MotionTokens.DETAIL_SLIDE_DURATION_MS)
+        assertEquals(350, MotionTokens.detailSlideSpec().durationMillis)
+        assertEquals(350, MotionTokens.detailFadeSpec().durationMillis)
+        assertEquals(MotionTokens.M3EmphasizedEasing, MotionTokens.detailSlideSpec().easing)
+        assertEquals(MotionTokens.M3EmphasizedEasing, MotionTokens.detailFadeSpec().easing)
+
+        // Verify non-null transition objects
+        org.junit.Assert.assertNotNull(PersonDetailMotionConfig.detailEnterTransition())
+        org.junit.Assert.assertNotNull(PersonDetailMotionConfig.detailPopExitTransition())
+        org.junit.Assert.assertNotNull(PersonDetailMotionConfig.detailExitTransition())
+        org.junit.Assert.assertNotNull(PersonDetailMotionConfig.detailPopEnterTransition())
 
         // Root destination must remain stable underneath during detail transitions
         assertEquals(

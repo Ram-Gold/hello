@@ -72,11 +72,19 @@ import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.navigation.HomeRoute
 import com.example.hello.ui.navigation.NavigationTransitionConfig
 import com.example.hello.ui.navigation.OnboardingRoute
+import com.example.hello.data.preferences.UserPreferences
 import com.example.hello.ui.navigation.PeopleRoute
 import com.example.hello.ui.navigation.PersonDetailMotionConfig
 import com.example.hello.ui.navigation.PersonDetailRoute
 import com.example.hello.ui.navigation.PersonEditRoute
+import com.example.hello.ui.navigation.SettingsAboutRoute
+import com.example.hello.ui.navigation.SettingsAppearanceRoute
+import com.example.hello.ui.navigation.SettingsDataRoute
+import com.example.hello.ui.navigation.SettingsMotionConfig
+import com.example.hello.ui.navigation.SettingsPreferencesRoute
 import com.example.hello.ui.navigation.SettingsRoute
+import com.example.hello.ui.navigation.SettingsTagsRoute
+import com.example.hello.ui.navigation.SettingsTerminologyRoute
 import com.example.hello.ui.navigation.aospSharedAxisEnter
 import com.example.hello.ui.navigation.aospSharedAxisExit
 import com.example.hello.ui.navigation.aospSharedAxisPopEnter
@@ -96,7 +104,13 @@ import com.example.hello.ui.onboarding.OnboardingViewModel
 import com.example.hello.ui.quickaction.QuickActionSheetHost
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionViewModel
+import com.example.hello.ui.settings.SettingsAboutScreen
+import com.example.hello.ui.settings.SettingsAppearanceScreen
+import com.example.hello.ui.settings.SettingsDataScreen
+import com.example.hello.ui.settings.SettingsPreferencesScreen
 import com.example.hello.ui.settings.SettingsScreen
+import com.example.hello.ui.settings.SettingsTagsScreen
+import com.example.hello.ui.settings.SettingsTerminologyScreen
 import com.example.hello.ui.settings.SettingsViewModel
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
@@ -256,7 +270,8 @@ fun MainAppShell(
                 startDestination = startDestination,
                 preferencesRepository = resolvedPreferencesRepository,
                 quickActionViewModel = quickActionViewModel,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                userPreferences = userPreferences
             )
 
             // Scrim & Floating Bottom Navigation Dock scoped to prevent NavHost recomposition
@@ -475,12 +490,21 @@ private fun MainAppNavHost(
     startDestination: String,
     preferencesRepository: UserPreferencesRepository,
     quickActionViewModel: QuickActionViewModel,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    userPreferences: UserPreferences?
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isReducedMotion = userPreferences?.reduceAnimations == true
+    val motionDuration = if (isReducedMotion) 0 else MotionTokens.AOSP_TRANSITION_DURATION
 
-    val navGraph = remember(navController, startDestination) {
+    val settingsViewModel = remember {
+        val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
+        SettingsViewModel(preferencesRepository, quickActionViewModel.repository, wm)
+    }
+    val settingsUiState by settingsViewModel.uiState.collectAsState()
+
+    val navGraph = remember(navController, startDestination, isReducedMotion) {
         navController.createGraph(startDestination = startDestination) {
             composable(
                 route = OnboardingRoute.ROUTE_NAME,
@@ -571,16 +595,36 @@ private fun MainAppNavHost(
             }
 
             composable(
-                route = SettingsRoute.ROUTE_NAME
+                route = SettingsRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
                 ScreenDepthWrapper(isDepthVisible = false) {
-                    val settingsViewModel = remember {
-                        val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
-                        SettingsViewModel(preferencesRepository, quickActionViewModel.repository, wm)
-                    }
-                    val settingsUiState by settingsViewModel.uiState.collectAsState()
-
                     SettingsScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToTerminology = { navController.navigateSafely(SettingsTerminologyRoute.ROUTE_NAME) },
+                        onNavigateToTags = { navController.navigateSafely(SettingsTagsRoute.ROUTE_NAME) },
+                        onNavigateToData = { navController.navigateSafely(SettingsDataRoute.ROUTE_NAME) },
+                        onNavigateToAppearance = { navController.navigateSafely(SettingsAppearanceRoute.ROUTE_NAME) },
+                        onNavigateToPreferences = { navController.navigateSafely(SettingsPreferencesRoute.ROUTE_NAME) },
+                        onNavigateToAbout = { navController.navigateSafely(SettingsAboutRoute.ROUTE_NAME) }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsTerminologyRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsTerminologyScreen(
                         uiState = settingsUiState,
                         onEvent = settingsViewModel::onEvent,
                         onNavigateBack = { navController.popBackStack() }
@@ -589,8 +633,90 @@ private fun MainAppNavHost(
             }
 
             composable(
+                route = SettingsTagsRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsTagsScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsDataRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsDataScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsAppearanceRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsAppearanceScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsPreferencesRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsPreferencesScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsAboutRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsAboutScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
                 route = PersonDetailRoute.ROUTE_PATTERN,
-                arguments = listOf(navArgument(PersonDetailRoute.ARG_CONTACT_ID) { type = NavType.StringType })
+                arguments = listOf(navArgument(PersonDetailRoute.ARG_CONTACT_ID) { type = NavType.StringType }),
+                enterTransition = { PersonDetailMotionConfig.detailEnterTransition(isReducedMotion) },
+                exitTransition = { PersonDetailMotionConfig.detailExitTransition(isReducedMotion) },
+                popEnterTransition = { PersonDetailMotionConfig.detailPopEnterTransition(isReducedMotion) },
+                popExitTransition = { PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion) }
             ) { backStackEntry ->
                 ScreenDepthWrapper(isDepthVisible = false) {
                     val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
@@ -625,7 +751,11 @@ private fun MainAppNavHost(
 
             composable(
                 route = PersonEditRoute.ROUTE_PATTERN,
-                arguments = listOf(navArgument(PersonEditRoute.ARG_CONTACT_ID) { type = NavType.StringType })
+                arguments = listOf(navArgument(PersonEditRoute.ARG_CONTACT_ID) { type = NavType.StringType }),
+                enterTransition = { PersonDetailMotionConfig.detailEnterTransition(isReducedMotion) },
+                exitTransition = { PersonDetailMotionConfig.detailExitTransition(isReducedMotion) },
+                popEnterTransition = { PersonDetailMotionConfig.detailPopEnterTransition(isReducedMotion) },
+                popExitTransition = { PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion) }
             ) { backStackEntry ->
                 ScreenDepthWrapper(isDepthVisible = false) {
                     val contactId = backStackEntry.arguments?.getString(PersonEditRoute.ARG_CONTACT_ID) ?: ""
@@ -657,10 +787,10 @@ private fun MainAppNavHost(
         navController = navController,
         graph = navGraph,
         modifier = Modifier.fillMaxSize(),
-        enterTransition = { aospSharedAxisEnter() },
-        exitTransition = { aospSharedAxisExit() },
-        popEnterTransition = { aospSharedAxisPopEnter() },
-        popExitTransition = { aospSharedAxisPopExit() }
+        enterTransition = { aospSharedAxisEnter(durationMillis = motionDuration) },
+        exitTransition = { aospSharedAxisExit(durationMillis = motionDuration) },
+        popEnterTransition = { aospSharedAxisPopEnter(durationMillis = motionDuration) },
+        popExitTransition = { aospSharedAxisPopExit(durationMillis = motionDuration) }
     )
 }
 
@@ -799,6 +929,12 @@ fun MainAppShellLightPreview() {
                     )
                     override suspend fun setOnboardingCompleted(completed: Boolean) {}
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
+                    override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
+                    override suspend fun setDynamicColor(enabled: Boolean) {}
+                    override suspend fun setReduceAnimations(enabled: Boolean) {}
+                    override suspend fun setDefaultCadenceDays(days: Int) {}
+                    override suspend fun setNotificationTime(hour: Int, minute: Int) {}
+                    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
                 }
             }
         )
@@ -820,6 +956,12 @@ fun MainAppShellDarkPreview() {
                     )
                     override suspend fun setOnboardingCompleted(completed: Boolean) {}
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
+                    override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
+                    override suspend fun setDynamicColor(enabled: Boolean) {}
+                    override suspend fun setReduceAnimations(enabled: Boolean) {}
+                    override suspend fun setDefaultCadenceDays(days: Int) {}
+                    override suspend fun setNotificationTime(hour: Int, minute: Int) {}
+                    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
                 }
             }
         )

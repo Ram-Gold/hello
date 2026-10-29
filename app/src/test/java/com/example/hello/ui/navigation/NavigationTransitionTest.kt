@@ -148,6 +148,12 @@ class NavigationTransitionTest {
         assertFalse(shouldHideFloatingDock(HomeRoute.ROUTE_NAME))
         assertFalse(shouldHideFloatingDock(PeopleRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsTerminologyRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsTagsRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsDataRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsAppearanceRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsPreferencesRoute.ROUTE_NAME))
+        assertTrue(shouldHideFloatingDock(SettingsAboutRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(PersonDetailRoute.createRoute("123")))
         assertTrue(shouldHideFloatingDock(PersonEditRoute.createRoute("123")))
         assertTrue(shouldHideFloatingDock(OnboardingRoute.ROUTE_NAME))
@@ -161,5 +167,7 @@ class NavigationTransitionTest {
             PersonDetailMotionConfig.DETAIL_Z_INDEX,
             0.001f
         )
+        assertSame(MotionTokens.DETAIL_SLIDE_SPEC, MotionTokens.detailSlideSpec())
+        assertSame(MotionTokens.DETAIL_FADE_SPEC, MotionTokens.detailFadeSpec())
     }
 }

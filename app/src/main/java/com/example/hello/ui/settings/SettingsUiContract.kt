@@ -1,5 +1,6 @@
 package com.example.hello.ui.settings
 
+import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 
@@ -11,7 +12,14 @@ data class SettingsUiState(
     val mergingSourceTag: Tag? = null,
     val isExporting: Boolean = false,
     val userMessage: String? = null,
-    val exportSharePayload: String? = null
+    val exportSharePayload: String? = null,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val dynamicColor: Boolean = false,
+    val reduceAnimations: Boolean = false,
+    val defaultCadenceDays: Int = 30,
+    val notificationHour: Int = 9,
+    val notificationMinute: Int = 0,
+    val defaultIncludeLocation: Boolean = true
 )
 
 sealed interface SettingsUiEvent {
@@ -30,4 +38,10 @@ sealed interface SettingsUiEvent {
     data object OnRebuildCache : SettingsUiEvent
     data object OnDismissUserMessage : SettingsUiEvent
     data object OnClearExportPayload : SettingsUiEvent
+    data class OnSelectThemeMode(val themeMode: ThemeMode) : SettingsUiEvent
+    data class OnToggleDynamicColor(val enabled: Boolean) : SettingsUiEvent
+    data class OnToggleReduceAnimations(val enabled: Boolean) : SettingsUiEvent
+    data class OnSetDefaultCadenceDays(val days: Int) : SettingsUiEvent
+    data class OnSetNotificationTime(val hour: Int, val minute: Int) : SettingsUiEvent
+    data class OnToggleDefaultIncludeLocation(val enabled: Boolean) : SettingsUiEvent
 }

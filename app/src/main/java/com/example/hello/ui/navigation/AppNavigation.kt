@@ -2,6 +2,7 @@ package com.example.hello.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -22,6 +23,30 @@ data object PeopleRoute {
 
 data object SettingsRoute {
     const val ROUTE_NAME = "settings"
+}
+
+data object SettingsTerminologyRoute {
+    const val ROUTE_NAME = "settings/terminology"
+}
+
+data object SettingsTagsRoute {
+    const val ROUTE_NAME = "settings/tags"
+}
+
+data object SettingsDataRoute {
+    const val ROUTE_NAME = "settings/data"
+}
+
+data object SettingsAppearanceRoute {
+    const val ROUTE_NAME = "settings/appearance"
+}
+
+data object SettingsPreferencesRoute {
+    const val ROUTE_NAME = "settings/preferences"
+}
+
+data object SettingsAboutRoute {
+    const val ROUTE_NAME = "settings/about"
 }
 
 data object OnboardingRoute {
@@ -83,19 +108,75 @@ fun shouldInterceptPeopleBack(currentRoute: String?, currentPage: Int, targetPag
 object PersonDetailMotionConfig {
     const val DETAIL_Z_INDEX = 1f
 
-    fun detailEnterTransition(): EnterTransition = slideInHorizontally(
+    fun detailEnterTransition(reducedMotion: Boolean = false): EnterTransition = if (reducedMotion) EnterTransition.None else slideInHorizontally(
         animationSpec = MotionTokens.detailSlideSpec(),
         initialOffsetX = { it }
+    ) + fadeIn(
+        animationSpec = MotionTokens.detailFadeSpec()
     )
 
-    fun detailPopExitTransition(): ExitTransition = slideOutHorizontally(
+    fun detailPopExitTransition(reducedMotion: Boolean = false): ExitTransition = if (reducedMotion) ExitTransition.None else slideOutHorizontally(
         animationSpec = MotionTokens.detailSlideSpec(),
         targetOffsetX = { it }
+    ) + fadeOut(
+        animationSpec = MotionTokens.detailFadeSpec()
+    )
+
+    fun detailExitTransition(reducedMotion: Boolean = false): ExitTransition = if (reducedMotion) ExitTransition.None else slideOutHorizontally(
+        animationSpec = MotionTokens.detailSlideSpec(),
+        targetOffsetX = { -(it * 0.33f).toInt() }
+    ) + fadeOut(
+        animationSpec = MotionTokens.detailFadeSpec()
+    )
+
+    fun detailPopEnterTransition(reducedMotion: Boolean = false): EnterTransition = if (reducedMotion) EnterTransition.None else slideInHorizontally(
+        animationSpec = MotionTokens.detailSlideSpec(),
+        initialOffsetX = { -(it * 0.33f).toInt() }
+    ) + fadeIn(
+        animationSpec = MotionTokens.detailFadeSpec()
     )
 
     fun rootPopEnterTransition(): EnterTransition = EnterTransition.None
 
     fun rootExitTransition(): ExitTransition = ExitTransition.None
+}
+
+object SettingsMotionConfig {
+    fun settingsEnterTransition(reducedMotion: Boolean = false): EnterTransition =
+        if (reducedMotion) EnterTransition.None
+        else slideInHorizontally(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing),
+            initialOffsetX = { it / 3 }
+        ) + fadeIn(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing)
+        )
+
+    fun settingsExitTransition(reducedMotion: Boolean = false): ExitTransition =
+        if (reducedMotion) ExitTransition.None
+        else slideOutHorizontally(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing),
+            targetOffsetX = { -it / 3 }
+        ) + fadeOut(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing)
+        )
+
+    fun settingsPopEnterTransition(reducedMotion: Boolean = false): EnterTransition =
+        if (reducedMotion) EnterTransition.None
+        else slideInHorizontally(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing),
+            initialOffsetX = { -it / 3 }
+        ) + fadeIn(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing)
+        )
+
+    fun settingsPopExitTransition(reducedMotion: Boolean = false): ExitTransition =
+        if (reducedMotion) ExitTransition.None
+        else slideOutHorizontally(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing),
+            targetOffsetX = { it }
+        ) + fadeOut(
+            animationSpec = tween(MotionTokens.AOSP_TRANSITION_DURATION, easing = MotionTokens.M3EmphasizedEasing)
+        )
 }
 
 object SharedAxisMotionConfig {

@@ -98,16 +98,25 @@ object MotionTokens {
         easing = M3EmphasizedEasing
     )
 
+    val DETAIL_SLIDE_SPEC: TweenSpec<IntOffset> = tween(
+        durationMillis = DETAIL_SLIDE_DURATION_MS,
+        easing = M3EmphasizedEasing
+    )
+
+    val DETAIL_FADE_SPEC: TweenSpec<Float> = tween(
+        durationMillis = DETAIL_SLIDE_DURATION_MS,
+        easing = M3EmphasizedEasing
+    )
+
     fun tabTransitionTween(): TweenSpec<Float> = TAB_TRANSITION_TWEEN
 
     fun tabTransitionSizeTween(): TweenSpec<IntSize> = TAB_TRANSITION_SIZE_TWEEN
 
     fun tabTransitionOffsetTween(): TweenSpec<IntOffset> = TAB_TRANSITION_OFFSET_TWEEN
 
-    fun detailSlideSpec(): TweenSpec<IntOffset> = tween(
-        durationMillis = DETAIL_SLIDE_DURATION_MS,
-        easing = M3EmphasizedEasing
-    )
+    fun detailSlideSpec(): TweenSpec<IntOffset> = DETAIL_SLIDE_SPEC
+
+    fun detailFadeSpec(): TweenSpec<Float> = DETAIL_FADE_SPEC
 
     fun dockPillProgressSpring(): SpringSpec<Float> = spring(
         dampingRatio = PILL_SPRING_DAMPING,

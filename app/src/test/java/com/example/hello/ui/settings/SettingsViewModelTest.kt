@@ -148,4 +148,36 @@ class SettingsViewModelTest {
 
         assertTrue(viewModel.uiState.value.userMessage?.contains("Rebuilt cache") == true)
     }
+
+    @Test
+    fun onAppearanceEvents_updatesThemeAndReduceAnimations() = runTest {
+        viewModel.onEvent(SettingsUiEvent.OnSelectThemeMode(com.example.hello.data.preferences.ThemeMode.DARK))
+        advanceUntilIdle()
+        assertEquals(com.example.hello.data.preferences.ThemeMode.DARK, viewModel.uiState.value.themeMode)
+
+        viewModel.onEvent(SettingsUiEvent.OnToggleDynamicColor(true))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.dynamicColor)
+
+        viewModel.onEvent(SettingsUiEvent.OnToggleReduceAnimations(true))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.reduceAnimations)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Reduced animations") == true)
+    }
+
+    @Test
+    fun onPreferencesEvents_updatesCadenceAndNotificationDefaults() = runTest {
+        viewModel.onEvent(SettingsUiEvent.OnSetDefaultCadenceDays(60))
+        advanceUntilIdle()
+        assertEquals(60, viewModel.uiState.value.defaultCadenceDays)
+
+        viewModel.onEvent(SettingsUiEvent.OnSetNotificationTime(10, 30))
+        advanceUntilIdle()
+        assertEquals(10, viewModel.uiState.value.notificationHour)
+        assertEquals(30, viewModel.uiState.value.notificationMinute)
+
+        viewModel.onEvent(SettingsUiEvent.OnToggleDefaultIncludeLocation(false))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.defaultIncludeLocation)
+    }
 }
