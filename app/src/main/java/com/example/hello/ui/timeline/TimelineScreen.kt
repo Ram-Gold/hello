@@ -86,115 +86,122 @@ fun TimelineScreen(
             onLogEncounterClick = onLogEncounterClick
         )
 
-        // 12.dp vertical gradient scrim so scrolling timeline cards tuck smoothly beneath filter bar
+        // 2. Continuous Vertical Living Timeline Spine with Overlay Gradient Scrim
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(12.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background,
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
-        // 2. Continuous Vertical Living Timeline Spine (Future -> TODAY -> Past)
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
-                top = 8.dp,
-                bottom = 128.dp
-            )
+                .weight(1f)
         ) {
-            // Future Horizon Section (Soonest-First, Dashed Spine)
-            if (showFuture) {
-                if (uiState.futureNodes.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
-                    item(key = "empty-future") {
-                        EmptyTimelineStateCard(
-                            title = "No upcoming events in your horizon",
-                            subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
-                        )
-                    }
-                } else if (uiState.futureNodes.isNotEmpty()) {
-                    item(key = "future-section-header") {
-                        TimelineSectionLabel(
-                            title = "FUTURE HORIZON",
-                            subtitle = "Upcoming birthdays, notes & cadence catch-ups"
-                        )
-                    }
-                    itemsIndexed(
-                        items = uiState.futureNodes,
-                        key = { _, node -> node.id }
-                    ) { index, node ->
-                        val isFirstFuture = index == 0
-                        val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
-                        FutureTimelineNodeRow(
-                            node = node,
-                            isFirst = isFirstFuture,
-                            isLast = isLastFuture,
-                            onContactClick = { onContactClick(node.contactId) },
-                            onMarkDone = { followUpId ->
-                                onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
-                            },
-                            onSnooze = { followUpId ->
-                                onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
-                            },
-                            onLogMet = {
-                                onLogEncounterForContact(node.contactId)
-                            }
-                        )
-                    }
-                }
-            }
-
-            // TODAY Divider Anchor
-            if (showTodayDivider) {
-                item(key = "today-divider-anchor") {
-                    TodayTimelineAnchor(
-                        todayLabel = uiState.todayLabel,
-                        hasPastBelow = uiState.pastNodes.isNotEmpty()
-                    )
-                }
-            }
-
-            // Past Log Section (Newest-First, Solid Spine, First Met vs Met Again)
-            if (showPast) {
-                if (uiState.pastNodes.isEmpty()) {
-                    item(key = "empty-past") {
-                        EmptyTimelineStateCard(
-                            title = "No encounters logged yet",
-                            subtitle = "People you add or meet again will form your living timeline."
-                        )
-                    }
-                } else {
-                    if (uiState.selectedFilter == TimelineFilter.PAST) {
-                        item(key = "past-section-header") {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 8.dp,
+                    bottom = 128.dp
+                )
+            ) {
+                // Future Horizon Section (Soonest-First, Dashed Spine)
+                if (showFuture) {
+                    if (uiState.futureNodes.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
+                        item(key = "empty-future") {
+                            EmptyTimelineStateCard(
+                                title = "No upcoming events in your horizon",
+                                subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
+                            )
+                        }
+                    } else if (uiState.futureNodes.isNotEmpty()) {
+                        item(key = "future-section-header") {
                             TimelineSectionLabel(
-                                title = "PAST LOG",
-                                subtitle = "People you first met and caught up with again"
+                                title = "FUTURE HORIZON",
+                                subtitle = "Upcoming birthdays, notes & cadence catch-ups"
+                            )
+                        }
+                        itemsIndexed(
+                            items = uiState.futureNodes,
+                            key = { _, node -> node.id }
+                        ) { index, node ->
+                            val isFirstFuture = index == 0
+                            val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
+                            FutureTimelineNodeRow(
+                                node = node,
+                                isFirst = isFirstFuture,
+                                isLast = isLastFuture,
+                                onContactClick = { onContactClick(node.contactId) },
+                                onMarkDone = { followUpId ->
+                                    onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
+                                },
+                                onSnooze = { followUpId ->
+                                    onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
+                                },
+                                onLogMet = {
+                                    onLogEncounterForContact(node.contactId)
+                                }
                             )
                         }
                     }
-                    itemsIndexed(
-                        items = uiState.pastNodes,
-                        key = { _, node -> node.id }
-                    ) { index, node ->
-                        val isFirstPast = index == 0
-                        val isLastPast = index == uiState.pastNodes.lastIndex
-                        PastTimelineNodeRow(
-                            node = node,
-                            isFirst = isFirstPast,
-                            isLast = isLastPast,
-                            onContactClick = { onContactClick(node.contactId) }
+                }
+
+                // TODAY Divider Anchor
+                if (showTodayDivider) {
+                    item(key = "today-divider-anchor") {
+                        TodayTimelineAnchor(
+                            todayLabel = uiState.todayLabel,
+                            hasPastBelow = uiState.pastNodes.isNotEmpty()
                         )
                     }
                 }
+
+                // Past Log Section (Newest-First, Solid Spine, First Met vs Met Again)
+                if (showPast) {
+                    if (uiState.pastNodes.isEmpty()) {
+                        item(key = "empty-past") {
+                            EmptyTimelineStateCard(
+                                title = "No encounters logged yet",
+                                subtitle = "People you add or meet again will form your living timeline."
+                            )
+                        }
+                    } else {
+                        if (uiState.selectedFilter == TimelineFilter.PAST) {
+                            item(key = "past-section-header") {
+                                TimelineSectionLabel(
+                                    title = "PAST LOG",
+                                    subtitle = "People you first met and caught up with again"
+                                )
+                            }
+                        }
+                        itemsIndexed(
+                            items = uiState.pastNodes,
+                            key = { _, node -> node.id }
+                        ) { index, node ->
+                            val isFirstPast = index == 0
+                            val isLastPast = index == uiState.pastNodes.lastIndex
+                            PastTimelineNodeRow(
+                                node = node,
+                                isFirst = isFirstPast,
+                                isLast = isLastPast,
+                                onContactClick = { onContactClick(node.contactId) }
+                            )
+                        }
+                    }
+                }
             }
+
+            // 16.dp vertical gradient scrim floating directly over the top of the scrolling list
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
         }
     }
 }
