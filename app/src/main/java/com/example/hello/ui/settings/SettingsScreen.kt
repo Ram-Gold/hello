@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -17,20 +18,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.AltRoute
 import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -90,8 +98,23 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                val totalItems = 7
+                val totalItems = 8
                 ExpressiveSettingsGroup {
+                    // 0. Profile / Name
+                    val profileColors = if (isDark) {
+                        Color(0xFF3E2D1A) to Color(0xFFFFCC99)
+                    } else {
+                        Color(0xFFFBE4D5) to Color(0xFFC05E28)
+                    }
+                    ExpressiveNavigationItem(
+                        title = "Your Name",
+                        subtitle = "${uiState.userName} • Tap to edit profile greeting name",
+                        icon = Icons.Rounded.AccountCircle,
+                        colors = profileColors,
+                        onClick = { onEvent(SettingsUiEvent.OnOpenEditNameDialog) },
+                        shape = shapeFor(0, totalItems)
+                    )
+
                     // 1. Terminology
                     val termColors = if (isDark) {
                         Color(0xFF5E1700) to Color(0xFFFFB59B)
@@ -100,11 +123,11 @@ fun SettingsScreen(
                     }
                     ExpressiveNavigationItem(
                         title = "Display Terminology",
-                        subtitle = "${uiState.terminology.pluralTitle} • Active presentation vocabulary",
+                        subtitle = "${uiState.terminology.pluralTitle} • Layer 1 directory vocabulary",
                         icon = Icons.Rounded.Tune,
                         colors = termColors,
                         onClick = onNavigateToTerminology,
-                        shape = shapeFor(0, totalItems)
+                        shape = shapeFor(1, totalItems)
                     )
 
                     // 2. Capture Flows (ADR-0012)
@@ -116,11 +139,11 @@ fun SettingsScreen(
                     val activePresetName = uiState.flowPresets.firstOrNull { it.id == uiState.activeFlowPresetId }?.name ?: "Default"
                     ExpressiveNavigationItem(
                         title = "Capture Flows",
-                        subtitle = "$activePresetName • Preset order & modular capture steps",
+                        subtitle = "$activePresetName • Adaptive capture card & default steps",
                         icon = Icons.AutoMirrored.Rounded.AltRoute,
                         colors = flowColors,
                         onClick = onNavigateToFlows,
-                        shape = shapeFor(1, totalItems)
+                        shape = shapeFor(2, totalItems)
                     )
 
                     // 3. Tag Taxonomy
@@ -131,11 +154,11 @@ fun SettingsScreen(
                     }
                     ExpressiveNavigationItem(
                         title = "Tag Taxonomy",
-                        subtitle = "${uiState.tags.size} active relationship labels",
+                        subtitle = "${uiState.tags.size} active #tags • Layer 2 life spheres & topics",
                         icon = Icons.AutoMirrored.Rounded.Label,
                         colors = tagColors,
                         onClick = onNavigateToTags,
-                        shape = shapeFor(2, totalItems),
+                        shape = shapeFor(3, totalItems),
                         trailingBadge = {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -163,7 +186,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Storage,
                         colors = dataColors,
                         onClick = onNavigateToData,
-                        shape = shapeFor(3, totalItems)
+                        shape = shapeFor(4, totalItems)
                     )
 
                     // 5. Appearance
@@ -179,7 +202,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Palette,
                         colors = appColors,
                         onClick = onNavigateToAppearance,
-                        shape = shapeFor(4, totalItems)
+                        shape = shapeFor(5, totalItems)
                     )
 
                     // 6. Preferences
@@ -194,7 +217,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Settings,
                         colors = prefColors,
                         onClick = onNavigateToPreferences,
-                        shape = shapeFor(5, totalItems)
+                        shape = shapeFor(6, totalItems)
                     )
 
                     // 7. About Hello
@@ -209,10 +232,44 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Info,
                         colors = aboutColors,
                         onClick = onNavigateToAbout,
-                        shape = shapeFor(6, totalItems)
+                        shape = shapeFor(7, totalItems)
                     )
                 }
             }
+        }
+
+        if (uiState.isEditingName) {
+            var inputName by remember(uiState.userName) { mutableStateOf(uiState.userName) }
+            val isSaveEnabled = inputName.trim().isNotEmpty()
+
+            AlertDialog(
+                onDismissRequest = { onEvent(SettingsUiEvent.OnDismissEditNameDialog) },
+                title = { Text(text = "Edit Your Name") },
+                text = {
+                    OutlinedTextField(
+                        value = inputName,
+                        onValueChange = { inputName = it },
+                        label = { Text("Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { onEvent(SettingsUiEvent.OnSaveUserName(inputName.trim())) },
+                        enabled = isSaveEnabled
+                    ) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onEvent(SettingsUiEvent.OnDismissEditNameDialog) }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

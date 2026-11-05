@@ -13,6 +13,10 @@ class FakeUserPreferencesRepository(
     private val _prefs = MutableStateFlow(initialPreferences)
     override val userPreferencesFlow: Flow<UserPreferences> = _prefs.asStateFlow()
 
+    override suspend fun setUserName(name: String) {
+        _prefs.update { it.copy(userName = name.trim()) }
+    }
+
     override suspend fun setOnboardingCompleted(completed: Boolean) {
         _prefs.update { it.copy(hasCompletedOnboarding = completed) }
     }
@@ -23,6 +27,10 @@ class FakeUserPreferencesRepository(
 
     override suspend fun setThemeMode(themeMode: ThemeMode) {
         _prefs.update { it.copy(themeMode = themeMode) }
+    }
+
+    override suspend fun setThemeStyle(themeStyle: ThemeStyle) {
+        _prefs.update { it.copy(themeStyle = themeStyle) }
     }
 
     override suspend fun setDynamicColor(enabled: Boolean) {

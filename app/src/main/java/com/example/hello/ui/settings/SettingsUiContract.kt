@@ -1,12 +1,15 @@
 package com.example.hello.ui.settings
 
 import com.example.hello.data.preferences.ThemeMode
+import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 
 data class SettingsUiState(
+    val userName: String = "Alex",
+    val isEditingName: Boolean = false,
     val terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     val tags: List<Tag> = emptyList(),
     val isAddTagDialogOpen: Boolean = false,
@@ -16,6 +19,7 @@ data class SettingsUiState(
     val userMessage: String? = null,
     val exportSharePayload: String? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
     val defaultCadenceDays: Int = 30,
@@ -33,6 +37,9 @@ data class SettingsUiState(
 }
 
 sealed interface SettingsUiEvent {
+    data object OnOpenEditNameDialog : SettingsUiEvent
+    data object OnDismissEditNameDialog : SettingsUiEvent
+    data class OnSaveUserName(val newName: String) : SettingsUiEvent
     data class OnSelectTerminology(val terminology: RelationshipTerminology) : SettingsUiEvent
     data object OnOpenAddTagDialog : SettingsUiEvent
     data object OnCloseTagDialogs : SettingsUiEvent
@@ -49,6 +56,7 @@ sealed interface SettingsUiEvent {
     data object OnDismissUserMessage : SettingsUiEvent
     data object OnClearExportPayload : SettingsUiEvent
     data class OnSelectThemeMode(val themeMode: ThemeMode) : SettingsUiEvent
+    data class OnSelectThemeStyle(val themeStyle: ThemeStyle) : SettingsUiEvent
     data class OnToggleDynamicColor(val enabled: Boolean) : SettingsUiEvent
     data class OnToggleReduceAnimations(val enabled: Boolean) : SettingsUiEvent
     data class OnSetDefaultCadenceDays(val days: Int) : SettingsUiEvent

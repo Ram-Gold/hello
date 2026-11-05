@@ -1,6 +1,7 @@
 package com.example.hello.ui
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -15,7 +16,11 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -36,6 +41,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -68,6 +74,7 @@ import com.example.hello.ui.edit.PersonEditViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
+import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.navigation.HomeRoute
 import com.example.hello.ui.navigation.NavigationTransitionConfig
@@ -86,6 +93,7 @@ import com.example.hello.ui.navigation.SettingsPreferencesRoute
 import com.example.hello.ui.navigation.SettingsRoute
 import com.example.hello.ui.navigation.SettingsTagsRoute
 import com.example.hello.ui.navigation.SettingsTerminologyRoute
+import com.example.hello.ui.navigation.TimelineRoute
 import com.example.hello.ui.navigation.aospSharedAxisEnter
 import com.example.hello.ui.navigation.aospSharedAxisExit
 import com.example.hello.ui.navigation.aospSharedAxisPopEnter
@@ -116,6 +124,9 @@ import com.example.hello.ui.settings.SettingsTerminologyScreen
 import com.example.hello.ui.settings.SettingsViewModel
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
+import com.example.hello.ui.timeline.TimelineScreen
+import com.example.hello.ui.timeline.TimelineUiEvent
+import com.example.hello.ui.timeline.TimelineViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -145,8 +156,14 @@ fun MainAppShell(
             preferencesRepository = resolvedPreferencesRepository
         )
     }
-    val homeViewModel = remember(initialHomeViewModel, repository) {
-        initialHomeViewModel ?: HomeViewModel(repository = repository)
+    val homeViewModel = remember(initialHomeViewModel, repository, resolvedPreferencesRepository) {
+        initialHomeViewModel ?: HomeViewModel(
+            repository = repository,
+            preferencesRepository = resolvedPreferencesRepository
+        )
+    }
+    val timelineViewModel = remember(repository) {
+        TimelineViewModel(repository = repository)
     }
     val contactsViewModel = remember(initialContactsViewModel, repository) {
         initialContactsViewModel ?: ContactsViewModel(repository = repository)
@@ -168,6 +185,7 @@ fun MainAppShell(
     val hasCompletedOnboarding = userPreferences?.hasCompletedOnboarding == true
     val terminologyState = rememberUpdatedState(preferredTerminology)
 
+    val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -180,17 +198,23 @@ fun MainAppShell(
         }
     }
 
-    // Active tab derived directly from NavController destination (ADR 0003)
+    // Active tab derived directly from NavController destination (ADR 0003 & ADR 0014)
     val activeTab by remember(currentRoute) {
         derivedStateOf {
-            if (currentRoute == PeopleRoute.ROUTE_NAME) HomeNavTab.PEOPLE else HomeNavTab.HOME
+            when (currentRoute) {
+                PeopleRoute.ROUTE_NAME -> HomeNavTab.PEOPLE
+                TimelineRoute.ROUTE_NAME -> HomeNavTab.TIMELINE
+                else -> HomeNavTab.HOME
+            }
         }
     }
 
-    // Hide floating dock on non-root destinations using pure GPU translation (matches PixelPlayer)
-    val shouldHideDock by remember(currentRoute) {
+    val contactsUiState by contactsViewModel.uiState.collectAsState()
+
+    // Hide floating dock on non-root destinations or selection mode using pure GPU translation (matches PixelPlayer)
+    val shouldHideDock by remember(currentRoute, contactsUiState.isSelectionMode) {
         derivedStateOf {
-            shouldHideFloatingDock(currentRoute)
+            shouldHideFloatingDock(currentRoute) || contactsUiState.isSelectionMode
         }
     }
     val dockVisibilityProgressState = animateFloatAsState(
@@ -239,61 +263,109 @@ fun MainAppShell(
 
     SnackbarFeedbackCollector(
         homeViewModel = homeViewModel,
+        timelineViewModel = timelineViewModel,
         contactsViewModel = contactsViewModel,
         quickActionViewModel = quickActionViewModel,
         snackbarHostState = snackbarHostState
     )
 
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
+    val homeUiState by homeViewModel.uiState.collectAsState()
+    val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
+    val isDrawerActive = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            if (hasCompletedOnboarding || (currentRoute != null && currentRoute != OnboardingRoute.ROUTE_NAME)) {
-                WarmRootTabsHost(
+    BackHandler(enabled = isDrawerActive) {
+        coroutineScope.launch { drawerState.close() }
+        homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
+    }
+
+    LaunchedEffect(drawerState.currentValue) {
+        if (drawerState.currentValue == DrawerValue.Closed && homeUiState.isDrawerOpen) {
+            homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
+        }
+    }
+
+    LaunchedEffect(homeUiState.isDrawerOpen) {
+        if (homeUiState.isDrawerOpen && drawerState.isClosed) {
+            drawerState.open()
+        } else if (!homeUiState.isDrawerOpen && isDrawerActive) {
+            drawerState.close()
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = isDrawerActive,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerTonalElevation = 2.dp
+            ) {
+                GroupDrawerContent(
+                    selectedCircle = homeUiState.selectedCircle,
+                    circleConfigs = homeUiState.circleConfigs,
+                    onSelectCircle = { circle ->
+                        homeViewModel.onEvent(HomeUiEvent.OnSelectCircle(circle))
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    onCloseDrawer = {
+                        coroutineScope.launch { drawerState.close() }
+                        homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
+                    }
+                )
+            }
+        }
+    ) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                if (hasCompletedOnboarding || (currentRoute != null && currentRoute != OnboardingRoute.ROUTE_NAME)) {
+                    WarmRootTabsHost(
+                        navController = navController,
+                        currentRoute = currentRoute,
+                        activeTab = activeTab,
+                        homeViewModel = homeViewModel,
+                        timelineViewModel = timelineViewModel,
+                        contactsViewModel = contactsViewModel,
+                        quickActionViewModel = quickActionViewModel,
+                        terminologyState = terminologyState
+                    )
+                }
+
+                MainAppNavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    preferencesRepository = resolvedPreferencesRepository,
+                    quickActionViewModel = quickActionViewModel,
+                    snackbarHostState = snackbarHostState,
+                    userPreferences = userPreferences
+                )
+
+                // Scrim & Floating Bottom Navigation Dock scoped to prevent NavHost recomposition
+                FloatingDockOverlay(
                     navController = navController,
                     currentRoute = currentRoute,
                     activeTab = activeTab,
+                    shouldRenderDock = shouldRenderDock,
+                    dockVisibilityProgressState = dockVisibilityProgressState,
+                    dockHeightPx = dockHeightPx,
+                    onDockHeightChanged = { dockHeightPx = it },
                     homeViewModel = homeViewModel,
-                    contactsViewModel = contactsViewModel,
                     quickActionViewModel = quickActionViewModel,
-                    terminologyState = terminologyState
+                    preferredTerminology = preferredTerminology,
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 )
+
+                // Quick Action Sheet Host (Flow A: Add Contact card flow, Flow B: Met Again encounter sheet)
+                QuickActionSheetHostContainer(quickActionViewModel = quickActionViewModel)
             }
-
-            MainAppNavHost(
-                navController = navController,
-                startDestination = startDestination,
-                preferencesRepository = resolvedPreferencesRepository,
-                quickActionViewModel = quickActionViewModel,
-                snackbarHostState = snackbarHostState,
-                userPreferences = userPreferences
-            )
-
-            // Scrim & Floating Bottom Navigation Dock scoped to prevent NavHost recomposition
-            FloatingDockOverlay(
-                navController = navController,
-                currentRoute = currentRoute,
-                activeTab = activeTab,
-                shouldRenderDock = shouldRenderDock,
-                dockVisibilityProgressState = dockVisibilityProgressState,
-                dockHeightPx = dockHeightPx,
-                onDockHeightChanged = { dockHeightPx = it },
-                homeViewModel = homeViewModel,
-                quickActionViewModel = quickActionViewModel,
-                preferredTerminology = preferredTerminology,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
-
-            // Quick Action Sheet Host (Flow A: Add Contact card flow, Flow B: Met Again encounter sheet)
-            QuickActionSheetHostContainer(quickActionViewModel = quickActionViewModel)
         }
     }
 }
@@ -310,11 +382,16 @@ private fun WarmRootTabsHost(
     currentRoute: String?,
     activeTab: HomeNavTab,
     homeViewModel: HomeViewModel,
+    timelineViewModel: TimelineViewModel,
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
     terminologyState: State<RelationshipTerminology>
 ) {
-    val targetProgress = if (activeTab == HomeNavTab.PEOPLE) 1f else 0f
+    val targetProgress = when (activeTab) {
+        HomeNavTab.HOME -> 0f
+        HomeNavTab.PEOPLE -> 1f
+        HomeNavTab.TIMELINE -> 2f
+    }
     val slideFractionState = animateFloatAsState(
         targetValue = targetProgress,
         animationSpec = MotionTokens.tabTransitionTween(),
@@ -363,6 +440,16 @@ private fun WarmRootTabsHost(
     val onLogEncounterClick = remember(quickActionViewModel) {
         { quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter) }
     }
+    val onLogEncounterForContact = remember(quickActionViewModel) {
+        { contactId: String ->
+            val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
+            if (summary != null) {
+                quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
+            } else {
+                quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter)
+            }
+        }
+    }
     val onAddContactClick = remember(quickActionViewModel) {
         { quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectAddContact) }
     }
@@ -384,19 +471,19 @@ private fun WarmRootTabsHost(
                 }
             }
     ) {
-        // Slot 0: Home Screen (warm in composition, GPU-translated during transitions)
+        // Slot 0: Home Screen
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(if (activeTab == HomeNavTab.HOME) 1f else 0f)
                 .graphicsLayer {
-                    val slide = slideFractionState.value
-                    val fade = (1f - fadeFractionState.value).coerceIn(0f, 1f)
-                    if (slide >= 0.999f && fade <= 0.001f) {
+                    val delta = 0f - slideFractionState.value
+                    val fade = (1f - kotlin.math.abs(0f - fadeFractionState.value)).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(delta) >= 0.999f && fade <= 0.001f) {
                         translationX = -size.width * 2f
                         alpha = 0f
                     } else {
-                        translationX = -slide * (size.width * NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION)
+                        translationX = delta * (size.width * NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION)
                         alpha = fade
                     }
                 }
@@ -412,19 +499,19 @@ private fun WarmRootTabsHost(
             )
         }
 
-        // Slot 1: People / Relationship Screen (warm in composition, GPU-translated during transitions)
+        // Slot 1: People / Relationship Screen
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(if (activeTab == HomeNavTab.PEOPLE) 1f else 0f)
                 .graphicsLayer {
-                    val slide = slideFractionState.value
-                    val fade = fadeFractionState.value.coerceIn(0f, 1f)
-                    if (slide <= 0.001f && fade <= 0.001f) {
+                    val delta = 1f - slideFractionState.value
+                    val fade = (1f - kotlin.math.abs(1f - fadeFractionState.value)).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(delta) >= 0.999f && fade <= 0.001f) {
                         translationX = size.width * 2f
                         alpha = 0f
                     } else {
-                        translationX = (1f - slide) * (size.width * NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION)
+                        translationX = delta * (size.width * NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION)
                         alpha = fade
                     }
                 }
@@ -437,6 +524,50 @@ private fun WarmRootTabsHost(
                 terminology = terminologyState.value
             )
         }
+
+        // Slot 2: Timeline Screen (App-Wide Living Timeline)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(if (activeTab == HomeNavTab.TIMELINE) 1f else 0f)
+                .graphicsLayer {
+                    val delta = 2f - slideFractionState.value
+                    val fade = (1f - kotlin.math.abs(2f - fadeFractionState.value)).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(delta) >= 0.999f && fade <= 0.001f) {
+                        translationX = size.width * 2f
+                        alpha = 0f
+                    } else {
+                        translationX = delta * (size.width * NavigationTransitionConfig.MAIN_ROOT_SLIDE_OFFSET_FRACTION)
+                        alpha = fade
+                    }
+                }
+        ) {
+            TimelineTabDestination(
+                timelineViewModel = timelineViewModel,
+                onContactClick = onContactClick,
+                onLogEncounterForContact = onLogEncounterForContact,
+                onLogEncounterClick = onLogEncounterClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineTabDestination(
+    timelineViewModel: TimelineViewModel,
+    onContactClick: (String) -> Unit,
+    onLogEncounterForContact: (String) -> Unit,
+    onLogEncounterClick: () -> Unit
+) {
+    val timelineUiState by timelineViewModel.uiState.collectAsState()
+    ScreenDepthWrapper(isDepthVisible = false) {
+        TimelineScreen(
+            uiState = timelineUiState,
+            onEvent = timelineViewModel::onEvent,
+            onContactClick = onContactClick,
+            onLogEncounterForContact = onLogEncounterForContact,
+            onLogEncounterClick = onLogEncounterClick
+        )
     }
 }
 
@@ -531,6 +662,40 @@ private fun MainAppNavHost(
 
             composable(
                 route = HomeRoute.ROUTE_NAME,
+                enterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = enterTransition()
+                    )
+                },
+                exitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = exitTransition()
+                    )
+                },
+                popEnterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popEnterTransition()
+                    )
+                },
+                popExitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popExitTransition()
+                    )
+                }
+            ) {
+                // Visual content is kept warm in WarmRootTabsHost for 0ms first-frame latency
+            }
+
+            composable(
+                route = TimelineRoute.ROUTE_NAME,
                 enterTransition = {
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
@@ -861,6 +1026,7 @@ private fun FloatingDockOverlay(
                 val targetRoute = when (tab) {
                     HomeNavTab.HOME -> HomeRoute.ROUTE_NAME
                     HomeNavTab.PEOPLE -> PeopleRoute.ROUTE_NAME
+                    HomeNavTab.TIMELINE -> TimelineRoute.ROUTE_NAME
                 }
                 navController.navigateToTopLevelSafely(targetRoute)
             },
@@ -906,11 +1072,13 @@ private fun QuickActionSheetHostContainer(
 @Composable
 private fun SnackbarFeedbackCollector(
     homeViewModel: HomeViewModel,
+    timelineViewModel: TimelineViewModel,
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
     snackbarHostState: SnackbarHostState
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
+    val timelineUiState by timelineViewModel.uiState.collectAsState()
     val contactsUiState by contactsViewModel.uiState.collectAsState()
     val quickActionUiState by quickActionViewModel.uiState.collectAsState()
 
@@ -924,6 +1092,12 @@ private fun SnackbarFeedbackCollector(
         homeUiState.userMessage?.let {
             snackbarHostState.showSnackbar(it)
             homeViewModel.onEvent(HomeUiEvent.OnDismissUserMessage)
+        }
+    }
+    LaunchedEffect(timelineUiState.userMessage) {
+        timelineUiState.userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
         }
     }
     LaunchedEffect(quickActionUiState.userMessage) {
@@ -947,9 +1121,11 @@ fun MainAppShellLightPreview() {
                             preferredTerminology = RelationshipTerminology.PEOPLE
                         )
                     )
+                    override suspend fun setUserName(name: String) {}
                     override suspend fun setOnboardingCompleted(completed: Boolean) {}
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
                     override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
+                    override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setDefaultCadenceDays(days: Int) {}
@@ -975,9 +1151,11 @@ fun MainAppShellDarkPreview() {
                             preferredTerminology = RelationshipTerminology.FRIENDS
                         )
                     )
+                    override suspend fun setUserName(name: String) {}
                     override suspend fun setOnboardingCompleted(completed: Boolean) {}
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
                     override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
+                    override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setDefaultCadenceDays(days: Int) {}

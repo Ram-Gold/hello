@@ -1,9 +1,18 @@
 package com.example.hello.ui.home
 
-import com.example.hello.domain.model.CardType
+import com.example.hello.data.preferences.FakeUserPreferencesRepository
 import com.example.hello.domain.model.Circle
+import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -12,13 +21,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: HomeViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         viewModel = HomeViewModel()
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -26,12 +43,8 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
 
         assertEquals("Alex", state.userName)
-        assertEquals(CardType.WORK, state.activeCardType)
-        assertTrue(state.myCards.containsKey(CardType.WORK))
-        assertTrue(state.myCards.containsKey(CardType.SOCIAL))
         assertEquals(3, state.upcomingAlerts.size)
         assertEquals(4, state.recentContacts.size)
-        assertFalse(state.isQrExpanded)
         assertFalse(state.isSpeedDialOpen)
         assertNull(state.userMessage)
         assertEquals(HomeNavTab.HOME, state.selectedNavTab)
@@ -88,21 +101,45 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onCardTypeSelect_switchesActiveCard() {
-        viewModel.onEvent(HomeUiEvent.OnCardTypeSelect(CardType.SOCIAL))
-        assertEquals(CardType.SOCIAL, viewModel.uiState.value.activeCardType)
+    fun resolveEffectiveCadenceDays_arbitratesExplicitAndShortestCircleCadence() {
+        val configs = mapOf(
+            Circle.WORK to CircleGroupConfig(circle = Circle.WORK, cadenceDays = 7, isCadenceAlertEnabled = true),
+            Circle.FRIENDS to CircleGroupConfig(circle = Circle.FRIENDS, cadenceDays = 30, isCadenceAlertEnabled = true),
+            Circle.UNI to CircleGroupConfig(circle = Circle.UNI, cadenceDays = 3, isCadenceAlertEnabled = false)
+        )
 
-        viewModel.onEvent(HomeUiEvent.OnCardTypeSelect(CardType.WORK))
-        assertEquals(CardType.WORK, viewModel.uiState.value.activeCardType)
-    }
+        // 1. Explicit per-contact cadence wins over circle cadences
+        val explicitResult = CircleGroupConfig.resolveEffectiveCadenceDays(
+            circles = listOf(Circle.WORK, Circle.FRIENDS),
+            explicitCadenceDays = 14,
+            circleConfigs = configs
+        )
+        assertEquals(14, explicitResult)
 
-    @Test
-    fun onExpandQr_togglesModalVisibility() {
-        viewModel.onEvent(HomeUiEvent.OnExpandQr(true))
-        assertTrue(viewModel.uiState.value.isQrExpanded)
+        // 2. When no explicit cadence is set, shortest enabled circle cadence wins (Work 7d < Friends 30d)
+        val shortestCircleResult = CircleGroupConfig.resolveEffectiveCadenceDays(
+            circles = listOf(Circle.WORK, Circle.FRIENDS),
+            explicitCadenceDays = null,
+            circleConfigs = configs
+        )
+        assertEquals(7, shortestCircleResult)
 
-        viewModel.onEvent(HomeUiEvent.OnExpandQr(false))
-        assertFalse(viewModel.uiState.value.isQrExpanded)
+        // 3. Disabled circle alerts are ignored (Uni @ 3d disabled, Friends @ 30d enabled -> 30d)
+        val disabledIgnoredResult = CircleGroupConfig.resolveEffectiveCadenceDays(
+            circles = listOf(Circle.UNI, Circle.FRIENDS),
+            explicitCadenceDays = null,
+            circleConfigs = configs
+        )
+        assertEquals(30, disabledIgnoredResult)
+
+        // 4. Empty circles or no enabled circles fall back to defaultCadenceDays
+        val fallbackResult = CircleGroupConfig.resolveEffectiveCadenceDays(
+            circles = emptyList(),
+            explicitCadenceDays = null,
+            circleConfigs = configs,
+            defaultCadenceDays = 21
+        )
+        assertEquals(21, fallbackResult)
     }
 
     @Test
@@ -201,5 +238,18 @@ class HomeViewModelTest {
 
         viewModel.onEvent(HomeUiEvent.OnNavTabSelect(HomeNavTab.HOME))
         assertEquals(HomeNavTab.HOME, viewModel.uiState.value.selectedNavTab)
+    }
+
+    @Test
+    fun userName_updatesReactivelyFromPreferencesRepository() = runTest {
+        val fakePrefsRepo = FakeUserPreferencesRepository()
+        val vm = HomeViewModel(preferencesRepository = fakePrefsRepo)
+
+        advanceUntilIdle()
+        assertEquals("Alex", vm.uiState.value.userName)
+
+        fakePrefsRepo.setUserName("Taylor")
+        advanceUntilIdle()
+        assertEquals("Taylor", vm.uiState.value.userName)
     }
 }

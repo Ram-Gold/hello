@@ -37,8 +37,10 @@ class SettingsViewModel(
             preferencesRepository.userPreferencesFlow.collect { prefs ->
                 _uiState.update {
                     it.copy(
+                        userName = prefs.userName,
                         terminology = prefs.preferredTerminology,
                         themeMode = prefs.themeMode,
+                        themeStyle = prefs.themeStyle,
                         dynamicColor = prefs.dynamicColor,
                         reduceAnimations = prefs.reduceAnimations,
                         defaultCadenceDays = prefs.defaultCadenceDays,
@@ -74,6 +76,29 @@ class SettingsViewModel(
 
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
+            SettingsUiEvent.OnOpenEditNameDialog -> {
+                _uiState.update { it.copy(isEditingName = true) }
+            }
+
+            SettingsUiEvent.OnDismissEditNameDialog -> {
+                _uiState.update { it.copy(isEditingName = false) }
+            }
+
+            is SettingsUiEvent.OnSaveUserName -> {
+                val trimmed = event.newName.trim()
+                if (trimmed.isNotEmpty()) {
+                    viewModelScope.launch {
+                        preferencesRepository.setUserName(trimmed)
+                        _uiState.update {
+                            it.copy(
+                                isEditingName = false,
+                                userMessage = "Name updated"
+                            )
+                        }
+                    }
+                }
+            }
+
             is SettingsUiEvent.OnSelectTerminology -> {
                 viewModelScope.launch {
                     preferencesRepository.setPreferredTerminology(event.terminology)
@@ -221,6 +246,18 @@ class SettingsViewModel(
             is SettingsUiEvent.OnSelectThemeMode -> {
                 viewModelScope.launch {
                     preferencesRepository.setThemeMode(event.themeMode)
+                }
+            }
+
+            is SettingsUiEvent.OnSelectThemeStyle -> {
+                viewModelScope.launch {
+                    preferencesRepository.setThemeStyle(event.themeStyle)
+                    _uiState.update {
+                        it.copy(
+                            themeStyle = event.themeStyle,
+                            userMessage = "Design theme updated to ${event.themeStyle.title}"
+                        )
+                    }
                 }
             }
 

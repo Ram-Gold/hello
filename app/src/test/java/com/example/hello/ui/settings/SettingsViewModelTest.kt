@@ -1,6 +1,7 @@
 package com.example.hello.ui.settings
 
 import com.example.hello.data.preferences.FakeUserPreferencesRepository
+import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.data.preferences.UserPreferences
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CaptureComponentType
@@ -35,6 +36,7 @@ class SettingsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakePreferencesRepository = FakeUserPreferencesRepository(
             UserPreferences(
+                userName = "Taylor",
                 hasCompletedOnboarding = true,
                 preferredTerminology = RelationshipTerminology.PEOPLE
             )
@@ -52,8 +54,63 @@ class SettingsViewModelTest {
     fun initialState_loadsTerminologyAndTags() = runTest {
         advanceUntilIdle()
         val state = viewModel.uiState.value
+        assertEquals("Taylor", state.userName)
         assertEquals(RelationshipTerminology.PEOPLE, state.terminology)
+        assertEquals(ThemeStyle.MONOCHROME, state.themeStyle)
         assertTrue(state.tags.isNotEmpty())
+    }
+
+    @Test
+    fun onOpenAndDismissEditNameDialog_updatesDialogState() = runTest {
+        assertFalse(viewModel.uiState.value.isEditingName)
+
+        viewModel.onEvent(SettingsUiEvent.OnOpenEditNameDialog)
+        assertTrue(viewModel.uiState.value.isEditingName)
+
+        viewModel.onEvent(SettingsUiEvent.OnDismissEditNameDialog)
+        assertFalse(viewModel.uiState.value.isEditingName)
+    }
+
+    @Test
+    fun onSaveUserName_updatesRepositoryWhenNonEmpty_andIgnoresEmpty() = runTest {
+        advanceUntilIdle()
+        assertEquals("Taylor", viewModel.uiState.value.userName)
+
+        // Attempt saving empty or blank string -> should be ignored
+        viewModel.onEvent(SettingsUiEvent.OnOpenEditNameDialog)
+        viewModel.onEvent(SettingsUiEvent.OnSaveUserName("   "))
+        advanceUntilIdle()
+
+        // Name is unchanged, dialog is still open or at least name not updated
+        assertEquals("Taylor", viewModel.uiState.value.userName)
+
+        // Save a valid new name
+        viewModel.onEvent(SettingsUiEvent.OnSaveUserName("  Jordan  "))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isEditingName)
+        assertEquals("Jordan", viewModel.uiState.value.userName)
+        assertEquals("Name updated", viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun onSelectThemeStyle_switchesToWarmEarth_andCanSwitchBack() = runTest {
+        advanceUntilIdle()
+        assertEquals(ThemeStyle.MONOCHROME, viewModel.uiState.value.themeStyle)
+
+        // Switch to warm earth
+        viewModel.onEvent(SettingsUiEvent.OnSelectThemeStyle(ThemeStyle.WARM_EARTH))
+        advanceUntilIdle()
+
+        assertEquals(ThemeStyle.WARM_EARTH, viewModel.uiState.value.themeStyle)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Warm Organic") == true)
+
+        // Switch back to monochrome default
+        viewModel.onEvent(SettingsUiEvent.OnSelectThemeStyle(ThemeStyle.MONOCHROME))
+        advanceUntilIdle()
+
+        assertEquals(ThemeStyle.MONOCHROME, viewModel.uiState.value.themeStyle)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Minimalist") == true)
     }
 
     @Test

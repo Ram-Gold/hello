@@ -27,10 +27,29 @@ enum class ThemeMode(val id: String, val title: String) {
     }
 }
 
+enum class ThemeStyle(val id: String, val title: String, val subtitle: String) {
+    MONOCHROME(
+        id = "monochrome",
+        title = "Minimalist (Mallow & Vellum)",
+        subtitle = "High-contrast monochrome palette (#121212), Mallow & Vellum typography, 8dp borders"
+    ),
+    WARM_EARTH(
+        id = "warm_earth",
+        title = "Warm Organic (Terracotta & Sage)",
+        subtitle = "Warm cream & terracotta palette, Nunito & Open Sans typography, organic curves"
+    );
+
+    companion object {
+        fun fromId(id: String?): ThemeStyle = entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: MONOCHROME
+    }
+}
+
 data class UserPreferences(
+    val userName: String = "Alex",
     val hasCompletedOnboarding: Boolean = false,
     val preferredTerminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
     val defaultCadenceDays: Int = 30,
@@ -42,9 +61,11 @@ data class UserPreferences(
 
 interface UserPreferencesRepository {
     val userPreferencesFlow: Flow<UserPreferences>
+    suspend fun setUserName(name: String)
     suspend fun setOnboardingCompleted(completed: Boolean = true)
     suspend fun setPreferredTerminology(terminology: RelationshipTerminology)
     suspend fun setThemeMode(themeMode: ThemeMode)
+    suspend fun setThemeStyle(themeStyle: ThemeStyle)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setReduceAnimations(enabled: Boolean)
     suspend fun setDefaultCadenceDays(days: Int)
@@ -66,11 +87,14 @@ class DataStoreUserPreferencesRepository(
             }
         }
         .map { preferences ->
+            val userName = preferences[KEY_USER_NAME] ?: "Alex"
             val completed = preferences[KEY_HAS_COMPLETED_ONBOARDING] ?: false
             val terminologyId = preferences[KEY_PREFERRED_TERMINOLOGY]
             val terminology = RelationshipTerminology.fromId(terminologyId)
             val themeModeId = preferences[KEY_THEME_MODE]
             val themeMode = ThemeMode.fromId(themeModeId)
+            val themeStyleId = preferences[KEY_THEME_STYLE]
+            val themeStyle = ThemeStyle.fromId(themeStyleId)
             val dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: false
             val reduceAnimations = preferences[KEY_REDUCE_ANIMATIONS] ?: false
             val cadenceDays = preferences[KEY_DEFAULT_CADENCE_DAYS] ?: 30
@@ -80,9 +104,11 @@ class DataStoreUserPreferencesRepository(
             val activeFlowPresetId = preferences[KEY_ACTIVE_FLOW_PRESET_ID] ?: "preset_default"
 
             UserPreferences(
+                userName = userName,
                 hasCompletedOnboarding = completed,
                 preferredTerminology = terminology,
                 themeMode = themeMode,
+                themeStyle = themeStyle,
                 dynamicColor = dynamicColor,
                 reduceAnimations = reduceAnimations,
                 defaultCadenceDays = cadenceDays,
@@ -92,6 +118,12 @@ class DataStoreUserPreferencesRepository(
                 activeFlowPresetId = activeFlowPresetId
             )
         }
+
+    override suspend fun setUserName(name: String) {
+        dataStore.edit { preferences ->
+            preferences[KEY_USER_NAME] = name.trim()
+        }
+    }
 
     override suspend fun setOnboardingCompleted(completed: Boolean) {
         dataStore.edit { preferences ->
@@ -108,6 +140,12 @@ class DataStoreUserPreferencesRepository(
     override suspend fun setThemeMode(themeMode: ThemeMode) {
         dataStore.edit { preferences ->
             preferences[KEY_THEME_MODE] = themeMode.id
+        }
+    }
+
+    override suspend fun setThemeStyle(themeStyle: ThemeStyle) {
+        dataStore.edit { preferences ->
+            preferences[KEY_THEME_STYLE] = themeStyle.id
         }
     }
 
@@ -149,9 +187,11 @@ class DataStoreUserPreferencesRepository(
     }
 
     companion object {
+        val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
         val KEY_PREFERRED_TERMINOLOGY = stringPreferencesKey("preferred_terminology")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        val KEY_THEME_STYLE = stringPreferencesKey("theme_style")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
         val KEY_DEFAULT_CADENCE_DAYS = intPreferencesKey("default_cadence_days")
