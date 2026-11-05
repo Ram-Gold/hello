@@ -135,6 +135,7 @@ class ContactRepository(
                     .sortedByDescending { it.lastMetAt ?: Instant.MIN }
                     .take(4)
                     .map { it.toSummary() }
+                refreshBirthdayAlerts(domainMap.values)
             }
         }
 
@@ -176,6 +177,41 @@ class ContactRepository(
                     val nonFollowUps = currentAlerts.filterNot { it is UpcomingAlert.FollowUpReminder }
                     reminders + nonFollowUps
                 }
+            }
+        }
+    }
+
+    private fun refreshBirthdayAlerts(contacts: Collection<Contact>) {
+        val bdayAlerts = computeBirthdayAlerts(contacts)
+        _upcomingAlerts.update { currentAlerts ->
+            val nonBdays = currentAlerts.filterNot { it is UpcomingAlert.BirthdayAlert && it.id.startsWith("bday-") }
+            bdayAlerts + nonBdays
+        }
+    }
+
+    private fun computeBirthdayAlerts(contacts: Collection<Contact>): List<UpcomingAlert.BirthdayAlert> {
+        val today = LocalDate.now()
+        return contacts.filterNot { it.isArchived }.mapNotNull { contact ->
+            val bday = contact.birthday ?: return@mapNotNull null
+            var nextBday = bday.withYear(today.year)
+            if (nextBday.isBefore(today)) {
+                nextBday = bday.withYear(today.year + 1)
+            }
+            val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
+            if (daysUntil in 0..30) {
+                val dateText = when (daysUntil) {
+                    0L -> "Today! 🎂"
+                    1L -> "Tomorrow"
+                    else -> "In $daysUntil days"
+                }
+                UpcomingAlert.BirthdayAlert(
+                    id = "bday-${contact.id}",
+                    contactName = contact.name,
+                    dateText = dateText,
+                    circle = contact.circles.firstOrNull()
+                )
+            } else {
+                null
             }
         }
     }
@@ -457,7 +493,13 @@ class ContactRepository(
         placeId: String?,
         customPlaceName: String?,
         note: String,
-        followUpDays: Int?
+        followUpDays: Int?,
+        role: String? = null,
+        company: String? = null,
+        birthday: LocalDate? = null,
+        phone: String? = null,
+        email: String? = null,
+        customProperties: Map<String, String> = emptyMap()
     ): ContactSummary {
         val cleanName = name.trim().ifEmpty { "New Contact" }
         val resolvedPlaceId = resolveOrCreatePlace(placeId, customPlaceName)
@@ -468,6 +510,10 @@ class ContactRepository(
             .map { "#${it.name.lowercase()}" }
 
         val contextParts = mutableListOf<String>()
+        val professionalSubtitle = listOfNotNull(role?.trim()?.ifEmpty { null }, company?.trim()?.ifEmpty { null }).joinToString(" at ")
+        if (professionalSubtitle.isNotBlank()) {
+            contextParts.add(professionalSubtitle)
+        }
         if (note.isNotBlank()) {
             contextParts.add(note.trim())
         } else if (placeLabel != null) {
@@ -514,15 +560,22 @@ class ContactRepository(
         val fullContact = Contact(
             id = newContact.id,
             name = cleanName,
+            role = role?.trim()?.ifEmpty { null },
+            company = company?.trim()?.ifEmpty { null },
+            birthday = birthday,
+            phone = phone?.trim()?.ifEmpty { null },
+            email = email?.trim()?.ifEmpty { null },
             circles = newContact.circles,
             tagIds = tagIds.toList(),
             notes = note.trim(),
             firstMetAt = now,
             lastMetAt = now,
             meetCount = 1,
-            cadenceDays = followUpDays
+            cadenceDays = followUpDays,
+            customProperties = customProperties
         )
         _fullContacts.update { it + (newContact.id to fullContact) }
+        refreshBirthdayAlerts(_fullContacts.value.values)
 
         if (tagIds.isNotEmpty()) {
             _tags.update { currentTags ->

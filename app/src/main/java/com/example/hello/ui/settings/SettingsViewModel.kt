@@ -6,7 +6,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.hello.data.preferences.UserPreferencesRepository
+import com.example.hello.data.repository.CaptureFlowRepository
 import com.example.hello.data.repository.ContactRepository
+import com.example.hello.domain.model.CaptureComponent
+import com.example.hello.domain.model.CaptureComponentType
+import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 import com.example.hello.platform.portability.ExportDataWorker
@@ -15,11 +19,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository,
     private val contactRepository: ContactRepository,
-    private val workManager: WorkManager? = null
+    private val workManager: WorkManager? = null,
+    private val captureFlowRepository: CaptureFlowRepository = CaptureFlowRepository(contactRepository.database)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -38,7 +44,8 @@ class SettingsViewModel(
                         defaultCadenceDays = prefs.defaultCadenceDays,
                         notificationHour = prefs.notificationHour,
                         notificationMinute = prefs.notificationMinute,
-                        defaultIncludeLocation = prefs.defaultIncludeLocation
+                        defaultIncludeLocation = prefs.defaultIncludeLocation,
+                        activeFlowPresetId = prefs.activeFlowPresetId
                     )
                 }
             }
@@ -48,6 +55,19 @@ class SettingsViewModel(
         viewModelScope.launch {
             contactRepository.tags.collect { tags ->
                 _uiState.update { it.copy(tags = tags) }
+            }
+        }
+
+        // Collect presets from CaptureFlowRepository
+        viewModelScope.launch {
+            captureFlowRepository.presets.collect { presets ->
+                _uiState.update { state ->
+                    val defaultSelect = state.selectedEditingPresetId.ifBlank { state.activeFlowPresetId }
+                    state.copy(
+                        flowPresets = presets,
+                        selectedEditingPresetId = if (presets.any { it.id == defaultSelect }) defaultSelect else presets.firstOrNull()?.id ?: "preset_default"
+                    )
+                }
             }
         }
     }
@@ -236,6 +256,122 @@ class SettingsViewModel(
             is SettingsUiEvent.OnToggleDefaultIncludeLocation -> {
                 viewModelScope.launch {
                     preferencesRepository.setDefaultIncludeLocation(event.enabled)
+                }
+            }
+
+            // Capture Flows Handlers (ADR-0012)
+            is SettingsUiEvent.OnSelectActiveFlowPreset -> {
+                viewModelScope.launch {
+                    preferencesRepository.setActiveFlowPresetId(event.presetId)
+                    _uiState.update {
+                        val name = it.flowPresets.firstOrNull { p -> p.id == event.presetId }?.name ?: "Flow"
+                        it.copy(
+                            activeFlowPresetId = event.presetId,
+                            userMessage = "Active flow set to $name"
+                        )
+                    }
+                }
+            }
+
+            is SettingsUiEvent.OnSelectPresetToEdit -> {
+                _uiState.update { it.copy(selectedEditingPresetId = event.presetId) }
+            }
+
+            is SettingsUiEvent.OnMoveComponentUp -> {
+                val preset = _uiState.value.flowPresets.firstOrNull { it.id == event.presetId } ?: return
+                val components = preset.components.toMutableList()
+                val index = components.indexOfFirst { it.id == event.componentId }
+                if (index > 0) {
+                    val item = components.removeAt(index)
+                    components.add(index - 1, item)
+                    val reindexed = components.mapIndexed { idx, comp -> comp.copy(stepOrder = idx) }
+                    viewModelScope.launch {
+                        captureFlowRepository.updatePresetComponents(event.presetId, reindexed)
+                    }
+                }
+            }
+
+            is SettingsUiEvent.OnMoveComponentDown -> {
+                val preset = _uiState.value.flowPresets.firstOrNull { it.id == event.presetId } ?: return
+                val components = preset.components.toMutableList()
+                val index = components.indexOfFirst { it.id == event.componentId }
+                if (index >= 0 && index < components.size - 1) {
+                    val item = components.removeAt(index)
+                    components.add(index + 1, item)
+                    val reindexed = components.mapIndexed { idx, comp -> comp.copy(stepOrder = idx) }
+                    viewModelScope.launch {
+                        captureFlowRepository.updatePresetComponents(event.presetId, reindexed)
+                    }
+                }
+            }
+
+            is SettingsUiEvent.OnToggleComponentEnabled -> {
+                val preset = _uiState.value.flowPresets.firstOrNull { it.id == event.presetId } ?: return
+                val updated = preset.components.map { comp ->
+                    if (comp.id == event.componentId) comp.copy(isEnabled = event.isEnabled) else comp
+                }
+                viewModelScope.launch {
+                    captureFlowRepository.updatePresetComponents(event.presetId, updated)
+                }
+            }
+
+            is SettingsUiEvent.OnResetPresetToDefault -> {
+                viewModelScope.launch {
+                    captureFlowRepository.resetPresetToDefault(event.presetId)
+                    _uiState.update { it.copy(userMessage = "Reset preset components to default") }
+                }
+            }
+
+            is SettingsUiEvent.OnDeleteCustomPreset -> {
+                viewModelScope.launch {
+                    captureFlowRepository.deleteCustomPreset(event.presetId)
+                    _uiState.update {
+                        it.copy(
+                            selectedEditingPresetId = FlowPreset.PRESET_DEFAULT,
+                            activeFlowPresetId = if (it.activeFlowPresetId == event.presetId) FlowPreset.PRESET_DEFAULT else it.activeFlowPresetId,
+                            userMessage = "Custom flow preset deleted"
+                        )
+                    }
+                }
+            }
+
+            SettingsUiEvent.OnOpenCreatePresetDialog -> {
+                _uiState.update { it.copy(isCreatePresetDialogOpen = true) }
+            }
+
+            SettingsUiEvent.OnCloseCreatePresetDialog -> {
+                _uiState.update { it.copy(isCreatePresetDialogOpen = false) }
+            }
+
+            is SettingsUiEvent.OnCreateCustomPreset -> {
+                viewModelScope.launch {
+                    val defaultPreset = FlowPreset.createDefaultPresets().first()
+                    val newPreset = captureFlowRepository.createCustomPreset(
+                        name = event.name.trim().ifEmpty { "Custom Flow" },
+                        description = event.description.trim().ifEmpty { "Custom Capture Flow" },
+                        components = defaultPreset.components.map { it.copy(id = UUID.randomUUID().toString()) }
+                    )
+                    _uiState.update {
+                        it.copy(
+                            isCreatePresetDialogOpen = false,
+                            selectedEditingPresetId = newPreset.id,
+                            userMessage = "Created '${newPreset.name}' flow preset"
+                        )
+                    }
+                }
+            }
+
+            is SettingsUiEvent.OnAddComponentToPreset -> {
+                val preset = _uiState.value.flowPresets.firstOrNull { it.id == event.presetId } ?: return
+                val newComp = CaptureComponent(
+                    type = event.type,
+                    label = event.label.ifBlank { event.type.defaultLabel },
+                    stepOrder = preset.components.size,
+                    isRequired = event.type.isSystemMandatory
+                )
+                val updated = preset.components + newComp
+                viewModelScope.launch {
+                    captureFlowRepository.updatePresetComponents(event.presetId, updated)
                 }
             }
         }

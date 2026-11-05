@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * Room persistence entity for Contact.
@@ -16,6 +17,9 @@ data class ContactEntity(
     val id: String,
     val name: String,
     val aliases: List<String> = emptyList(),
+    val role: String? = null,
+    val company: String? = null,
+    val birthday: LocalDate? = null,
     val phone: String? = null,
     val email: String? = null,
     val circles: List<Circle> = emptyList(),
@@ -26,13 +30,17 @@ data class ContactEntity(
     val lastMetAt: Instant? = null,
     val meetCount: Int = 0,
     val cadenceDays: Int? = null,
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val customProperties: Map<String, String> = emptyMap()
 )
 
 fun Contact.toEntity(): ContactEntity = ContactEntity(
     id = id,
     name = name,
     aliases = aliases,
+    role = role,
+    company = company,
+    birthday = birthday,
     phone = phone,
     email = email,
     circles = circles,
@@ -43,13 +51,17 @@ fun Contact.toEntity(): ContactEntity = ContactEntity(
     lastMetAt = lastMetAt,
     meetCount = meetCount,
     cadenceDays = cadenceDays,
-    isArchived = isArchived
+    isArchived = isArchived,
+    customProperties = customProperties
 )
 
 fun ContactEntity.toDomain(): Contact = Contact(
     id = id,
     name = name,
     aliases = aliases,
+    role = role,
+    company = company,
+    birthday = birthday,
     phone = phone,
     email = email,
     circles = circles,
@@ -60,5 +72,6 @@ fun ContactEntity.toDomain(): Contact = Contact(
     lastMetAt = lastMetAt,
     meetCount = meetCount,
     cadenceDays = cadenceDays,
-    isArchived = isArchived
+    isArchived = isArchived,
+    customProperties = customProperties
 )

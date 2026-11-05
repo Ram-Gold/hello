@@ -2,10 +2,8 @@ package com.example.hello.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.People
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.home.components.DockMotionConfig
 import com.example.hello.ui.navigation.shouldInterceptPeopleBack
@@ -80,42 +78,42 @@ class SmoothTabsTest {
     }
 
     @Test
-    fun resolveTabIcon_returnsFilledWhenSelectedAndOutlinedWhenUnselected() {
+    fun resolveTabIcon_returnsFriendlyRoundedIcons() {
         // Home tab
         assertEquals(
-            "Selected Home tab must use filled icon",
-            Icons.Filled.Home,
+            "Selected Home tab must use rounded icon",
+            Icons.Rounded.Home,
             DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = true)
         )
         assertEquals(
-            "Unselected Home tab must use outlined icon",
-            Icons.Outlined.Home,
+            "Unselected Home tab must use rounded icon",
+            Icons.Rounded.Home,
             DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = false)
         )
 
         // People tab
         assertEquals(
-            "Selected People tab must use filled icon",
-            Icons.Filled.People,
+            "Selected People tab must use rounded icon",
+            Icons.Rounded.People,
             DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = true)
         )
         assertEquals(
-            "Unselected People tab must use outlined icon",
-            Icons.Outlined.People,
+            "Unselected People tab must use rounded icon",
+            Icons.Rounded.People,
             DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = false)
         )
     }
 
     @Test
-    fun tabFilledIcon_alwaysReturnsFilledIconsForSmoothTransitions() {
+    fun tabFilledIcon_alwaysReturnsRoundedIconsForSmoothTransitions() {
         assertEquals(
-            "Home tab must always use filled icon during transitions",
-            Icons.Filled.Home,
+            "Home tab must always use rounded icon during transitions",
+            Icons.Rounded.Home,
             DockMotionConfig.tabFilledIcon(HomeNavTab.HOME)
         )
         assertEquals(
-            "People tab must always use filled icon during transitions",
-            Icons.Filled.People,
+            "People tab must always use rounded icon during transitions",
+            Icons.Rounded.People,
             DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE)
         )
     }

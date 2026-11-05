@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -56,9 +57,16 @@ class QuickCaptureActivity : ComponentActivity() {
 
                 // Intercept back button to step backward or dismiss immediately
                 BackHandler {
-                    if (uiState.flowAStep != FlowAStep.NAME) {
+                    if (uiState.currentStepIndex > 0) {
                         viewModel.onEvent(QuickActionUiEvent.OnPreviousStep)
                     } else {
+                        finish()
+                    }
+                }
+
+                // If save completes and flow closes, finish activity
+                LaunchedEffect(uiState.isOpen) {
+                    if (!uiState.isOpen) {
                         finish()
                     }
                 }
@@ -110,10 +118,6 @@ class QuickCaptureActivity : ComponentActivity() {
                             onEvent = { event ->
                                 when (event) {
                                     is QuickActionUiEvent.OnDismiss -> {
-                                        finish()
-                                    }
-                                    is QuickActionUiEvent.OnQuickSaveFlowA -> {
-                                        viewModel.onEvent(event)
                                         finish()
                                     }
                                     else -> {

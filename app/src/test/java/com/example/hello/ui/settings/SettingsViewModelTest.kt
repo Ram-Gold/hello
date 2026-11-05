@@ -3,6 +3,8 @@ package com.example.hello.ui.settings
 import com.example.hello.data.preferences.FakeUserPreferencesRepository
 import com.example.hello.data.preferences.UserPreferences
 import com.example.hello.data.repository.ContactRepository
+import com.example.hello.domain.model.CaptureComponentType
+import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -179,5 +181,93 @@ class SettingsViewModelTest {
         viewModel.onEvent(SettingsUiEvent.OnToggleDefaultIncludeLocation(false))
         advanceUntilIdle()
         assertFalse(viewModel.uiState.value.defaultIncludeLocation)
+    }
+
+    @Test
+    fun onSelectActiveFlowPreset_updatesPreferencesAndState() = runTest {
+        advanceUntilIdle()
+        viewModel.onEvent(SettingsUiEvent.OnSelectActiveFlowPreset(FlowPreset.PRESET_CONFERENCE))
+        advanceUntilIdle()
+
+        assertEquals(FlowPreset.PRESET_CONFERENCE, viewModel.uiState.value.activeFlowPresetId)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Conference") == true)
+    }
+
+    @Test
+    fun onMoveComponentUpAndDown_updatesComponentOrder() = runTest {
+        advanceUntilIdle()
+        val defaultPreset = viewModel.uiState.value.flowPresets.first { it.id == FlowPreset.PRESET_DEFAULT }
+        val compAt1 = defaultPreset.components[1] // ROLE
+
+        // Move Role up to step 0
+        viewModel.onEvent(SettingsUiEvent.OnMoveComponentUp(defaultPreset.id, compAt1.id))
+        advanceUntilIdle()
+
+        val updatedPreset = viewModel.uiState.value.flowPresets.first { it.id == FlowPreset.PRESET_DEFAULT }
+        assertEquals(compAt1.id, updatedPreset.components[0].id)
+        assertEquals(0, updatedPreset.components[0].stepOrder)
+
+        // Move it down back to step 1
+        viewModel.onEvent(SettingsUiEvent.OnMoveComponentDown(defaultPreset.id, compAt1.id))
+        advanceUntilIdle()
+
+        val restoredPreset = viewModel.uiState.value.flowPresets.first { it.id == FlowPreset.PRESET_DEFAULT }
+        assertEquals(compAt1.id, restoredPreset.components[1].id)
+    }
+
+    @Test
+    fun onToggleComponentEnabled_updatesComponentStatus() = runTest {
+        advanceUntilIdle()
+        val defaultPreset = viewModel.uiState.value.flowPresets.first { it.id == FlowPreset.PRESET_DEFAULT }
+        val compAt1 = defaultPreset.components[1] // ROLE
+        assertTrue(compAt1.isEnabled)
+
+        viewModel.onEvent(SettingsUiEvent.OnToggleComponentEnabled(defaultPreset.id, compAt1.id, false))
+        advanceUntilIdle()
+
+        val updatedPreset = viewModel.uiState.value.flowPresets.first { it.id == defaultPreset.id }
+        val updatedComp = updatedPreset.components.first { it.id == compAt1.id }
+        assertFalse(updatedComp.isEnabled)
+    }
+
+    @Test
+    fun onCreateAndOnDeleteCustomPreset_managesCustomPresets() = runTest {
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.flowPresets.size
+
+        viewModel.onEvent(SettingsUiEvent.OnCreateCustomPreset(name = "Hackathon", description = "Speed capture for hackathon"))
+        advanceUntilIdle()
+
+        assertEquals(initialCount + 1, viewModel.uiState.value.flowPresets.size)
+        val created = viewModel.uiState.value.flowPresets.first { it.name == "Hackathon" }
+        assertEquals("Hackathon", created.name)
+        assertFalse(created.isSystemPreset)
+
+        // Delete custom preset
+        viewModel.onEvent(SettingsUiEvent.OnDeleteCustomPreset(created.id))
+        advanceUntilIdle()
+
+        assertEquals(initialCount, viewModel.uiState.value.flowPresets.size)
+        assertNull(viewModel.uiState.value.flowPresets.firstOrNull { it.id == created.id })
+    }
+
+    @Test
+    fun onAddComponentToPreset_addsNewComponentToPreset() = runTest {
+        advanceUntilIdle()
+        val defaultPreset = viewModel.uiState.value.flowPresets.first { it.id == FlowPreset.PRESET_DEFAULT }
+        val initialSize = defaultPreset.components.size
+
+        viewModel.onEvent(
+            SettingsUiEvent.OnAddComponentToPreset(
+                presetId = defaultPreset.id,
+                type = CaptureComponentType.BIRTHDAY,
+                label = "Birthday"
+            )
+        )
+        advanceUntilIdle()
+
+        val updatedPreset = viewModel.uiState.value.flowPresets.first { it.id == defaultPreset.id }
+        assertEquals(initialSize + 1, updatedPreset.components.size)
+        assertTrue(updatedPreset.components.any { it.type == CaptureComponentType.BIRTHDAY })
     }
 }

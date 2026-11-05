@@ -21,10 +21,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.CallMerge
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.automirrored.rounded.CallMerge
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,7 +82,7 @@ fun SettingsTagsScreen(
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Add,
+                            imageVector = Icons.Rounded.Add,
                             contentDescription = "New Tag",
                             modifier = Modifier.size(20.dp)
                         )
@@ -116,7 +116,7 @@ fun SettingsTagsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Info,
+                                    imageVector = Icons.Rounded.Info,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -207,7 +207,7 @@ fun SettingsTagsScreen(
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.CallMerge,
+                                                imageVector = Icons.AutoMirrored.Rounded.CallMerge,
                                                 contentDescription = "Merge Tag",
                                                 tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(18.dp)
@@ -218,7 +218,7 @@ fun SettingsTagsScreen(
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.Edit,
+                                                imageVector = Icons.Rounded.Edit,
                                                 contentDescription = "Edit Tag",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.size(18.dp)

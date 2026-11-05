@@ -80,6 +80,7 @@ import com.example.hello.ui.navigation.PersonEditRoute
 import com.example.hello.ui.navigation.SettingsAboutRoute
 import com.example.hello.ui.navigation.SettingsAppearanceRoute
 import com.example.hello.ui.navigation.SettingsDataRoute
+import com.example.hello.ui.navigation.SettingsFlowsRoute
 import com.example.hello.ui.navigation.SettingsMotionConfig
 import com.example.hello.ui.navigation.SettingsPreferencesRoute
 import com.example.hello.ui.navigation.SettingsRoute
@@ -107,6 +108,7 @@ import com.example.hello.ui.quickaction.QuickActionViewModel
 import com.example.hello.ui.settings.SettingsAboutScreen
 import com.example.hello.ui.settings.SettingsAppearanceScreen
 import com.example.hello.ui.settings.SettingsDataScreen
+import com.example.hello.ui.settings.SettingsFlowsScreen
 import com.example.hello.ui.settings.SettingsPreferencesScreen
 import com.example.hello.ui.settings.SettingsScreen
 import com.example.hello.ui.settings.SettingsTagsScreen
@@ -136,10 +138,11 @@ fun MainAppShell(
             alarmScheduler = FollowUpAlarmScheduler(context)
         )
     }
-    val quickActionViewModel = remember(initialQuickActionViewModel, repository) {
+    val quickActionViewModel = remember(initialQuickActionViewModel, repository, resolvedPreferencesRepository) {
         initialQuickActionViewModel ?: QuickActionViewModel(
             repository = repository,
-            locationService = LocationService(context)
+            locationService = LocationService(context),
+            preferencesRepository = resolvedPreferencesRepository
         )
     }
     val homeViewModel = remember(initialHomeViewModel, repository) {
@@ -607,11 +610,28 @@ private fun MainAppNavHost(
                         onEvent = settingsViewModel::onEvent,
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToTerminology = { navController.navigateSafely(SettingsTerminologyRoute.ROUTE_NAME) },
+                        onNavigateToFlows = { navController.navigateSafely(SettingsFlowsRoute.ROUTE_NAME) },
                         onNavigateToTags = { navController.navigateSafely(SettingsTagsRoute.ROUTE_NAME) },
                         onNavigateToData = { navController.navigateSafely(SettingsDataRoute.ROUTE_NAME) },
                         onNavigateToAppearance = { navController.navigateSafely(SettingsAppearanceRoute.ROUTE_NAME) },
                         onNavigateToPreferences = { navController.navigateSafely(SettingsPreferencesRoute.ROUTE_NAME) },
                         onNavigateToAbout = { navController.navigateSafely(SettingsAboutRoute.ROUTE_NAME) }
+                    )
+                }
+            }
+
+            composable(
+                route = SettingsFlowsRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    SettingsFlowsScreen(
+                        uiState = settingsUiState,
+                        onEvent = settingsViewModel::onEvent,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }
@@ -935,6 +955,7 @@ fun MainAppShellLightPreview() {
                     override suspend fun setDefaultCadenceDays(days: Int) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
                     override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
+                    override suspend fun setActiveFlowPresetId(presetId: String) {}
                 }
             }
         )
@@ -962,6 +983,7 @@ fun MainAppShellDarkPreview() {
                     override suspend fun setDefaultCadenceDays(days: Int) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
                     override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
+                    override suspend fun setActiveFlowPresetId(presetId: String) {}
                 }
             }
         )

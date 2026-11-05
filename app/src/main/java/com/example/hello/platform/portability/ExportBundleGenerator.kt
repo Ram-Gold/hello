@@ -40,6 +40,9 @@ object ExportBundleGenerator {
                 append("    \"id\": ${quoteJson(c.id)},\n")
                 append("    \"name\": ${quoteJson(c.name)},\n")
                 append("    \"aliases\": [${c.aliases.joinToString(", ") { quoteJson(it) }}],\n")
+                append("    \"role\": ${quoteJson(c.role)},\n")
+                append("    \"company\": ${quoteJson(c.company)},\n")
+                append("    \"birthday\": ${quoteJson(c.birthday?.toString())},\n")
                 append("    \"circles\": [${c.circles.joinToString(", ") { quoteJson(it.name) }}],\n")
                 append("    \"tagIds\": [${c.tagIds.joinToString(", ") { quoteJson(it) }}],\n")
                 append("    \"phone\": ${quoteJson(c.phone)},\n")
@@ -49,7 +52,9 @@ object ExportBundleGenerator {
                 append("    \"lastMetAt\": ${quoteJson(c.lastMetAt?.toString())},\n")
                 append("    \"meetCount\": ${c.meetCount},\n")
                 append("    \"cadenceDays\": ${c.cadenceDays ?: "null"},\n")
-                append("    \"isArchived\": ${c.isArchived}\n")
+                append("    \"isArchived\": ${c.isArchived},\n")
+                val customEntries = c.customProperties.entries.joinToString(", ") { "\"${it.key}\": ${quoteJson(it.value)}" }
+                append("    \"customProperties\": {$customEntries}\n")
                 append("  }${if (i < contacts.size - 1) "," else ""}\n")
             }
             append("]\n")
@@ -150,6 +155,15 @@ object ExportBundleGenerator {
                 if (contact.aliases.isNotEmpty()) {
                     append("aliases: [${contact.aliases.joinToString(", ") { "\"$it\"" }}]\n")
                 }
+                if (!contact.role.isNullOrBlank()) {
+                    append("role: \"${contact.role}\"\n")
+                }
+                if (!contact.company.isNullOrBlank()) {
+                    append("company: \"${contact.company}\"\n")
+                }
+                if (contact.birthday != null) {
+                    append("birthday: \"${contact.birthday}\"\n")
+                }
                 append("circles: [${contact.circles.joinToString(", ") { "\"${it.displayName}\"" }}]\n")
                 if (resolvedTags.isNotEmpty()) {
                     append("tags: [${resolvedTags.joinToString(", ") { "\"$it\"" }}]\n")
@@ -159,6 +173,11 @@ object ExportBundleGenerator {
                 }
                 if (!contact.email.isNullOrBlank()) {
                     append("email: \"${contact.email}\"\n")
+                }
+                contact.customProperties.forEach { (key, value) ->
+                    if (value.isNotBlank()) {
+                        append("$key: \"$value\"\n")
+                    }
                 }
                 if (contact.cadenceDays != null) {
                     append("cadence_days: ${contact.cadenceDays}\n")
@@ -210,7 +229,7 @@ object ExportBundleGenerator {
 
         // contacts.csv
         files["contacts.csv"] = buildString {
-            append("id,name,circles,phone,email,notes,meet_count,last_met_at\n")
+            append("id,name,circles,phone,email,notes,meet_count,last_met_at,role,company,birthday\n")
             contacts.forEach { c ->
                 val circlesStr = c.circles.joinToString(";") { it.name }
                 append("${escapeCsv(c.id)},")
@@ -220,7 +239,10 @@ object ExportBundleGenerator {
                 append("${escapeCsv(c.email.orEmpty())},")
                 append("${escapeCsv(c.notes)},")
                 append("${c.meetCount},")
-                append("${escapeCsv(c.lastMetAt?.toString().orEmpty())}\n")
+                append("${escapeCsv(c.lastMetAt?.toString().orEmpty())},")
+                append("${escapeCsv(c.role.orEmpty())},")
+                append("${escapeCsv(c.company.orEmpty())},")
+                append("${escapeCsv(c.birthday?.toString().orEmpty())}\n")
             }
         }
 

@@ -24,11 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cake
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Snooze
+import androidx.compose.material.icons.rounded.Cake
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -148,21 +148,21 @@ fun UpcomingAlertCard(
 ) {
     val config = when (alert) {
         is UpcomingAlert.BirthdayAlert -> AlertVisualConfig(
-            icon = Icons.Outlined.Cake,
+            icon = Icons.Rounded.Cake,
             iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             badgeText = alert.dateText.ifBlank { "Birthday" },
             descriptionText = "Wish them well on their birthday 🎉"
         )
         is UpcomingAlert.FollowUpReminder -> AlertVisualConfig(
-            icon = Icons.Outlined.Notifications,
+            icon = Icons.Rounded.Notifications,
             iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             badgeText = alert.dueText.uppercase(),
             descriptionText = alert.taskDescription
         )
         is UpcomingAlert.CadenceAlert -> AlertVisualConfig(
-            icon = Icons.Outlined.Refresh,
+            icon = Icons.Rounded.Refresh,
             iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             badgeText = "Stay in touch",
@@ -286,7 +286,7 @@ fun UpcomingAlertCard(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Icon(Icons.Outlined.Snooze, null, modifier = Modifier.size(13.dp))
+                            Icon(Icons.Rounded.Snooze, null, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Snooze", style = MaterialTheme.typography.labelSmall)
                         }
@@ -300,7 +300,7 @@ fun UpcomingAlertCard(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
-                            Icon(Icons.Outlined.Check, null, modifier = Modifier.size(13.dp))
+                            Icon(Icons.Rounded.Check, null, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 text = "Done",

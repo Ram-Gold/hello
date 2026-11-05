@@ -27,9 +27,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -137,9 +137,9 @@ fun FlowBLogEncounterSheet(
             ) {
                 Icon(
                     imageVector = if (isEncounterStage) {
-                        Icons.AutoMirrored.Outlined.ArrowBack
+                        Icons.AutoMirrored.Rounded.ArrowBack
                     } else {
-                        Icons.Outlined.Close
+                        Icons.Rounded.Close
                     },
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -190,7 +190,7 @@ fun FlowBLogEncounterSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = "Next",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)

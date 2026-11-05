@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -69,7 +69,7 @@ fun SettingsAboutScreen(
                         subtitle = "No remote servers, no Supabase, no Firebase, and zero telemetry. Your device is the sovereign home of all data.",
                         shape = shapeFor(0, totalInvariants),
                         leadingIcon = {
-                            Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = {}
                     )
@@ -79,7 +79,7 @@ fun SettingsAboutScreen(
                         subtitle = "Room DB (SQLite + FTS5) provides zero-latency queries. Export bundles (JSON, Markdown, CSV) saved via SAF.",
                         shape = shapeFor(1, totalInvariants),
                         leadingIcon = {
-                            Icon(Icons.Outlined.Shield, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Shield, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = {}
                     )
@@ -89,7 +89,7 @@ fun SettingsAboutScreen(
                         subtitle = "Ultra-lean capture tree, zero disk I/O on main thread during startup, and Baseline Profiles.",
                         shape = shapeFor(2, totalInvariants),
                         leadingIcon = {
-                            Icon(Icons.Outlined.Speed, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Speed, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = {}
                     )
@@ -99,7 +99,7 @@ fun SettingsAboutScreen(
                         subtitle = "Never requests READ_CONTACTS or WRITE_CONTACTS. Foreground-only location strictly at instant of capture.",
                         shape = shapeFor(3, totalInvariants),
                         leadingIcon = {
-                            Icon(Icons.Outlined.Lock, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = {}
                     )

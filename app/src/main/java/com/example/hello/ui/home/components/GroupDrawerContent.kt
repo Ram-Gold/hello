@@ -23,11 +23,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -92,7 +92,7 @@ fun GroupDrawerContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Groups,
+                            imageVector = Icons.Rounded.Groups,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(22.dp)
@@ -114,7 +114,7 @@ fun GroupDrawerContent(
 
                 IconButton(onClick = onCloseDrawer) {
                     Icon(
-                        imageVector = Icons.Outlined.Close,
+                        imageVector = Icons.Rounded.Close,
                         contentDescription = "Close Drawer",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -202,7 +202,7 @@ private fun AllCirclesItem(
         }
         if (isSelected) {
             Icon(
-                imageVector = Icons.Outlined.Check,
+                imageVector = Icons.Rounded.Check,
                 contentDescription = "Selected",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp)
@@ -281,7 +281,7 @@ private fun GroupConfigCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Check,
+                        imageVector = Icons.Rounded.Check,
                         contentDescription = "Active",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(16.dp)
@@ -384,7 +384,7 @@ private fun GroupConfigCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = if (config.isCadenceAlertEnabled) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff,
+                        imageVector = if (config.isCadenceAlertEnabled) Icons.Rounded.Notifications else Icons.Rounded.NotificationsOff,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant

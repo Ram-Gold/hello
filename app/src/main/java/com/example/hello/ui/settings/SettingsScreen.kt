@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.AltRoute
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
@@ -44,6 +45,7 @@ fun SettingsScreen(
     onEvent: (SettingsUiEvent) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToTerminology: () -> Unit = {},
+    onNavigateToFlows: () -> Unit = {},
     onNavigateToTags: () -> Unit = {},
     onNavigateToData: () -> Unit = {},
     onNavigateToAppearance: () -> Unit = {},
@@ -88,7 +90,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                val totalItems = 6
+                val totalItems = 7
                 ExpressiveSettingsGroup {
                     // 1. Terminology
                     val termColors = if (isDark) {
@@ -105,7 +107,23 @@ fun SettingsScreen(
                         shape = shapeFor(0, totalItems)
                     )
 
-                    // 2. Tag Taxonomy
+                    // 2. Capture Flows (ADR-0012)
+                    val flowColors = if (isDark) {
+                        Color(0xFF4A2800) to Color(0xFFFFC07F)
+                    } else {
+                        Color(0xFFFFECD6) to Color(0xFF9E5400)
+                    }
+                    val activePresetName = uiState.flowPresets.firstOrNull { it.id == uiState.activeFlowPresetId }?.name ?: "Default"
+                    ExpressiveNavigationItem(
+                        title = "Capture Flows",
+                        subtitle = "$activePresetName • Preset order & modular capture steps",
+                        icon = Icons.AutoMirrored.Rounded.AltRoute,
+                        colors = flowColors,
+                        onClick = onNavigateToFlows,
+                        shape = shapeFor(1, totalItems)
+                    )
+
+                    // 3. Tag Taxonomy
                     val tagColors = if (isDark) {
                         Color(0xFF2B4426) to Color(0xFFB5CBAE)
                     } else {
@@ -117,7 +135,7 @@ fun SettingsScreen(
                         icon = Icons.AutoMirrored.Rounded.Label,
                         colors = tagColors,
                         onClick = onNavigateToTags,
-                        shape = shapeFor(1, totalItems),
+                        shape = shapeFor(2, totalItems),
                         trailingBadge = {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -133,7 +151,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    // 3. Data & Sovereign Storage
+                    // 4. Data & Sovereign Storage
                     val dataColors = if (isDark) {
                         Color(0xFF1E3852) to Color(0xFFB8D4EE)
                     } else {
@@ -145,10 +163,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Storage,
                         colors = dataColors,
                         onClick = onNavigateToData,
-                        shape = shapeFor(2, totalItems)
+                        shape = shapeFor(3, totalItems)
                     )
 
-                    // 4. Appearance
+                    // 5. Appearance
                     val appColors = if (isDark) {
                         Color(0xFF4C182C) to Color(0xFFFFAFD0)
                     } else {
@@ -161,10 +179,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Palette,
                         colors = appColors,
                         onClick = onNavigateToAppearance,
-                        shape = shapeFor(3, totalItems)
+                        shape = shapeFor(4, totalItems)
                     )
 
-                    // 5. Preferences
+                    // 6. Preferences
                     val prefColors = if (isDark) {
                         Color(0xFF522E00) to Color(0xFFFFB77C)
                     } else {
@@ -176,10 +194,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Settings,
                         colors = prefColors,
                         onClick = onNavigateToPreferences,
-                        shape = shapeFor(4, totalItems)
+                        shape = shapeFor(5, totalItems)
                     )
 
-                    // 6. About Hello
+                    // 7. About Hello
                     val aboutColors = if (isDark) {
                         Color(0xFF383431) to Color(0xFFD6CEC7)
                     } else {
@@ -191,7 +209,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Info,
                         colors = aboutColors,
                         onClick = onNavigateToAbout,
-                        shape = shapeFor(5, totalItems)
+                        shape = shapeFor(6, totalItems)
                     )
                 }
             }

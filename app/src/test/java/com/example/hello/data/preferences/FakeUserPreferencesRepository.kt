@@ -44,4 +44,8 @@ class FakeUserPreferencesRepository(
     override suspend fun setDefaultIncludeLocation(enabled: Boolean) {
         _prefs.update { it.copy(defaultIncludeLocation = enabled) }
     }
+
+    override suspend fun setActiveFlowPresetId(presetId: String) {
+        _prefs.update { it.copy(activeFlowPresetId = presetId) }
+    }
 }

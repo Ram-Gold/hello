@@ -30,9 +30,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,12 +52,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.hello.domain.model.CaptureComponent
+import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.Circle
-import com.example.hello.ui.quickaction.FlowAStep
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -66,24 +70,29 @@ fun FlowAAddContactCard(
     modifier: Modifier = Modifier
 ) {
     val focusRequester = remember { FocusRequester() }
+    val activeComponents = uiState.activeFlowPreset?.activeComponents.orEmpty()
+    val currentStep = uiState.currentStepIndex.coerceIn(0, (activeComponents.size - 1).coerceAtLeast(0))
+    val currentComp = activeComponents.getOrNull(currentStep)
+    val isLastStep = currentStep >= activeComponents.size - 1
 
-    // Sequence focus request after the sheet frame settles so the input renders before the keyboard rises
-    LaunchedEffect(uiState.flowAStep) {
-        if (uiState.flowAStep != FlowAStep.TAGS_AND_CIRCLES) {
+    // Sequence focus request after the frame settles to avoid IME flicker
+    LaunchedEffect(currentStep, currentComp?.type) {
+        val type = currentComp?.type
+        if (type != CaptureComponentType.CIRCLES && type != CaptureComponentType.CADENCE) {
             withFrameNanos { }
-            if (uiState.flowAStep == FlowAStep.NAME) {
+            if (type == CaptureComponentType.NAME) {
                 delay(45)
             }
             try {
                 focusRequester.requestFocus()
             } catch (_: Exception) {
-                // Ignore if composable is not focusable in preview/test
+                // Ignore if not focusable in test
             }
         }
     }
 
     val onAdvanceOrSave = {
-        if (uiState.flowAStep == FlowAStep.NOTE_AND_FOLLOW_UP) {
+        if (isLastStep) {
             onEvent(QuickActionUiEvent.OnQuickSaveFlowA)
         } else {
             onEvent(QuickActionUiEvent.OnNextStep)
@@ -96,20 +105,20 @@ fun FlowAAddContactCard(
             .padding(horizontal = 24.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Minimal Top Header: [ Circular 'x' / '<-' ] + [ Centered Minimal Dots ] + [ Circular '->' ]
+        // Top Header: [ Back / Close ] + [ Dots Progression ] + [ Escape Hatch / Next ]
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Circular Close / Back Button
+            // Left Button: Dismiss at step 0, Back otherwise
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
-                        if (uiState.flowAStep == FlowAStep.NAME) {
+                        if (currentStep == 0) {
                             onEvent(QuickActionUiEvent.OnDismiss)
                         } else {
                             onEvent(QuickActionUiEvent.OnPreviousStep)
@@ -118,25 +127,21 @@ fun FlowAAddContactCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (uiState.flowAStep == FlowAStep.NAME) {
-                        Icons.Outlined.Close
-                    } else {
-                        Icons.AutoMirrored.Outlined.ArrowBack
-                    },
-                    contentDescription = "Back",
+                    imageVector = if (currentStep == 0) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = if (currentStep == 0) "Close" else "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
-            // Centered Minimal Dots Progression
+            // Centered Dynamic Dots Progression
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FlowAStep.entries.forEach { step ->
-                    val isCurrent = step == uiState.flowAStep
-                    val isCompleted = step.stepNumber < uiState.flowAStep.stepNumber
+                activeComponents.forEachIndexed { index, _ ->
+                    val isCurrent = index == currentStep
+                    val isCompleted = index < currentStep
                     val dotWidth by animateDpAsState(
                         targetValue = if (isCurrent) 18.dp else 6.dp,
                         animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
@@ -158,12 +163,12 @@ fun FlowAAddContactCard(
                             .width(dotWidth)
                             .clip(CircleShape)
                             .background(dotColor)
-                            .clickable { onEvent(QuickActionUiEvent.OnJumpToStep(step)) }
+                            .clickable { onEvent(QuickActionUiEvent.OnStepIndexChange(index)) }
                     )
                 }
             }
 
-            // Right Circular '->' Arrow Button
+            // Right Button: Checkmark on final step, Forward arrow otherwise
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -173,140 +178,279 @@ fun FlowAAddContactCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = "Next",
+                    imageVector = if (isLastStep) Icons.Rounded.Check else Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = if (isLastStep) "Save" else "Next",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        // Minimal Step Prompt + Filled Input + Bordered/Selected Chips
+        // Modular Step Card
         AnimatedContent(
-            targetState = uiState.flowAStep,
+            targetState = currentComp,
             transitionSpec = {
                 fadeIn(tween(110)) togetherWith fadeOut(tween(80))
             },
-            label = "flowAStepTransition"
-        ) { step ->
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = step.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            label = "modularStepTransition"
+        ) { comp ->
+            if (comp != null) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = comp.label,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
 
-                when (step) {
-                    FlowAStep.NAME -> {
-                        MinimalFilledTextField(
-                            value = uiState.newContactName,
-                            onValueChange = { onEvent(QuickActionUiEvent.OnNameChange(it)) },
-                            placeholder = "Type a name...",
-                            focusRequester = focusRequester,
-                            imeAction = ImeAction.Next,
-                            capitalization = KeyboardCapitalization.Words,
-                            onImeAction = { onEvent(QuickActionUiEvent.OnNextStep) }
-                        )
-                    }
+                    when (comp.type) {
+                        CaptureComponentType.NAME -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                MinimalFilledTextField(
+                                    value = uiState.newContactName,
+                                    onValueChange = { onEvent(QuickActionUiEvent.OnNameChange(it)) },
+                                    placeholder = "Type a name...",
+                                    focusRequester = focusRequester,
+                                    imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                    capitalization = KeyboardCapitalization.Words,
+                                    onImeAction = onAdvanceOrSave
+                                )
+                                if (uiState.nameError) {
+                                    Text(
+                                        text = "Name is required to save",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
+                            }
+                        }
 
-                    FlowAStep.PLACE -> {
-                        MinimalFilledTextField(
-                            value = uiState.customPlaceName,
-                            onValueChange = { onEvent(QuickActionUiEvent.OnCustomPlaceNameChange(it)) },
-                            placeholder = "Type a place...",
-                            focusRequester = focusRequester,
-                            imeAction = ImeAction.Next,
-                            capitalization = KeyboardCapitalization.Words,
-                            onImeAction = { onEvent(QuickActionUiEvent.OnNextStep) }
-                        )
+                        CaptureComponentType.ROLE -> {
+                            MinimalFilledTextField(
+                                value = uiState.role,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnRoleChange(it)) },
+                                placeholder = "e.g. Lead Designer, Founder...",
+                                focusRequester = focusRequester,
+                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                capitalization = KeyboardCapitalization.Words,
+                                onImeAction = onAdvanceOrSave
+                            )
+                        }
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            MinimalSelectableChip(
-                                label = "📍 Current GPS",
-                                selected = uiState.isLocationGranted && uiState.selectedPlaceId != null,
-                                onClick = { onEvent(QuickActionUiEvent.OnRequestLocation) }
+                        CaptureComponentType.COMPANY -> {
+                            MinimalFilledTextField(
+                                value = uiState.company,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnCompanyChange(it)) },
+                                placeholder = "e.g. Acme Labs, Stanford...",
+                                focusRequester = focusRequester,
+                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                capitalization = KeyboardCapitalization.Words,
+                                onImeAction = onAdvanceOrSave
+                            )
+                        }
+
+                        CaptureComponentType.PLACE -> {
+                            MinimalFilledTextField(
+                                value = uiState.customPlaceName,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnCustomPlaceNameChange(it)) },
+                                placeholder = "Type a place...",
+                                focusRequester = focusRequester,
+                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                capitalization = KeyboardCapitalization.Words,
+                                onImeAction = onAdvanceOrSave
                             )
 
-                            uiState.suggestedPlaces.forEach { place ->
-                                val isSelected = uiState.selectedPlaceId == place.id
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 MinimalSelectableChip(
-                                    label = place.label,
-                                    selected = isSelected,
-                                    onClick = { onEvent(QuickActionUiEvent.OnSelectPlaceChip(place.id)) }
+                                    label = "📍 Current GPS",
+                                    selected = uiState.isLocationGranted && uiState.selectedPlaceId != null,
+                                    onClick = { onEvent(QuickActionUiEvent.OnRequestLocation) }
                                 )
-                            }
-                        }
-                    }
 
-                    FlowAStep.TAGS_AND_CIRCLES -> {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Circle.entries.forEach { circle ->
-                                val isSelected = circle in uiState.selectedCircles
-                                MinimalSelectableChip(
-                                    label = circle.displayName,
-                                    selected = isSelected,
-                                    onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
-                                )
+                                uiState.suggestedPlaces.forEach { place ->
+                                    val isSelected = uiState.selectedPlaceId == place.id
+                                    MinimalSelectableChip(
+                                        label = place.label,
+                                        selected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnSelectPlaceChip(place.id)) }
+                                    )
+                                }
                             }
                         }
 
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            uiState.suggestedTags.forEach { tag ->
-                                val isSelected = tag.id in uiState.selectedTagIds
-                                MinimalSelectableChip(
-                                    label = "#${tag.name.lowercase()}",
-                                    selected = isSelected,
-                                    onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
-                                )
+                        CaptureComponentType.CIRCLES -> {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Circle.entries.forEach { circle ->
+                                    val isSelected = circle in uiState.selectedCircles
+                                    MinimalSelectableChip(
+                                        label = circle.displayName,
+                                        selected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    FlowAStep.NOTE_AND_FOLLOW_UP -> {
-                        MinimalFilledTextField(
-                            value = uiState.encounterNote,
-                            onValueChange = { onEvent(QuickActionUiEvent.OnNoteChange(it)) },
-                            placeholder = "Write a quick note...",
-                            focusRequester = focusRequester,
-                            singleLine = false,
-                            imeAction = ImeAction.Done,
-                            capitalization = KeyboardCapitalization.Sentences,
-                            onImeAction = { onEvent(QuickActionUiEvent.OnQuickSaveFlowA) }
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val followUpOptions = listOf(
-                                3 to "In 3 days",
-                                7 to "Next week",
-                                30 to "In 1 month"
+                        CaptureComponentType.TAGS -> {
+                            MinimalFilledTextField(
+                                value = uiState.customTagInput,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnCustomTagInputChange(it)) },
+                                placeholder = "Type a tag...",
+                                focusRequester = focusRequester,
+                                imeAction = ImeAction.Done,
+                                capitalization = KeyboardCapitalization.Words,
+                                onImeAction = { onEvent(QuickActionUiEvent.OnAddCustomTag) }
                             )
-                            followUpOptions.forEach { (days, label) ->
-                                val isSelected = uiState.selectedFollowUpDays == days
-                                MinimalSelectableChip(
-                                    label = label,
-                                    selected = isSelected,
-                                    onClick = { onEvent(QuickActionUiEvent.OnSelectFollowUp(days)) }
+
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                uiState.suggestedTags.forEach { tag ->
+                                    val isSelected = tag.id in uiState.selectedTagIds
+                                    MinimalSelectableChip(
+                                        label = "#${tag.name.lowercase()}",
+                                        selected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
+                                    )
+                                }
+                            }
+                        }
+
+                        CaptureComponentType.EMAIL -> {
+                            MinimalFilledTextField(
+                                value = uiState.email,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnEmailChange(it)) },
+                                placeholder = "name@example.com",
+                                focusRequester = focusRequester,
+                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                keyboardType = KeyboardType.Email,
+                                onImeAction = onAdvanceOrSave
+                            )
+                        }
+
+                        CaptureComponentType.PHONE -> {
+                            MinimalFilledTextField(
+                                value = uiState.phone,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnPhoneChange(it)) },
+                                placeholder = "+1 555 123 4567",
+                                focusRequester = focusRequester,
+                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                keyboardType = KeyboardType.Phone,
+                                onImeAction = onAdvanceOrSave
+                            )
+                        }
+
+                        CaptureComponentType.BIRTHDAY -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MinimalFilledTextField(
+                                    value = uiState.birthday?.toString().orEmpty(),
+                                    onValueChange = { input ->
+                                        val parsed = try { LocalDate.parse(input.trim()) } catch (_: Exception) { null }
+                                        onEvent(QuickActionUiEvent.OnBirthdayChange(parsed))
+                                    },
+                                    placeholder = "YYYY-MM-DD",
+                                    focusRequester = focusRequester,
+                                    imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                    onImeAction = onAdvanceOrSave
+                                )
+                                Text(
+                                    text = "Format: YYYY-MM-DD (e.g. 1995-04-12)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                        }
+
+                        CaptureComponentType.CADENCE -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val followUpOptions = listOf(
+                                    3 to "In 3 days",
+                                    7 to "Next week",
+                                    30 to "In 1 month",
+                                    90 to "In 3 months"
+                                )
+                                followUpOptions.forEach { (days, label) ->
+                                    val isSelected = uiState.selectedFollowUpDays == days
+                                    MinimalSelectableChip(
+                                        label = label,
+                                        selected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnSelectFollowUp(days)) }
+                                    )
+                                }
+                            }
+                        }
+
+                        CaptureComponentType.CUSTOM -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        MinimalFilledTextField(
+                                            value = uiState.customPropertyKey,
+                                            onValueChange = { onEvent(QuickActionUiEvent.OnCustomPropertyKeyChange(it)) },
+                                            placeholder = "Property (e.g. Coffee)",
+                                            focusRequester = focusRequester,
+                                            imeAction = ImeAction.Next
+                                        )
+                                    }
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        MinimalFilledTextField(
+                                            value = uiState.customPropertyValue,
+                                            onValueChange = { onEvent(QuickActionUiEvent.OnCustomPropertyValueChange(it)) },
+                                            placeholder = "Value (e.g. Flat White)",
+                                            imeAction = ImeAction.Done,
+                                            onImeAction = { onEvent(QuickActionUiEvent.OnAddCustomProperty) }
+                                        )
+                                    }
+                                }
+
+                                if (uiState.customProperties.isNotEmpty()) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        uiState.customProperties.forEach { (key, value) ->
+                                            MinimalSelectableChip(
+                                                label = "$key: $value ×",
+                                                selected = true,
+                                                onClick = { onEvent(QuickActionUiEvent.OnRemoveCustomProperty(key)) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        CaptureComponentType.NOTE -> {
+                            MinimalFilledTextField(
+                                value = uiState.encounterNote,
+                                onValueChange = { onEvent(QuickActionUiEvent.OnNoteChange(it)) },
+                                placeholder = "Write a quick note...",
+                                focusRequester = focusRequester,
+                                singleLine = false,
+                                imeAction = ImeAction.Done,
+                                capitalization = KeyboardCapitalization.Sentences,
+                                onImeAction = onAdvanceOrSave
+                            )
                         }
                     }
                 }
@@ -325,6 +469,7 @@ internal fun MinimalFilledTextField(
     singleLine: Boolean = true,
     imeAction: ImeAction = ImeAction.Next,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
+    keyboardType: KeyboardType = KeyboardType.Text,
     onImeAction: () -> Unit = {}
 ) {
     BasicTextField(
@@ -338,6 +483,7 @@ internal fun MinimalFilledTextField(
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         keyboardOptions = KeyboardOptions(
             capitalization = capitalization,
+            keyboardType = keyboardType,
             imeAction = imeAction
         ),
         keyboardActions = KeyboardActions(
@@ -378,23 +524,10 @@ internal fun MinimalSelectableChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // MD3 Tonal Chip: Selected state uses matching containerColor and borderColor
     val selectedFillAndBorder = MaterialTheme.colorScheme.primaryContainer
-    val containerColor = if (selected) {
-        selectedFillAndBorder
-    } else {
-        Color.Transparent
-    }
-    val borderColor = if (selected) {
-        selectedFillAndBorder
-    } else {
-        MaterialTheme.colorScheme.outlineVariant
-    }
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val containerColor = if (selected) selectedFillAndBorder else Color.Transparent
+    val borderColor = if (selected) selectedFillAndBorder else MaterialTheme.colorScheme.outlineVariant
+    val contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(
         modifier = modifier

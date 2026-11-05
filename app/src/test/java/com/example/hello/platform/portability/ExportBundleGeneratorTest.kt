@@ -167,4 +167,55 @@ class ExportBundleGeneratorTest {
         assertTrue(entryNames.contains("encounters.csv"))
         assertTrue(entryNames.contains("contacts/Ada Lovelace.md"))
     }
+
+    @Test
+    fun generateExport_includesExtendedFlowPropertiesInJsonYamlAndCsv() {
+        val richContact = sampleContact.copy(
+            role = "Lead Mathematician",
+            company = "Babbage Engines Inc",
+            birthday = java.time.LocalDate.of(1815, 12, 10),
+            customProperties = mapOf(
+                "favorite_device" to "Analytical Engine",
+                "mentor" to "Mary Somerville"
+            )
+        )
+
+        // 1. JSON
+        val jsonFiles = ExportBundleGenerator.generateJsonFiles(
+            contacts = listOf(richContact),
+            encounters = emptyList(),
+            places = emptyList(),
+            tags = emptyList(),
+            followUps = emptyList()
+        )
+        val contactsJson = jsonFiles["contacts.json"]!!
+        assertTrue(contactsJson.contains("\"role\": \"Lead Mathematician\""))
+        assertTrue(contactsJson.contains("\"company\": \"Babbage Engines Inc\""))
+        assertTrue(contactsJson.contains("\"birthday\": \"1815-12-10\""))
+        assertTrue(contactsJson.contains("\"favorite_device\": \"Analytical Engine\""))
+
+        // 2. Markdown frontmatter
+        val mdFiles = ExportBundleGenerator.generateMarkdownNotes(
+            contacts = listOf(richContact),
+            encounters = emptyList(),
+            places = emptyList(),
+            tags = emptyList()
+        )
+        val mdContent = mdFiles["contacts/Ada Lovelace.md"]!!
+        assertTrue(mdContent.contains("role: \"Lead Mathematician\""))
+        assertTrue(mdContent.contains("company: \"Babbage Engines Inc\""))
+        assertTrue(mdContent.contains("birthday: \"1815-12-10\""))
+        assertTrue(mdContent.contains("favorite_device: \"Analytical Engine\""))
+        assertTrue(mdContent.contains("mentor: \"Mary Somerville\""))
+
+        // 3. CSV
+        val csvFiles = ExportBundleGenerator.generateCsvFiles(
+            contacts = listOf(richContact),
+            encounters = emptyList()
+        )
+        val contactsCsv = csvFiles["contacts.csv"]!!
+        assertTrue(contactsCsv.contains("Lead Mathematician"))
+        assertTrue(contactsCsv.contains("Babbage Engines Inc"))
+        assertTrue(contactsCsv.contains("1815-12-10"))
+    }
 }

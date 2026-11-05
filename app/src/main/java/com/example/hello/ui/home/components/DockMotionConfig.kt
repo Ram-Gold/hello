@@ -1,10 +1,8 @@
 package com.example.hello.ui.home.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.People
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.hello.domain.model.HomeNavTab
@@ -87,21 +85,20 @@ object DockMotionConfig {
 
     /**
      * Resolves the navigation tab icon based on destination and active selection state.
-     * When selected: Solid Filled icon vector.
-     * When unselected: Outlined icon vector.
+     * Uses friendly rounded icons across all states.
      */
     fun resolveTabIcon(tab: HomeNavTab, isSelected: Boolean): ImageVector = when (tab) {
-        HomeNavTab.HOME -> if (isSelected) Icons.Filled.Home else Icons.Outlined.Home
-        HomeNavTab.PEOPLE -> if (isSelected) Icons.Filled.People else Icons.Outlined.People
+        HomeNavTab.HOME -> Icons.Rounded.Home
+        HomeNavTab.PEOPLE -> Icons.Rounded.People
     }
 
     /**
-     * Resolves the solid filled navigation tab icon. The dock maintains filled icons during
+     * Resolves the friendly rounded navigation tab icon. The dock maintains rounded icons during
      * transitions to eliminate jarring vector swaps, collapsing and fading out smoothly to zero width.
      */
     fun tabFilledIcon(tab: HomeNavTab): ImageVector = when (tab) {
-        HomeNavTab.HOME -> Icons.Filled.Home
-        HomeNavTab.PEOPLE -> Icons.Filled.People
+        HomeNavTab.HOME -> Icons.Rounded.Home
+        HomeNavTab.PEOPLE -> Icons.Rounded.People
     }
 
     /**

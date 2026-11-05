@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -64,6 +64,60 @@ fun PropertiesPanel(
     ) {
         // Cadence Health Status Card
         CadenceHealthCard(cadenceStatus = cadenceStatus)
+
+        // Extended Properties Surface Card (ADR-0012)
+        val hasExtendedProps = !contact?.role.isNullOrBlank() ||
+            !contact?.company.isNullOrBlank() ||
+            contact?.birthday != null ||
+            !contact?.phone.isNullOrBlank() ||
+            !contact?.email.isNullOrBlank() ||
+            !contact?.customProperties.isNullOrEmpty()
+
+        if (hasExtendedProps) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "PROPERTIES",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!contact?.role.isNullOrBlank() || !contact?.company.isNullOrBlank()) {
+                            val roleCompany = listOfNotNull(contact?.role?.ifBlank { null }, contact?.company?.ifBlank { null }).joinToString(" at ")
+                            PropertyChip(label = "💼 $roleCompany")
+                        }
+                        if (contact?.birthday != null) {
+                            PropertyChip(label = "🎂 ${contact.birthday}")
+                        }
+                        if (!contact?.phone.isNullOrBlank()) {
+                            PropertyChip(label = "📞 ${contact.phone}")
+                        }
+                        if (!contact?.email.isNullOrBlank()) {
+                            PropertyChip(label = "✉️ ${contact.email}")
+                        }
+                        contact?.customProperties?.forEach { (key, value) ->
+                            if (value.isNotBlank()) {
+                                PropertyChip(label = "✦ $key: $value")
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Circles & Tags Surface Card
         if (circles.isNotEmpty() || matchingTags.isNotEmpty()) {
@@ -160,22 +214,22 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
         CadenceHealth.ON_TRACK -> Triple(
             WarmSageTertiary,
             AvatarSage.copy(alpha = 0.35f),
-            Icons.Default.CheckCircle
+            Icons.Rounded.CheckCircle
         )
         CadenceHealth.DUE_SOON -> Triple(
             MutedPeachSecondary,
             MutedPeachSecondary.copy(alpha = 0.15f),
-            Icons.Default.AccessTime
+            Icons.Rounded.AccessTime
         )
         CadenceHealth.OVERDUE -> Triple(
             WarmTerracottaPrimary,
             WarmTerracottaPrimary.copy(alpha = 0.15f),
-            Icons.Default.Warning
+            Icons.Rounded.Warning
         )
         CadenceHealth.NO_CADENCE -> Triple(
             MaterialTheme.colorScheme.onSurfaceVariant,
             MaterialTheme.colorScheme.surfaceVariant,
-            Icons.Default.Info
+            Icons.Rounded.Info
         )
     }
 
@@ -271,6 +325,21 @@ private fun TagPillChip(tag: Tag) {
             text = "#${tag.name}",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = parsedColor,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun PropertyChip(label: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
     }

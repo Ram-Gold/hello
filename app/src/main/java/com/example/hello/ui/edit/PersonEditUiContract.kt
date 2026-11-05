@@ -2,12 +2,16 @@ package com.example.hello.ui.edit
 
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Tag
+import java.time.LocalDate
 
 data class PersonEditUiState(
     val contactId: String = "",
     val name: String = "",
     val aliases: List<String> = emptyList(),
     val aliasInput: String = "",
+    val role: String = "",
+    val company: String = "",
+    val birthday: LocalDate? = null,
     val phone: String = "",
     val email: String = "",
     val notes: String = "",
@@ -15,6 +19,7 @@ data class PersonEditUiState(
     val selectedCircles: Set<Circle> = emptySet(),
     val selectedTagIds: Set<String> = emptySet(),
     val availableTags: List<Tag> = emptyList(),
+    val customProperties: Map<String, String> = emptyMap(),
     val cadenceDays: Int? = 14,
     val isCustomCadence: Boolean = false,
     val customCadenceInput: String = "",
@@ -36,6 +41,9 @@ sealed interface PersonEditUiEvent {
     data class OnAliasInputChange(val text: String) : PersonEditUiEvent
     data class OnAddAlias(val alias: String) : PersonEditUiEvent
     data class OnRemoveAlias(val alias: String) : PersonEditUiEvent
+    data class OnRoleChange(val role: String) : PersonEditUiEvent
+    data class OnCompanyChange(val company: String) : PersonEditUiEvent
+    data class OnBirthdayChange(val birthday: LocalDate?) : PersonEditUiEvent
     data class OnPhoneChange(val phone: String) : PersonEditUiEvent
     data class OnEmailChange(val email: String) : PersonEditUiEvent
     data class OnNotesChange(val notes: String) : PersonEditUiEvent

@@ -2,25 +2,87 @@ package com.example.hello.ui.quickaction
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hello.data.preferences.UserPreferencesRepository
+import com.example.hello.data.repository.CaptureFlowRepository
 import com.example.hello.data.repository.ContactRepository
+import com.example.hello.domain.model.CaptureComponent
+import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.FlowPreset
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.location.LocationState
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class QuickActionViewModel(
     val repository: ContactRepository = ContactRepository(),
-    val locationService: LocationService? = null
+    val locationService: LocationService? = null,
+    val captureFlowRepository: CaptureFlowRepository = CaptureFlowRepository(repository.database),
+    val preferencesRepository: UserPreferencesRepository? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val externalScope: CoroutineScope? = null
 ) : ViewModel() {
+
+    private val coroutineScope: CoroutineScope = externalScope ?: CoroutineScope(ioDispatcher + SupervisorJob())
 
     private val _uiState = MutableStateFlow(createDefaultState())
     val uiState: StateFlow<QuickActionUiState> = _uiState.asStateFlow()
+
+    private var currentActivePresetId: String = FlowPreset.PRESET_DEFAULT
+
+    init {
+        if (preferencesRepository != null) {
+            coroutineScope.launch {
+                preferencesRepository.userPreferencesFlow.collectLatest { prefs ->
+                    currentActivePresetId = prefs.activeFlowPresetId
+                    updateActivePreset()
+                }
+            }
+        }
+
+        coroutineScope.launch {
+            captureFlowRepository.presets.collectLatest {
+                updateActivePreset()
+            }
+        }
+    }
+
+    private fun updateActivePreset() {
+        val presets = captureFlowRepository.presets.value
+        val active = presets.firstOrNull { it.id == currentActivePresetId }
+            ?: presets.firstOrNull()
+            ?: FlowPreset.createDefaultPresets().first()
+
+        _uiState.update { state ->
+            val safeIndex = state.currentStepIndex.coerceIn(0, (active.activeComponents.size - 1).coerceAtLeast(0))
+            val currentComp = active.activeComponents.getOrNull(safeIndex)
+            state.copy(
+                activeFlowPreset = active,
+                currentStepIndex = safeIndex,
+                flowAStep = mapComponentToFlowAStep(currentComp)
+            )
+        }
+    }
+
+    private fun mapComponentToFlowAStep(component: CaptureComponent?): FlowAStep {
+        return when (component?.type) {
+            CaptureComponentType.NAME -> FlowAStep.NAME
+            CaptureComponentType.PLACE -> FlowAStep.PLACE
+            CaptureComponentType.CIRCLES, CaptureComponentType.TAGS -> FlowAStep.TAGS_AND_CIRCLES
+            CaptureComponentType.NOTE, CaptureComponentType.CADENCE -> FlowAStep.NOTE_AND_FOLLOW_UP
+            else -> FlowAStep.NAME
+        }
+    }
 
     fun onEvent(event: QuickActionUiEvent) {
         when (event) {
@@ -46,11 +108,13 @@ class QuickActionViewModel(
 
             is QuickActionUiEvent.OnSelectAddContact -> {
                 refreshSuggestionsFromRepository()
+                updateActivePreset()
                 _uiState.update { state ->
                     resetDraftState(state).copy(
                         isOpen = true,
                         currentMode = QuickActionMode.FLOW_A_ADD_CONTACT,
-                        flowAStep = FlowAStep.NAME
+                        currentStepIndex = 0,
+                        flowAStep = mapComponentToFlowAStep(state.activeFlowPreset?.activeComponents?.firstOrNull())
                     )
                 }
             }
@@ -88,22 +152,42 @@ class QuickActionViewModel(
                 }
             }
 
-            // Flow A: Add Contact Events
             is QuickActionUiEvent.OnNameChange -> {
-                _uiState.update { it.copy(newContactName = event.name) }
+                _uiState.update { it.copy(newContactName = event.name, nameError = false) }
+            }
+
+            is QuickActionUiEvent.OnRoleChange -> {
+                _uiState.update { it.copy(role = event.role) }
+            }
+
+            is QuickActionUiEvent.OnCompanyChange -> {
+                _uiState.update { it.copy(company = event.company) }
+            }
+
+            is QuickActionUiEvent.OnBirthdayChange -> {
+                _uiState.update { it.copy(birthday = event.birthday) }
+            }
+
+            is QuickActionUiEvent.OnPhoneChange -> {
+                _uiState.update { it.copy(phone = event.phone) }
+            }
+
+            is QuickActionUiEvent.OnEmailChange -> {
+                _uiState.update { it.copy(email = event.email) }
             }
 
             is QuickActionUiEvent.OnSelectPlaceChip -> {
+                val current = _uiState.value
+                val activeComponents = current.activeFlowPreset?.activeComponents.orEmpty()
+                val nextIndex = (current.currentStepIndex + 1).coerceAtMost((activeComponents.size - 1).coerceAtLeast(0))
+                val nextComp = activeComponents.getOrNull(nextIndex)
+
                 _uiState.update { state ->
-                    val nextStep = if (state.flowAStep == FlowAStep.PLACE) {
-                        FlowAStep.TAGS_AND_CIRCLES
-                    } else {
-                        state.flowAStep
-                    }
                     state.copy(
                         selectedPlaceId = event.placeId,
                         customPlaceName = "",
-                        flowAStep = nextStep
+                        currentStepIndex = nextIndex,
+                        flowAStep = mapComponentToFlowAStep(nextComp)
                     )
                 }
             }
@@ -139,6 +223,24 @@ class QuickActionViewModel(
                 }
             }
 
+            is QuickActionUiEvent.OnCustomTagInputChange -> {
+                _uiState.update { it.copy(customTagInput = event.input) }
+            }
+
+            is QuickActionUiEvent.OnAddCustomTag -> {
+                val tagText = _uiState.value.customTagInput.trim().removePrefix("#")
+                if (tagText.isNotBlank()) {
+                    val addedTag = repository.addTag(name = tagText, colorHex = "#7A746E")
+                    _uiState.update { state ->
+                        state.copy(
+                            selectedTagIds = state.selectedTagIds + addedTag.id,
+                            customTagInput = ""
+                        )
+                    }
+                    refreshSuggestionsFromRepository()
+                }
+            }
+
             is QuickActionUiEvent.OnNoteChange -> {
                 _uiState.update { it.copy(encounterNote = event.note) }
             }
@@ -150,36 +252,105 @@ class QuickActionViewModel(
                 }
             }
 
-            is QuickActionUiEvent.OnNextStep -> {
-                _uiState.update { state ->
-                    val next = when (state.flowAStep) {
-                        FlowAStep.NAME -> FlowAStep.PLACE
-                        FlowAStep.PLACE -> FlowAStep.TAGS_AND_CIRCLES
-                        FlowAStep.TAGS_AND_CIRCLES -> FlowAStep.NOTE_AND_FOLLOW_UP
-                        FlowAStep.NOTE_AND_FOLLOW_UP -> FlowAStep.NOTE_AND_FOLLOW_UP
+            is QuickActionUiEvent.OnCustomPropertyKeyChange -> {
+                _uiState.update { it.copy(customPropertyKey = event.key) }
+            }
+
+            is QuickActionUiEvent.OnCustomPropertyValueChange -> {
+                _uiState.update { it.copy(customPropertyValue = event.value) }
+            }
+
+            is QuickActionUiEvent.OnAddCustomProperty -> {
+                val current = _uiState.value
+                if (current.customPropertyKey.isNotBlank() && current.customPropertyValue.isNotBlank()) {
+                    _uiState.update { state ->
+                        state.copy(
+                            customProperties = state.customProperties + (state.customPropertyKey.trim() to state.customPropertyValue.trim()),
+                            customPropertyKey = "",
+                            customPropertyValue = ""
+                        )
                     }
-                    state.copy(flowAStep = next)
+                }
+            }
+
+            is QuickActionUiEvent.OnRemoveCustomProperty -> {
+                _uiState.update { state ->
+                    state.copy(customProperties = state.customProperties - event.key)
+                }
+            }
+
+            is QuickActionUiEvent.OnStepIndexChange -> {
+                val activeComponents = _uiState.value.activeFlowPreset?.activeComponents.orEmpty()
+                val safeIndex = event.index.coerceIn(0, (activeComponents.size - 1).coerceAtLeast(0))
+                val comp = activeComponents.getOrNull(safeIndex)
+                _uiState.update { it.copy(currentStepIndex = safeIndex, flowAStep = mapComponentToFlowAStep(comp)) }
+            }
+
+            is QuickActionUiEvent.OnNextStep -> {
+                val current = _uiState.value
+                val activeComponents = current.activeFlowPreset?.activeComponents.orEmpty()
+                if (current.currentStepIndex >= activeComponents.size - 1) {
+                    onEvent(QuickActionUiEvent.OnQuickSaveFlowA)
+                } else {
+                    val nextIndex = current.currentStepIndex + 1
+                    val nextComp = activeComponents.getOrNull(nextIndex)
+                    _uiState.update {
+                        it.copy(
+                            currentStepIndex = nextIndex,
+                            flowAStep = mapComponentToFlowAStep(nextComp)
+                        )
+                    }
                 }
             }
 
             is QuickActionUiEvent.OnPreviousStep -> {
-                _uiState.update { state ->
-                    val prev = when (state.flowAStep) {
-                        FlowAStep.NAME -> FlowAStep.NAME
-                        FlowAStep.PLACE -> FlowAStep.NAME
-                        FlowAStep.TAGS_AND_CIRCLES -> FlowAStep.PLACE
-                        FlowAStep.NOTE_AND_FOLLOW_UP -> FlowAStep.TAGS_AND_CIRCLES
+                val current = _uiState.value
+                val activeComponents = current.activeFlowPreset?.activeComponents.orEmpty()
+                if (current.currentStepIndex > 0) {
+                    val prevIndex = current.currentStepIndex - 1
+                    val prevComp = activeComponents.getOrNull(prevIndex)
+                    _uiState.update {
+                        it.copy(
+                            currentStepIndex = prevIndex,
+                            flowAStep = mapComponentToFlowAStep(prevComp)
+                        )
                     }
-                    state.copy(flowAStep = prev)
                 }
             }
 
             is QuickActionUiEvent.OnJumpToStep -> {
-                _uiState.update { it.copy(flowAStep = event.step) }
+                val activeComponents = _uiState.value.activeFlowPreset?.activeComponents.orEmpty()
+                val targetIndex = activeComponents.indexOfFirst { mapComponentToFlowAStep(it) == event.step }
+                if (targetIndex >= 0) {
+                    _uiState.update {
+                        it.copy(
+                            currentStepIndex = targetIndex,
+                            flowAStep = event.step
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(flowAStep = event.step) }
+                }
             }
 
             is QuickActionUiEvent.OnQuickSaveFlowA -> {
                 val current = _uiState.value
+                if (current.newContactName.isBlank()) {
+                    val activeComponents = current.activeFlowPreset?.activeComponents.orEmpty()
+                    val nameIndex = activeComponents.indexOfFirst { it.type == CaptureComponentType.NAME }
+                    val targetIndex = if (nameIndex >= 0) nameIndex else 0
+                    val comp = activeComponents.getOrNull(targetIndex)
+                    _uiState.update {
+                        it.copy(
+                            currentStepIndex = targetIndex,
+                            flowAStep = mapComponentToFlowAStep(comp),
+                            nameError = true,
+                            userMessage = "Please enter a name first"
+                        )
+                    }
+                    return
+                }
+
                 val added = repository.addContactWithInitialEncounter(
                     name = current.newContactName,
                     circles = current.selectedCircles,
@@ -187,7 +358,13 @@ class QuickActionViewModel(
                     placeId = current.selectedPlaceId,
                     customPlaceName = current.customPlaceName.takeIf { it.isNotBlank() },
                     note = current.encounterNote,
-                    followUpDays = current.selectedFollowUpDays
+                    followUpDays = current.selectedFollowUpDays,
+                    role = current.role.takeIf { it.isNotBlank() },
+                    company = current.company.takeIf { it.isNotBlank() },
+                    birthday = current.birthday,
+                    phone = current.phone.takeIf { it.isNotBlank() },
+                    email = current.email.takeIf { it.isNotBlank() },
+                    customProperties = current.customProperties
                 )
                 refreshSuggestionsFromRepository()
                 _uiState.update { state ->
@@ -199,27 +376,18 @@ class QuickActionViewModel(
                 }
             }
 
-            // Flow B: Log Encounter / Met Again Events
+            // Flow B Events
             is QuickActionUiEvent.OnSearchQueryChange -> {
-                val query = event.query
-                _uiState.update { state ->
-                    state.copy(
-                        searchQuery = query,
-                        filteredContacts = filterContacts(state.allContacts, query)
+                _uiState.update {
+                    it.copy(
+                        searchQuery = event.query,
+                        filteredContacts = filterContacts(it.allContacts, event.query)
                     )
                 }
             }
 
             is QuickActionUiEvent.OnSelectExistingContact -> {
-                _uiState.update { state ->
-                    state.copy(
-                        selectedContact = event.contact,
-                        encounterDate = LocalDate.now(),
-                        encounterPlaceId = null,
-                        encounterCustomPlaceName = "",
-                        encounterNoteFlowB = ""
-                    )
-                }
+                _uiState.update { it.copy(selectedContact = event.contact) }
             }
 
             is QuickActionUiEvent.OnClearSelectedContact -> {
@@ -275,7 +443,7 @@ class QuickActionViewModel(
             is QuickActionUiEvent.OnLocationPermissionResult -> {
                 val currentPlaces = _uiState.value.suggestedPlaces
                 if (event.granted && locationService != null) {
-                    viewModelScope.launch {
+                    coroutineScope.launch {
                         locationService.getLocationFlow(currentPlaces).collect { locState ->
                             if (locState is LocationState.Success && locState.nearbyPlaces.isNotEmpty()) {
                                 val nearest = locState.nearbyPlaces.first().place
@@ -334,9 +502,18 @@ class QuickActionViewModel(
 
     private fun resetDraftState(state: QuickActionUiState): QuickActionUiState {
         val allContacts = repository.contacts.value
+        val active = state.activeFlowPreset ?: FlowPreset.createDefaultPresets().first()
+        val firstComp = active.activeComponents.firstOrNull()
         return state.copy(
-            flowAStep = FlowAStep.NAME,
+            activeFlowPreset = active,
+            currentStepIndex = 0,
+            flowAStep = mapComponentToFlowAStep(firstComp),
             newContactName = "",
+            role = "",
+            company = "",
+            birthday = null,
+            phone = "",
+            email = "",
             selectedPlaceId = null,
             customPlaceName = "",
             selectedCircles = setOf(Circle.FRIENDS),
@@ -344,6 +521,10 @@ class QuickActionViewModel(
             customTagInput = "",
             encounterNote = "",
             selectedFollowUpDays = null,
+            customProperties = emptyMap(),
+            customPropertyKey = "",
+            customPropertyValue = "",
+            nameError = false,
             searchQuery = "",
             selectedContact = null,
             filteredContacts = allContacts,
@@ -371,12 +552,16 @@ class QuickActionViewModel(
         val recentContacts = repository.recentContacts.value
         val places = repository.places.value.sortedByDescending { it.useCount }
         val tags = repository.tags.value.sortedByDescending { it.useCount }
+        val defaultPreset = FlowPreset.createDefaultPresets().first()
         return QuickActionUiState(
             suggestedPlaces = places,
             suggestedTags = tags,
             allContacts = allContacts,
             recentContacts = recentContacts,
-            filteredContacts = allContacts
+            filteredContacts = allContacts,
+            activeFlowPreset = defaultPreset,
+            currentStepIndex = 0,
+            flowAStep = FlowAStep.NAME
         )
     }
 }

@@ -1,7 +1,10 @@
 package com.example.hello.ui.quickaction
 
+import com.example.hello.domain.model.CaptureComponent
+import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
 import java.time.LocalDate
@@ -28,9 +31,16 @@ data class QuickActionUiState(
     val allContacts: List<ContactSummary> = emptyList(),
     val recentContacts: List<ContactSummary> = emptyList(),
     val filteredContacts: List<ContactSummary> = emptyList(),
-    // Flow A: Add Contact State
+    // Flow A: Modular Capture Engine State (ADR-0012)
+    val activeFlowPreset: FlowPreset? = null,
+    val currentStepIndex: Int = 0,
     val flowAStep: FlowAStep = FlowAStep.NAME,
     val newContactName: String = "",
+    val role: String = "",
+    val company: String = "",
+    val birthday: LocalDate? = null,
+    val phone: String = "",
+    val email: String = "",
     val selectedPlaceId: String? = null,
     val customPlaceName: String = "",
     val selectedCircles: Set<Circle> = setOf(Circle.FRIENDS),
@@ -38,6 +48,10 @@ data class QuickActionUiState(
     val customTagInput: String = "",
     val encounterNote: String = "",
     val selectedFollowUpDays: Int? = null,
+    val customProperties: Map<String, String> = emptyMap(),
+    val customPropertyKey: String = "",
+    val customPropertyValue: String = "",
+    val nameError: Boolean = false,
     // Flow B: Log Encounter State
     val searchQuery: String = "",
     val selectedContact: ContactSummary? = null,
@@ -50,7 +64,10 @@ data class QuickActionUiState(
     val isLocationGranted: Boolean = false,
     // Feedback message
     val userMessage: String? = null
-)
+) {
+    val currentComponent: CaptureComponent?
+        get() = activeFlowPreset?.activeComponents?.getOrNull(currentStepIndex)
+}
 
 sealed interface QuickActionUiEvent {
     data object OnOpenChoice : QuickActionUiEvent
@@ -62,12 +79,24 @@ sealed interface QuickActionUiEvent {
 
     // Flow A Events
     data class OnNameChange(val name: String) : QuickActionUiEvent
+    data class OnRoleChange(val role: String) : QuickActionUiEvent
+    data class OnCompanyChange(val company: String) : QuickActionUiEvent
+    data class OnBirthdayChange(val birthday: LocalDate?) : QuickActionUiEvent
+    data class OnPhoneChange(val phone: String) : QuickActionUiEvent
+    data class OnEmailChange(val email: String) : QuickActionUiEvent
     data class OnSelectPlaceChip(val placeId: String) : QuickActionUiEvent
     data class OnCustomPlaceNameChange(val customName: String) : QuickActionUiEvent
     data class OnToggleCircle(val circle: Circle) : QuickActionUiEvent
     data class OnToggleTag(val tagId: String) : QuickActionUiEvent
+    data class OnCustomTagInputChange(val input: String) : QuickActionUiEvent
+    data object OnAddCustomTag : QuickActionUiEvent
     data class OnNoteChange(val note: String) : QuickActionUiEvent
     data class OnSelectFollowUp(val days: Int?) : QuickActionUiEvent
+    data class OnCustomPropertyKeyChange(val key: String) : QuickActionUiEvent
+    data class OnCustomPropertyValueChange(val value: String) : QuickActionUiEvent
+    data object OnAddCustomProperty : QuickActionUiEvent
+    data class OnRemoveCustomProperty(val key: String) : QuickActionUiEvent
+    data class OnStepIndexChange(val index: Int) : QuickActionUiEvent
     data object OnNextStep : QuickActionUiEvent
     data object OnPreviousStep : QuickActionUiEvent
     data class OnJumpToStep(val step: FlowAStep) : QuickActionUiEvent

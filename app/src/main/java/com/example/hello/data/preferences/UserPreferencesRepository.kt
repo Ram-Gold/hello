@@ -36,7 +36,8 @@ data class UserPreferences(
     val defaultCadenceDays: Int = 30,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
-    val defaultIncludeLocation: Boolean = true
+    val defaultIncludeLocation: Boolean = true,
+    val activeFlowPresetId: String = "preset_default"
 )
 
 interface UserPreferencesRepository {
@@ -49,6 +50,7 @@ interface UserPreferencesRepository {
     suspend fun setDefaultCadenceDays(days: Int)
     suspend fun setNotificationTime(hour: Int, minute: Int)
     suspend fun setDefaultIncludeLocation(enabled: Boolean)
+    suspend fun setActiveFlowPresetId(presetId: String)
 }
 
 class DataStoreUserPreferencesRepository(
@@ -75,6 +77,7 @@ class DataStoreUserPreferencesRepository(
             val notifHour = preferences[KEY_NOTIFICATION_HOUR] ?: 9
             val notifMinute = preferences[KEY_NOTIFICATION_MINUTE] ?: 0
             val includeLocation = preferences[KEY_DEFAULT_INCLUDE_LOCATION] ?: true
+            val activeFlowPresetId = preferences[KEY_ACTIVE_FLOW_PRESET_ID] ?: "preset_default"
 
             UserPreferences(
                 hasCompletedOnboarding = completed,
@@ -85,7 +88,8 @@ class DataStoreUserPreferencesRepository(
                 defaultCadenceDays = cadenceDays,
                 notificationHour = notifHour,
                 notificationMinute = notifMinute,
-                defaultIncludeLocation = includeLocation
+                defaultIncludeLocation = includeLocation,
+                activeFlowPresetId = activeFlowPresetId
             )
         }
 
@@ -138,6 +142,12 @@ class DataStoreUserPreferencesRepository(
         }
     }
 
+    override suspend fun setActiveFlowPresetId(presetId: String) {
+        dataStore.edit { preferences ->
+            preferences[KEY_ACTIVE_FLOW_PRESET_ID] = presetId
+        }
+    }
+
     companion object {
         val KEY_HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
         val KEY_PREFERRED_TERMINOLOGY = stringPreferencesKey("preferred_terminology")
@@ -148,5 +158,6 @@ class DataStoreUserPreferencesRepository(
         val KEY_NOTIFICATION_HOUR = intPreferencesKey("notification_hour")
         val KEY_NOTIFICATION_MINUTE = intPreferencesKey("notification_minute")
         val KEY_DEFAULT_INCLUDE_LOCATION = booleanPreferencesKey("default_include_location")
+        val KEY_ACTIVE_FLOW_PRESET_ID = stringPreferencesKey("active_flow_preset_id")
     }
 }

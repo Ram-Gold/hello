@@ -35,10 +35,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -193,7 +193,7 @@ private fun ContactsSearchHeader(
                 modifier = Modifier.size(44.dp)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back to Home",
                     modifier = Modifier.size(20.dp)
                 )
@@ -235,7 +235,7 @@ private fun ContactsSearchHeader(
             },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Outlined.Search,
+                    imageVector = Icons.Rounded.Search,
                     contentDescription = "Search",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
@@ -249,7 +249,7 @@ private fun ContactsSearchHeader(
                 ) {
                     IconButton(onClick = onClear) {
                         Icon(
-                            imageVector = Icons.Outlined.Clear,
+                            imageVector = Icons.Rounded.Clear,
                             contentDescription = "Clear search",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -350,7 +350,7 @@ private fun ContactsFilterBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.FilterList,
+                    imageVector = Icons.Rounded.FilterList,
                     contentDescription = "Sort",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(14.dp)

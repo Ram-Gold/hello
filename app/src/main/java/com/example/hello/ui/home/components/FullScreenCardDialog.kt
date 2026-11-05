@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -88,7 +88,7 @@ fun FullScreenCardDialog(
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(18.dp)

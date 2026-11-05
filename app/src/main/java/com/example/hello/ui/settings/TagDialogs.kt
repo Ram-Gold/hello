@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -119,7 +119,7 @@ fun AddTagDialog(
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                    imageVector = Icons.Rounded.Check,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
@@ -203,7 +203,7 @@ fun EditTagDialog(
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                    imageVector = Icons.Rounded.Check,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
@@ -229,7 +229,7 @@ fun EditTagDialog(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Icon(Icons.Outlined.DeleteOutline, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Delete")
                 }

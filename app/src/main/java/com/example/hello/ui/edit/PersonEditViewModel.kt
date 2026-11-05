@@ -33,6 +33,9 @@ class PersonEditViewModel(
                     current.copy(
                         name = contact.name,
                         aliases = contact.aliases,
+                        role = contact.role.orEmpty(),
+                        company = contact.company.orEmpty(),
+                        birthday = contact.birthday,
                         phone = contact.phone.orEmpty(),
                         email = contact.email.orEmpty(),
                         notes = contact.notes,
@@ -40,6 +43,7 @@ class PersonEditViewModel(
                         selectedCircles = contact.circles.toSet(),
                         selectedTagIds = contact.tagIds.toSet(),
                         availableTags = tags,
+                        customProperties = contact.customProperties,
                         cadenceDays = contact.cadenceDays,
                         isCustomCadence = isCustom,
                         customCadenceInput = if (isCustom) contact.cadenceDays.toString() else "",
@@ -90,6 +94,24 @@ class PersonEditViewModel(
                         aliases = updatedAliases,
                         isModified = isMod
                     )
+                }
+            }
+            is PersonEditUiEvent.OnRoleChange -> {
+                _uiState.update { current ->
+                    val isMod = checkModified(current.copy(role = event.role))
+                    current.copy(role = event.role, isModified = isMod)
+                }
+            }
+            is PersonEditUiEvent.OnCompanyChange -> {
+                _uiState.update { current ->
+                    val isMod = checkModified(current.copy(company = event.company))
+                    current.copy(company = event.company, isModified = isMod)
+                }
+            }
+            is PersonEditUiEvent.OnBirthdayChange -> {
+                _uiState.update { current ->
+                    val isMod = checkModified(current.copy(birthday = event.birthday))
+                    current.copy(birthday = event.birthday, isModified = isMod)
                 }
             }
             is PersonEditUiEvent.OnPhoneChange -> {
@@ -258,8 +280,11 @@ class PersonEditViewModel(
         val sameCircles = current.selectedCircles == base.circles.toSet()
         val sameTags = current.selectedTagIds == base.tagIds.toSet()
         val sameCadence = current.cadenceDays == base.cadenceDays
+        val sameRole = current.role.trim() == base.role.orEmpty()
+        val sameCompany = current.company.trim() == base.company.orEmpty()
+        val sameBirthday = current.birthday == base.birthday
 
-        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameCircles && sameTags && sameCadence)
+        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameCircles && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
     }
 
     private fun saveChanges() {
@@ -272,6 +297,9 @@ class PersonEditViewModel(
             id = contactId,
             name = cleanName,
             aliases = current.aliases,
+            role = current.role.trim().ifEmpty { null },
+            company = current.company.trim().ifEmpty { null },
+            birthday = current.birthday,
             phone = current.phone.trim().ifEmpty { null },
             email = current.email.trim().ifEmpty { null },
             circles = current.selectedCircles.toList(),
@@ -282,7 +310,8 @@ class PersonEditViewModel(
             lastMetAt = base?.lastMetAt,
             meetCount = base?.meetCount ?: 0,
             cadenceDays = current.cadenceDays,
-            isArchived = base?.isArchived ?: false
+            isArchived = base?.isArchived ?: false,
+            customProperties = current.customProperties
         )
 
         repository.updateContact(updated)

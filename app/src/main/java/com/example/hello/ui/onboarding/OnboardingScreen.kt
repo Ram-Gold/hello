@@ -31,11 +31,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.FlashOn
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -238,17 +238,17 @@ private fun OnboardingWelcomeStep(modifier: Modifier = Modifier) {
         // Value Proposition Pillars
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ValuePropCard(
-                icon = Icons.Outlined.FlashOn,
+                icon = Icons.Rounded.FlashOn,
                 title = "Extreme Capture Speed (<50ms)",
                 description = "Record quick notes, encounters, and places before the context fades."
             )
             ValuePropCard(
-                icon = Icons.Outlined.Lock,
+                icon = Icons.Rounded.Lock,
                 title = "100% Local-First Sovereignty",
                 description = "No accounts, no cloud sync, no tracking. Your device is the single home of all data."
             )
             ValuePropCard(
-                icon = Icons.Outlined.Shield,
+                icon = Icons.Rounded.Shield,
                 title = "Strict Permission Discipline",
                 description = "We never harvest your system contacts and never track your location in the background."
             )
@@ -353,7 +353,7 @@ private fun OnboardingTerminologyStep(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                    imageVector = Icons.Rounded.Check,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(16.dp)
@@ -386,7 +386,7 @@ private fun OnboardingLocationStep(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Outlined.LocationOn,
+                imageVector = Icons.Rounded.LocationOn,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(40.dp)
@@ -415,17 +415,17 @@ private fun OnboardingLocationStep(modifier: Modifier = Modifier) {
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ValuePropCard(
-                icon = Icons.Outlined.Shield,
+                icon = Icons.Rounded.Shield,
                 title = "Never Runs in Background",
                 description = "Hello never tracks where you go or keeps running location services while your phone is asleep."
             )
             ValuePropCard(
-                icon = Icons.Outlined.LocationOn,
+                icon = Icons.Rounded.LocationOn,
                 title = "Instant Snapshot Only",
                 description = "GPS coordinates are requested strictly when you tap 'Near Current GPS' while recording an encounter."
             )
             ValuePropCard(
-                icon = Icons.Outlined.Lock,
+                icon = Icons.Rounded.Lock,
                 title = "Local & Completely Optional",
                 description = "Place names and coordinates never leave your device. Denying location never prevents logging encounters."
             )

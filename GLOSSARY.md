@@ -44,6 +44,20 @@ _Avoid_: User Profile, ID Card, Business Card
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
 _Avoid_: Backup dump, Database export, System dump
 
+## Capture & Flows
+
+**Capture Flow**:
+The step-by-step sequence of inputs presented during contact creation to record relationship data with minimal cognitive load.
+_Avoid_: Wizard, Form, Onboarding, Input Funnel
+
+**Flow Preset**:
+A named, user-customizable template defining an ordered sequence of Capture Components tailored to a specific social context (e.g., Conference, Casual Party, Campus).
+_Avoid_: Template, Profile, Form Schema
+
+**Capture Component**:
+A modular, self-contained input unit (such as Name, Role, Place, Birthday, or Custom Property) that can be added, reordered, or skipped within a Capture Flow.
+_Avoid_: Field, Form Item, Input Widget
+
 ## Presentation & Navigation
 
 **Floating Bottom Dock**:

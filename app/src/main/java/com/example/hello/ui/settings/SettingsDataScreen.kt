@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -112,7 +112,7 @@ fun SettingsDataScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Storage,
+                                    imageVector = Icons.Rounded.Storage,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -141,7 +141,7 @@ fun SettingsDataScreen(
                         subtitle = "Packages JSON schemas, Obsidian notes, and CSV sheets",
                         shape = shapeFor(0, totalExportItems),
                         leadingIcon = {
-                            Icon(Icons.Outlined.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = { exportLauncher.launch("hello-export-${System.currentTimeMillis()}.zip") }
                     )
@@ -151,7 +151,7 @@ fun SettingsDataScreen(
                         subtitle = "Clean Markdown notes with frontmatter for Obsidian/Logseq",
                         shape = shapeFor(1, totalExportItems),
                         leadingIcon = {
-                            Icon(Icons.Outlined.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = { onEvent(SettingsUiEvent.OnExportMarkdownZip) }
                     )
@@ -161,7 +161,7 @@ fun SettingsDataScreen(
                         subtitle = "Single JSON snapshot for automated or external backup",
                         shape = shapeFor(2, totalExportItems),
                         leadingIcon = {
-                            Icon(Icons.Outlined.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.FileDownload, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = { onEvent(SettingsUiEvent.OnExportBackupJson) }
                     )
@@ -175,7 +175,7 @@ fun SettingsDataScreen(
                         subtitle = "Reindexes FTS5 SQLite tables from disk state if needed",
                         shape = shapeFor(0, 1),
                         leadingIcon = {
-                            Icon(Icons.Outlined.Refresh, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Refresh, null, tint = MaterialTheme.colorScheme.primary)
                         },
                         onClick = { onEvent(SettingsUiEvent.OnRebuildCache) }
                     )

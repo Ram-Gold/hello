@@ -27,15 +27,19 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.Cake
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Work
+import java.time.LocalDate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -140,7 +144,7 @@ fun PersonEditScreen(
                         }
                     }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -203,7 +207,7 @@ fun PersonEditScreen(
                 label = { Text("Full Name *") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Person,
+                        imageVector = Icons.Rounded.Person,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -223,6 +227,60 @@ fun PersonEditScreen(
                 onRemoveAlias = { onEvent(PersonEditUiEvent.OnRemoveAlias(it)) }
             )
 
+            // Role / Title
+            OutlinedTextField(
+                value = uiState.role,
+                onValueChange = { onEvent(PersonEditUiEvent.OnRoleChange(it)) },
+                label = { Text("Role / Title") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Work,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Company / Organization
+            OutlinedTextField(
+                value = uiState.company,
+                onValueChange = { onEvent(PersonEditUiEvent.OnCompanyChange(it)) },
+                label = { Text("Company / Organization") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Business,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Birthday
+            OutlinedTextField(
+                value = uiState.birthday?.toString().orEmpty(),
+                onValueChange = { input ->
+                    val parsed = try { LocalDate.parse(input.trim()) } catch (_: Exception) { null }
+                    onEvent(PersonEditUiEvent.OnBirthdayChange(parsed))
+                },
+                label = { Text("Birthday (YYYY-MM-DD)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Cake,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Phone Number
             OutlinedTextField(
                 value = uiState.phone,
@@ -230,7 +288,7 @@ fun PersonEditScreen(
                 label = { Text("Phone Number") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Phone,
+                        imageVector = Icons.Rounded.Phone,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -248,7 +306,7 @@ fun PersonEditScreen(
                 label = { Text("Email Address") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Email,
+                        imageVector = Icons.Rounded.Email,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -437,7 +495,7 @@ private fun PhotoPickerSection(
                 initials = initials,
                 bgIndex = 0,
                 size = 96.dp,
-                shape = RoundedCornerShape(28.dp)
+                shape = CircleShape
             )
 
             // Camera Icon Overlay Badge
@@ -451,7 +509,7 @@ private fun PhotoPickerSection(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.PhotoCamera,
+                    imageVector = Icons.Rounded.PhotoCamera,
                     contentDescription = "Pick photo",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(18.dp)
@@ -523,7 +581,7 @@ private fun AliasesChipManager(
                                 modifier = Modifier.size(20.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Rounded.Close,
                                     contentDescription = "Remove alias",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(14.dp)
@@ -639,7 +697,7 @@ private fun TagsManager(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = Icons.Rounded.Add,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
@@ -775,7 +833,7 @@ private fun LifecycleActionsCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Archive,
+                    imageVector = Icons.Rounded.Archive,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -794,7 +852,7 @@ private fun LifecycleActionsCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    imageVector = Icons.Rounded.Delete,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )

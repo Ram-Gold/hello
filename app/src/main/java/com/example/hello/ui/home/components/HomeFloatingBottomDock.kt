@@ -35,9 +35,9 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -156,7 +156,7 @@ fun HomeFloatingBottomDock(
                 Column(horizontalAlignment = Alignment.End) {
                     SpeedDialChip(
                         label = "Met Again",
-                        icon = Icons.Outlined.EditNote,
+                        icon = Icons.Rounded.EditNote,
                         onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_STACK_GAP_DP.dp))
@@ -178,7 +178,7 @@ fun HomeFloatingBottomDock(
                 Column(horizontalAlignment = Alignment.End) {
                     SpeedDialChip(
                         label = addContactLabel,
-                        icon = Icons.Outlined.PersonAdd,
+                        icon = Icons.Rounded.PersonAdd,
                         onClick = { onSpeedDialAction(SpeedDialAction.NEW_CONTACT) }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_FAB_GAP_DP.dp))
@@ -240,7 +240,7 @@ fun HomeFloatingBottomDock(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Add,
+                        imageVector = Icons.Rounded.Add,
                         contentDescription = if (isSpeedDialOpen) "Close speed dial" else "Quick capture",
                         modifier = Modifier
                             .size(28.dp)
@@ -522,7 +522,7 @@ private fun SpeedDialChip(
 private fun SpeedDialChipPreview() {
     SpeedDialChip(
         label = "Add Contact",
-        icon = Icons.Outlined.PersonAdd,
+        icon = Icons.Rounded.PersonAdd,
         onClick = {}
     )
 }

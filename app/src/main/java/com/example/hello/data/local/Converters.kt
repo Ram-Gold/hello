@@ -71,4 +71,34 @@ class Converters {
         if (list == null) return null
         return list.joinToString("\u001F")
     }
+
+    @TypeConverter
+    fun fromLocalDateString(value: String?): java.time.LocalDate? {
+        if (value.isNullOrBlank()) return null
+        return try {
+            java.time.LocalDate.parse(value)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    @TypeConverter
+    fun toLocalDateString(date: java.time.LocalDate?): String? {
+        return date?.toString()
+    }
+
+    @TypeConverter
+    fun fromCustomPropertiesMap(value: String?): Map<String, String> {
+        if (value.isNullOrBlank()) return emptyMap()
+        return value.split("\u001E").filter { it.contains("\u001F") }.associate {
+            val parts = it.split("\u001F", limit = 2)
+            parts[0] to parts[1]
+        }
+    }
+
+    @TypeConverter
+    fun toCustomPropertiesMap(map: Map<String, String>?): String {
+        if (map.isNullOrEmpty()) return ""
+        return map.entries.joinToString("\u001E") { "${it.key}\u001F${it.value}" }
+    }
 }

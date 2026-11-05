@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -50,12 +51,12 @@ fun DetailCollapsingHeader(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Large Avatar
+        // Large Circular Avatar
         DoodleAvatar(
             initials = initials,
             bgIndex = bgIndex,
             size = 88.dp,
-            shape = RoundedCornerShape(26.dp)
+            shape = CircleShape
         )
 
         Spacer(modifier = Modifier.height(14.dp))

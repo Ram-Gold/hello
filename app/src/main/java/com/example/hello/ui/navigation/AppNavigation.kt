@@ -29,6 +29,10 @@ data object SettingsTerminologyRoute {
     const val ROUTE_NAME = "settings/terminology"
 }
 
+data object SettingsFlowsRoute {
+    const val ROUTE_NAME = "settings/flows"
+}
+
 data object SettingsTagsRoute {
     const val ROUTE_NAME = "settings/tags"
 }

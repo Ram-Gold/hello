@@ -54,7 +54,7 @@ fun QuickActionSheetHost(
     // Intercept system back when sheet is open
     BackHandler(enabled = uiState.isOpen) {
         when {
-            uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.flowAStep != FlowAStep.NAME -> {
+            uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0 -> {
                 onEvent(QuickActionUiEvent.OnPreviousStep)
             }
             uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null -> {

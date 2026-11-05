@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -149,7 +149,7 @@ fun ExpressiveNavigationItem(
             } else {
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = Icons.Outlined.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                     modifier = Modifier.size(20.dp)
@@ -319,7 +319,7 @@ fun SwitchSettingItem(
                         label = "switch_thumb_icon"
                     ) { isChecked ->
                         Icon(
-                            imageVector = if (isChecked) Icons.Outlined.Check else Icons.Outlined.Close,
+                            imageVector = if (isChecked) Icons.Rounded.Check else Icons.Rounded.Close,
                             contentDescription = null,
                             modifier = Modifier.size(SwitchDefaults.IconSize)
                         )
@@ -390,7 +390,7 @@ fun SelectableSettingItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Check,
+                        imageVector = Icons.Rounded.Check,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(16.dp)
@@ -428,7 +428,7 @@ fun PixelStyleTopBar(
             modifier = Modifier.size(44.dp)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = "Back",
                 modifier = Modifier.size(20.dp)
             )

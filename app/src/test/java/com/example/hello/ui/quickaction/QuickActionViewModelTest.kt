@@ -1,6 +1,7 @@
 package com.example.hello.ui.quickaction
 
 import com.example.hello.data.repository.ContactRepository
+import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.Circle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,41 +52,75 @@ class QuickActionViewModelTest {
     }
 
     @Test
-    fun flowA_stepProgression_movesThroughAllFourStepsAndBack() {
+    fun flowA_stepProgression_movesThroughAllStepsAndBack() {
         viewModel.onEvent(QuickActionUiEvent.OnOpenChoice)
         viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
-        assertEquals(FlowAStep.NAME, viewModel.uiState.value.flowAStep)
+        assertEquals(0, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.NAME, viewModel.uiState.value.currentComponent?.type)
 
+        // Step 0: Name
         viewModel.onEvent(QuickActionUiEvent.OnNameChange("Cedric Diggory"))
         viewModel.onEvent(QuickActionUiEvent.OnNextStep)
-        assertEquals(FlowAStep.PLACE, viewModel.uiState.value.flowAStep)
+        assertEquals(1, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.ROLE, viewModel.uiState.value.currentComponent?.type)
 
-        // Skip place
+        // Step 1: Role -> Step 2: Company
         viewModel.onEvent(QuickActionUiEvent.OnNextStep)
-        assertEquals(FlowAStep.TAGS_AND_CIRCLES, viewModel.uiState.value.flowAStep)
+        assertEquals(2, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.COMPANY, viewModel.uiState.value.currentComponent?.type)
 
+        // Step 2: Company -> Step 3: Place
         viewModel.onEvent(QuickActionUiEvent.OnNextStep)
-        assertEquals(FlowAStep.NOTE_AND_FOLLOW_UP, viewModel.uiState.value.flowAStep)
+        assertEquals(3, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.PLACE, viewModel.uiState.value.currentComponent?.type)
 
-        // Navigate back
+        // Step 3: Place -> Step 4: Note
+        viewModel.onEvent(QuickActionUiEvent.OnNextStep)
+        assertEquals(4, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.NOTE, viewModel.uiState.value.currentComponent?.type)
+
+        // Navigate back to Place
         viewModel.onEvent(QuickActionUiEvent.OnPreviousStep)
-        assertEquals(FlowAStep.TAGS_AND_CIRCLES, viewModel.uiState.value.flowAStep)
+        assertEquals(3, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.PLACE, viewModel.uiState.value.currentComponent?.type)
     }
 
     @Test
-    fun flowA_selectingPlaceChip_autoAdvancesToTagsAndCirclesStep() {
+    fun flowA_selectingPlaceChip_autoAdvancesToNextStep() {
         viewModel.onEvent(QuickActionUiEvent.OnOpenChoice)
         viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
         viewModel.onEvent(QuickActionUiEvent.OnNameChange("Cho Chang"))
-        viewModel.onEvent(QuickActionUiEvent.OnNextStep)
-        assertEquals(FlowAStep.PLACE, viewModel.uiState.value.flowAStep)
+        // Navigate to Place step (step index 3 in Default preset: Name -> Role -> Company -> Place)
+        viewModel.onEvent(QuickActionUiEvent.OnStepIndexChange(3))
+        assertEquals(3, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.PLACE, viewModel.uiState.value.currentComponent?.type)
 
         val place = viewModel.uiState.value.suggestedPlaces.first()
         viewModel.onEvent(QuickActionUiEvent.OnSelectPlaceChip(place.id))
 
-        // Auto-advances to TAGS_AND_CIRCLES
+        // Auto-advances to step 4 (NOTE in Default preset)
         assertEquals(place.id, viewModel.uiState.value.selectedPlaceId)
-        assertEquals(FlowAStep.TAGS_AND_CIRCLES, viewModel.uiState.value.flowAStep)
+        assertEquals(4, viewModel.uiState.value.currentStepIndex)
+        assertEquals(CaptureComponentType.NOTE, viewModel.uiState.value.currentComponent?.type)
+    }
+
+    @Test
+    fun flowA_emptyNameSave_blocksSaveAndFocusesNameStep() {
+        viewModel.onEvent(QuickActionUiEvent.OnOpenChoice)
+        viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
+        // Jump to Step 2 (Company) with blank name
+        viewModel.onEvent(QuickActionUiEvent.OnStepIndexChange(2))
+        viewModel.onEvent(QuickActionUiEvent.OnCompanyChange("Ministry of Magic"))
+
+        // Hit Quick Save while Name is empty
+        viewModel.onEvent(QuickActionUiEvent.OnQuickSaveFlowA)
+
+        val state = viewModel.uiState.value
+        // Must remain open, flag error, and jump back to NAME step (index 0)
+        assertTrue("Flow card must remain open when name is blank", state.isOpen)
+        assertTrue("Name error must be flagged", state.nameError)
+        assertEquals("Must focus Name step (index 0)", 0, state.currentStepIndex)
+        assertEquals(CaptureComponentType.NAME, state.currentComponent?.type)
     }
 
     @Test
@@ -112,25 +147,37 @@ class QuickActionViewModelTest {
         viewModel.onEvent(QuickActionUiEvent.OnOpenChoice)
         viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
 
-        // Step 1: Name
+        // Step 0: Name
         viewModel.onEvent(QuickActionUiEvent.OnNameChange("Ginny Weasley"))
         viewModel.onEvent(QuickActionUiEvent.OnNextStep)
 
-        // Step 2: Place chip (auto-advances)
+        // Step 1: Role
+        viewModel.onEvent(QuickActionUiEvent.OnRoleChange("Senior Quidditch Editor"))
+        viewModel.onEvent(QuickActionUiEvent.OnNextStep)
+
+        // Step 2: Company
+        viewModel.onEvent(QuickActionUiEvent.OnCompanyChange("Daily Prophet"))
+        viewModel.onEvent(QuickActionUiEvent.OnNextStep)
+
+        // Step 3: Place chip (auto-advances to Step 4)
         val placeId = viewModel.uiState.value.suggestedPlaces.first().id
         viewModel.onEvent(QuickActionUiEvent.OnSelectPlaceChip(placeId))
-        assertEquals(FlowAStep.TAGS_AND_CIRCLES, viewModel.uiState.value.flowAStep)
-
-        // Step 3: Circles & Tags
-        viewModel.onEvent(QuickActionUiEvent.OnToggleCircle(Circle.WORK))
-        val tagId = viewModel.uiState.value.suggestedTags.first().id
-        viewModel.onEvent(QuickActionUiEvent.OnToggleTag(tagId))
-        viewModel.onEvent(QuickActionUiEvent.OnNextStep)
-        assertEquals(FlowAStep.NOTE_AND_FOLLOW_UP, viewModel.uiState.value.flowAStep)
+        assertEquals(4, viewModel.uiState.value.currentStepIndex)
 
         // Step 4: Note & FollowUp
         viewModel.onEvent(QuickActionUiEvent.OnNoteChange("Sports journalist at Daily Prophet"))
         viewModel.onEvent(QuickActionUiEvent.OnSelectFollowUp(7))
+
+        // Extended fields: Birthday & Custom Properties
+        val bday = LocalDate.of(1981, 8, 11)
+        viewModel.onEvent(QuickActionUiEvent.OnBirthdayChange(bday))
+        viewModel.onEvent(QuickActionUiEvent.OnCustomPropertyKeyChange("Quidditch Team"))
+        viewModel.onEvent(QuickActionUiEvent.OnCustomPropertyValueChange("Holyhead Harpies"))
+        viewModel.onEvent(QuickActionUiEvent.OnAddCustomProperty)
+
+        // Additional Circle
+        viewModel.onEvent(QuickActionUiEvent.OnToggleCircle(Circle.WORK))
+
         viewModel.onEvent(QuickActionUiEvent.OnQuickSaveFlowA)
 
         assertFalse(viewModel.uiState.value.isOpen)
@@ -139,6 +186,13 @@ class QuickActionViewModelTest {
         assertTrue(Circle.WORK in saved.circles)
         assertTrue(saved.contextSubtitle.contains("Sports journalist at Daily Prophet"))
         assertTrue(repository.followUps.value.any { it.contactId == saved.id })
+
+        val fullContact = repository.fullContacts.value[saved.id]
+        assertNotNull(fullContact)
+        assertEquals("Senior Quidditch Editor", fullContact!!.role)
+        assertEquals("Daily Prophet", fullContact.company)
+        assertEquals(bday, fullContact.birthday)
+        assertEquals("Holyhead Harpies", fullContact.customProperties["Quidditch Team"])
     }
 
     @Test

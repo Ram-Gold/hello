@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.EditCalendar
-import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EditCalendar
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +74,7 @@ fun QuickActionChoiceContent(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Close,
+                    imageVector = Icons.Rounded.Close,
                     contentDescription = "Close",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
@@ -87,7 +87,7 @@ fun QuickActionChoiceContent(
         // Option 1: Add New Contact (Flow A)
         ChoiceOptionCard(
             emoji = "👤",
-            icon = Icons.Outlined.PersonAdd,
+            icon = Icons.Rounded.PersonAdd,
             title = "Add Contact",
             subtitle = "Step-by-step capture for someone new",
             badgeText = "2s Escape Hatch",
@@ -99,7 +99,7 @@ fun QuickActionChoiceContent(
         // Option 2: Met Again / Log Encounter (Flow B)
         ChoiceOptionCard(
             emoji = "🔄",
-            icon = Icons.Outlined.EditCalendar,
+            icon = Icons.Rounded.EditCalendar,
             title = "Met Again / Log Encounter",
             subtitle = "Update timeline & reset relationship cadence",
             badgeText = "Instant Search",
@@ -192,7 +192,7 @@ private fun ChoiceOptionCard(
             }
 
             Icon(
-                imageVector = Icons.Outlined.ChevronRight,
+                imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

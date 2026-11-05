@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -55,7 +55,7 @@ fun HomeTopBar(
                 .clip(CircleShape)
         ) {
             Icon(
-                imageVector = Icons.Outlined.Menu,
+                imageVector = Icons.Rounded.Menu,
                 contentDescription = "Open Drawer",
                 modifier = Modifier.size(22.dp)
             )
@@ -91,7 +91,7 @@ fun HomeTopBar(
                 .clip(CircleShape)
         ) {
             Icon(
-                imageVector = Icons.Outlined.Settings,
+                imageVector = Icons.Rounded.Settings,
                 contentDescription = "Settings",
                 modifier = Modifier.size(22.dp)
             )

@@ -6,12 +6,15 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.example.hello.data.local.dao.CaptureFlowDao
 import com.example.hello.data.local.dao.ContactDao
 import com.example.hello.data.local.dao.EncounterDao
 import com.example.hello.data.local.dao.FollowUpDao
 import com.example.hello.data.local.dao.PlaceDao
 import com.example.hello.data.local.dao.SyncMetadataDao
 import com.example.hello.data.local.dao.TagDao
+import com.example.hello.data.local.entity.CaptureFlowComponentEntity
+import com.example.hello.data.local.entity.CaptureFlowPresetEntity
 import com.example.hello.data.local.entity.ContactEntity
 import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.local.entity.EncounterEntity
@@ -32,9 +35,11 @@ import com.example.hello.data.local.entity.TagEntity
         EncounterEntity::class,
         PlaceEntity::class,
         TagEntity::class,
-        FollowUpEntity::class
+        FollowUpEntity::class,
+        CaptureFlowPresetEntity::class,
+        CaptureFlowComponentEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -46,6 +51,7 @@ abstract class HelloDatabase : RoomDatabase() {
     abstract fun placeDao(): PlaceDao
     abstract fun tagDao(): TagDao
     abstract fun followUpDao(): FollowUpDao
+    abstract fun captureFlowDao(): CaptureFlowDao
 
     companion object {
         const val DATABASE_NAME = "hello_crm.db"

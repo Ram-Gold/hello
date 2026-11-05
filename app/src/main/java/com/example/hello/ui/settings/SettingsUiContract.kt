@@ -1,6 +1,8 @@
 package com.example.hello.ui.settings
 
 import com.example.hello.data.preferences.ThemeMode
+import com.example.hello.domain.model.CaptureComponentType
+import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 
@@ -19,8 +21,16 @@ data class SettingsUiState(
     val defaultCadenceDays: Int = 30,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
-    val defaultIncludeLocation: Boolean = true
-)
+    val defaultIncludeLocation: Boolean = true,
+    // Capture Flows Settings (ADR-0012)
+    val activeFlowPresetId: String = "preset_default",
+    val flowPresets: List<FlowPreset> = emptyList(),
+    val selectedEditingPresetId: String = "preset_default",
+    val isCreatePresetDialogOpen: Boolean = false
+) {
+    val selectedEditingPreset: FlowPreset?
+        get() = flowPresets.firstOrNull { it.id == selectedEditingPresetId } ?: flowPresets.firstOrNull()
+}
 
 sealed interface SettingsUiEvent {
     data class OnSelectTerminology(val terminology: RelationshipTerminology) : SettingsUiEvent
@@ -44,4 +54,17 @@ sealed interface SettingsUiEvent {
     data class OnSetDefaultCadenceDays(val days: Int) : SettingsUiEvent
     data class OnSetNotificationTime(val hour: Int, val minute: Int) : SettingsUiEvent
     data class OnToggleDefaultIncludeLocation(val enabled: Boolean) : SettingsUiEvent
+
+    // Capture Flows Events
+    data class OnSelectActiveFlowPreset(val presetId: String) : SettingsUiEvent
+    data class OnSelectPresetToEdit(val presetId: String) : SettingsUiEvent
+    data class OnMoveComponentUp(val presetId: String, val componentId: String) : SettingsUiEvent
+    data class OnMoveComponentDown(val presetId: String, val componentId: String) : SettingsUiEvent
+    data class OnToggleComponentEnabled(val presetId: String, val componentId: String, val isEnabled: Boolean) : SettingsUiEvent
+    data class OnResetPresetToDefault(val presetId: String) : SettingsUiEvent
+    data class OnDeleteCustomPreset(val presetId: String) : SettingsUiEvent
+    data object OnOpenCreatePresetDialog : SettingsUiEvent
+    data object OnCloseCreatePresetDialog : SettingsUiEvent
+    data class OnCreateCustomPreset(val name: String, val description: String) : SettingsUiEvent
+    data class OnAddComponentToPreset(val presetId: String, val type: CaptureComponentType, val label: String) : SettingsUiEvent
 }

@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.QrCode
+import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.QrCode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -86,7 +86,7 @@ fun MyCardWidget(
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Fullscreen,
+                        imageVector = Icons.Rounded.Fullscreen,
                         contentDescription = "Expand QR Code",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -125,7 +125,7 @@ fun MyCardWidget(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Email,
+                            imageVector = Icons.Rounded.Email,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
@@ -141,7 +141,7 @@ fun MyCardWidget(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Phone,
+                            imageVector = Icons.Rounded.Phone,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
@@ -174,7 +174,7 @@ fun MyCardWidget(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.QrCode,
+                        imageVector = Icons.Rounded.QrCode,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(14.dp)
