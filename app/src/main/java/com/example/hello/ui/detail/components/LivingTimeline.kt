@@ -30,6 +30,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -106,10 +108,12 @@ fun LivingTimeline(
             EmptyTimelineCard(onLogEncounterClick = onLogEncounterClick)
         } else {
             encounters.forEachIndexed { index, encounter ->
+                val isFirst = index == 0
                 val isLast = index == encounters.lastIndex
                 TimelineNodeItem(
                     encounter = encounter,
                     place = encounter.placeId?.let { placesMap[it] },
+                    isFirst = isFirst,
                     isLast = isLast
                 )
             }
@@ -121,6 +125,7 @@ fun LivingTimeline(
 private fun TimelineNodeItem(
     encounter: Encounter,
     place: Place?,
+    isFirst: Boolean,
     isLast: Boolean
 ) {
     val dateText = formatTimelineDate(encounter.occurredAt)
@@ -140,27 +145,42 @@ private fun TimelineNodeItem(
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
-            // Spine Column: Top half down to center, bottom half down from center (omitted if isLast)
+            // Spine Column: Top half down to center, bottom half down from center
             Column(
                 modifier = Modifier.fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val topBrush = if (isFirst) {
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, spineColor)
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, spineColor)
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .width(2.dp)
                         .weight(1f)
-                        .background(spineColor)
+                        .background(topBrush)
                 )
-                if (!isLast) {
-                    Box(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .weight(1f)
-                            .background(spineColor)
+
+                val bottomBrush = if (isLast) {
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, Color.Transparent)
                     )
                 } else {
-                    Spacer(modifier = Modifier.weight(1f))
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, spineColor)
+                    )
                 }
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(bottomBrush)
+                )
             }
 
             // Hollow Center Node Dot

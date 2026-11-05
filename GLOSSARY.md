@@ -65,8 +65,12 @@ The primary navigation tab within the Floating Bottom Dock that presents the app
 _Avoid_: Activity Feed, History Screen, Global Log, Audit Trail
 
 **Timeline Node**:
-A chronological waypoint along the Living Timeline representing an Encounter or scheduled touchpoint. Past nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the encounter card, connected by a 2dp high-contrast spine.
+A chronological waypoint along the Living Timeline representing an Encounter or scheduled touchpoint. Past nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the encounter card, connected by a 2dp high-contrast spine with atmospheric alpha gradient fades at entry and exit horizons.
 _Avoid_: Event Marker, Dot, Checkpoint
+
+**Ambient Depth Scrim**:
+A subtle 12dp vertical gradient (background color fading to transparent) positioned beneath fixed or sticky headers (such as ContactGroupHeader and TimelineHeader) to allow scrolling list content to tuck smoothly underneath without harsh visual cutoff.
+_Avoid_: Drop shadow, Box shadow, Divider bar
 
 **Relationship Tab**:
 The primary navigation tab within the Floating Bottom Dock that opens the contacts surface, dynamically labeled and styled according to the active Relationship Terminology (People, Friends, Connections, or Contacts).

@@ -1,10 +1,15 @@
 package com.example.hello.ui.contacts
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,8 +42,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,14 +61,17 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,7 +81,9 @@ import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.platform.portability.VCardShareHelper
 import com.example.hello.ui.components.ContactCard
+import com.example.hello.ui.contacts.components.ContactSelectionActionTray
 import com.example.hello.ui.home.components.CircleBadge
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.settings.shapeFor
@@ -88,78 +100,227 @@ fun ContactsScreen(
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val context = LocalContext.current
+
+    BackHandler(enabled = uiState.isSelectionMode) {
+        onEvent(ContactsUiEvent.OnClearSelection)
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(
-                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2
-            )
     ) {
-        // 1. Search Bar & Header
-        ContactsSearchHeader(
-            query = uiState.searchQuery,
-            onQueryChange = { onEvent(ContactsUiEvent.OnSearchQueryChange(it)) },
-            onClear = { onEvent(ContactsUiEvent.OnClearSearch) },
-            totalCount = uiState.totalCount,
-            terminology = terminology,
-            onNavigateToHome = onNavigateToHome,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2
+                )
+        ) {
+            // 1. Search Bar & Header / Contextual Selection Header
+            AnimatedContent(
+                targetState = uiState.isSelectionMode,
+                label = "ContactsHeaderTransition"
+            ) { isSelectionMode ->
+                if (isSelectionMode) {
+                    ContactsSelectionHeader(
+                        selectedCount = uiState.selectedContactIds.size,
+                        onClearSelection = { onEvent(ContactsUiEvent.OnClearSelection) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                } else {
+                    ContactsSearchHeader(
+                        query = uiState.searchQuery,
+                        onQueryChange = { onEvent(ContactsUiEvent.OnSearchQueryChange(it)) },
+                        onClear = { onEvent(ContactsUiEvent.OnClearSearch) },
+                        totalCount = uiState.totalCount,
+                        terminology = terminology,
+                        onNavigateToHome = onNavigateToHome,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
 
-        // 2. Circle Filter Chips & Sort Toggle
-        ContactsFilterBar(
-            selectedCircle = uiState.selectedCircle,
-            onSelectCircle = { onEvent(ContactsUiEvent.OnSelectCircle(it)) },
-            sortMode = uiState.sortMode,
-            onToggleSort = { onEvent(ContactsUiEvent.OnToggleSortMode(it)) },
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // 3. Contacts List View or Empty State
-        if (uiState.contacts.isEmpty()) {
-            val isFilterActive = uiState.searchQuery.isNotBlank() || uiState.selectedCircle != null
-            ContactsEmptyState(
-                isFilterActive = isFilterActive,
-                query = uiState.searchQuery,
-                terminology = terminology,
-                onClearFilters = { onEvent(ContactsUiEvent.OnClearFilters) },
-                onAddContactClick = onAddContactClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 32.dp)
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+            // 2. Smart #tag Filter Pills & Sort Toggle
+            val activeTagFilter = uiState.selectedTag ?: uiState.selectedCircle?.displayName?.lowercase()
+            AnimatedVisibility(
+                visible = !uiState.isSelectionMode,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                uiState.groupedContacts.forEach { (header, contactsInGroup) ->
-                    stickyHeader(
-                        key = "header-$header",
-                        contentType = "group_header"
-                    ) {
-                        ContactGroupHeader(
-                            title = header,
-                            count = contactsInGroup.size,
-                            modifier = Modifier.padding(top = 14.dp, bottom = 4.dp)
-                        )
-                    }
+                ContactsFilterBar(
+                    selectedTag = activeTagFilter,
+                    smartFilterTags = uiState.smartFilterTags,
+                    onSelectTag = { onEvent(ContactsUiEvent.OnSelectTag(it)) },
+                    sortMode = uiState.sortMode,
+                    onToggleSort = { onEvent(ContactsUiEvent.OnToggleSortMode(it)) },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-                    itemsIndexed(
-                        items = contactsInGroup,
-                        key = { _, contact -> contact.id },
-                        contentType = { _, _ -> "contact_card" }
-                    ) { index, contact ->
-                        ContactCard(
-                            contact = contact,
-                            shape = shapeFor(index, contactsInGroup.size),
-                            onClick = { onContactClick(contact.id) }
-                        )
+            // 3. Contacts List View or Empty State
+            if (uiState.contacts.isEmpty()) {
+                val isFilterActive = uiState.searchQuery.isNotBlank() || activeTagFilter != null
+                ContactsEmptyState(
+                    isFilterActive = isFilterActive,
+                    query = uiState.searchQuery,
+                    selectedTag = activeTagFilter,
+                    terminology = terminology,
+                    onClearFilters = { onEvent(ContactsUiEvent.OnClearFilters) },
+                    onAddContactClick = onAddContactClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 32.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 120.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    uiState.groupedContacts.forEach { (header, contactsInGroup) ->
+                        stickyHeader(
+                            key = "header-$header",
+                            contentType = "group_header"
+                        ) {
+                            ContactGroupHeader(
+                                title = header,
+                                count = contactsInGroup.size
+                            )
+                        }
+
+                        itemsIndexed(
+                            items = contactsInGroup,
+                            key = { _, contact -> contact.id },
+                            contentType = { _, _ -> "contact_card" }
+                        ) { index, contact ->
+                            val isSelected = contact.id in uiState.selectedContactIds
+                            ContactCard(
+                                contact = contact,
+                                isSelected = isSelected,
+                                shape = if (isSelected) RoundedCornerShape(24.dp) else shapeFor(index, contactsInGroup.size),
+                                onClick = {
+                                    if (uiState.isSelectionMode) {
+                                        onEvent(ContactsUiEvent.OnToggleSelectContact(contact.id))
+                                    } else {
+                                        onContactClick(contact.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    onEvent(ContactsUiEvent.OnContactLongClick(contact.id))
+                                },
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        // Floating Action Tray on the right edge
+        AnimatedVisibility(
+            visible = uiState.isSelectionMode,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+        ) {
+            ContactSelectionActionTray(
+                onShareClick = {
+                    val selectedContacts = uiState.contacts.filter { it.id in uiState.selectedContactIds }
+                    VCardShareHelper.shareVCard(context, selectedContacts)
+                },
+                onDeleteClick = {
+                    onEvent(ContactsUiEvent.OnRequestDeleteSelected)
+                },
+                onSelectAllClick = {
+                    onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
+                }
+            )
+        }
+
+        // Batch Deletion Confirmation Dialog
+        if (uiState.isDeleteConfirmationVisible) {
+            val count = uiState.selectedContactIds.size
+            AlertDialog(
+                onDismissRequest = { onEvent(ContactsUiEvent.OnDismissDeleteDialog) },
+                title = {
+                    Text(
+                        text = "Delete $count contact${if (count > 1) "s" else ""}?",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "All notes, encounters, and reminders associated with these contacts will be permanently removed.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { onEvent(ContactsUiEvent.OnConfirmDeleteSelected) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onEvent(ContactsUiEvent.OnDismissDeleteDialog) },
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactsSelectionHeader(
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$selectedCount selected",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        FilledIconButton(
+            onClick = onClearSelection,
+            shape = CircleShape,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier.size(44.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = "Cancel selection",
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -228,7 +389,7 @@ private fun ContactsSearchHeader(
             onValueChange = onQueryChange,
             placeholder = {
                 Text(
-                    text = "Search ${terminology.pluralTitle.lowercase()}, notes, tags...",
+                    text = terminology.searchPlaceholder(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -275,29 +436,30 @@ private fun ContactsSearchHeader(
 
 @Composable
 private fun ContactsFilterBar(
-    selectedCircle: Circle?,
-    onSelectCircle: (Circle?) -> Unit,
+    selectedTag: String?,
+    smartFilterTags: List<String>,
+    onSelectTag: (String?) -> Unit,
     sortMode: ContactSortMode,
     onToggleSort: (ContactSortMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    val backgroundColor = MaterialTheme.colorScheme.background
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd
     ) {
-        // Circle Filter Chips (All, Work, Friends, Family, Uni)
+        // Full-width horizontal scrolling Smart #tag Filter Pills
         LazyRow(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = 16.dp, end = 120.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(end = 8.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             item {
                 FilterChip(
-                    selected = selectedCircle == null,
-                    onClick = { onSelectCircle(null) },
+                    selected = selectedTag == null,
+                    onClick = { onSelectTag(null) },
                     label = { Text("All") },
                     shape = RoundedCornerShape(14.dp),
                     border = null,
@@ -309,16 +471,16 @@ private fun ContactsFilterBar(
             }
 
             items(
-                items = Circle.entries,
-                key = { it.name }
-            ) { circle ->
-                val isSelected = selectedCircle == circle
+                items = smartFilterTags,
+                key = { it }
+            ) { tagName ->
+                val isSelected = selectedTag.equals(tagName, ignoreCase = true)
                 FilterChip(
                     selected = isSelected,
                     onClick = {
-                        onSelectCircle(if (isSelected) null else circle)
+                        onSelectTag(if (isSelected) null else tagName)
                     },
-                    label = { Text(circle.displayName) },
+                    label = { Text("#${tagName.lowercase()}") },
                     shape = RoundedCornerShape(14.dp),
                     border = null,
                     colors = FilterChipDefaults.filterChipColors(
@@ -329,37 +491,65 @@ private fun ContactsFilterBar(
             }
         }
 
-        // Sort Mode Toggle Pill (Zero Border, surfaceContainerHigh)
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier
-                .clip(RoundedCornerShape(14.dp))
-                .clickable {
-                    val next = if (sortMode == ContactSortMode.ALPHABETICAL) {
-                        ContactSortMode.RECENTLY_ENCOUNTERED
-                    } else {
-                        ContactSortMode.ALPHABETICAL
-                    }
-                    onToggleSort(next)
-                }
+        // Trailing Sort Button with Smooth Left-Edge Gradient Fade
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.align(Alignment.CenterEnd)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // Horizontal gradient fade scrim from transparent to background color
+            Box(
+                modifier = Modifier
+                    .width(32.dp)
+                    .height(36.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                backgroundColor
+                            )
+                        )
+                    )
+            )
+
+            // Solid container behind Sort Toggle (guarantees no scrolling chips bleed through)
+            Box(
+                modifier = Modifier
+                    .background(backgroundColor)
+                    .padding(end = 16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.FilterList,
-                    contentDescription = "Sort",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = sortMode.label,
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable {
+                            val next = if (sortMode == ContactSortMode.ALPHABETICAL) {
+                                ContactSortMode.RECENTLY_ENCOUNTERED
+                            } else {
+                                ContactSortMode.ALPHABETICAL
+                            }
+                            onToggleSort(next)
+                        }
+                        .animateContentSize()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.FilterList,
+                            contentDescription = "Sort",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = sortMode.label,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
         }
     }
@@ -371,37 +561,54 @@ private fun ContactGroupHeader(
     count: Int,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        color = MaterialTheme.colorScheme.background
+    Column(
+        modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            color = MaterialTheme.colorScheme.background
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "$count",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary
                 )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = "$count",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
             }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
     }
 }
 
@@ -427,6 +634,7 @@ fun ContactsEmptyState(
     terminology: RelationshipTerminology,
     onClearFilters: () -> Unit,
     onAddContactClick: () -> Unit,
+    selectedTag: String? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -466,13 +674,16 @@ fun ContactsEmptyState(
 
             Text(
                 text = if (isFilterActive) {
-                    if (query.isNotBlank()) {
-                        "No ${terminology.pluralTitle.lowercase()} found matching \"$query\". Try a different keyword or reset filters."
-                    } else {
-                        "No ${terminology.pluralTitle.lowercase()} found in this circle sphere."
+                    when {
+                        query.isNotBlank() ->
+                            "No ${terminology.pluralTitle.lowercase()} found matching \"$query\". Try a different keyword or reset filters."
+                        selectedTag != null ->
+                            terminology.emptyTagFilterMessage(selectedTag)
+                        else ->
+                            "No ${terminology.pluralTitle.lowercase()} match your active filter."
                     }
                 } else {
-                    "Your circle is waiting! Start adding ${terminology.pluralTitle.lowercase()} and logging encounters to keep your relationships alive."
+                    "Your directory is ready! Start adding ${terminology.pluralTitle.lowercase()}, tagging life spheres (#friends, #work), and logging encounters."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -539,6 +750,25 @@ fun ContactsScreenDarkPreview() {
         contacts = ContactsViewModel.createSampleContacts()
     )
     HelloTheme(darkTheme = true) {
+        ContactsScreen(
+            uiState = sampleState,
+            onEvent = {}
+        )
+    }
+}
+
+@Preview(name = "Contacts Selection Mode Light", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun ContactsSelectionModeLightPreview() {
+    val sampleContacts = ContactsViewModel.createSampleContacts()
+    val sampleState = ContactsViewModel.computeState(
+        searchQuery = "",
+        selectedCircle = null,
+        sortMode = ContactSortMode.ALPHABETICAL,
+        contacts = sampleContacts,
+        selectedContactIds = setOf(sampleContacts[0].id, sampleContacts[1].id)
+    )
+    HelloTheme(darkTheme = false) {
         ContactsScreen(
             uiState = sampleState,
             onEvent = {}

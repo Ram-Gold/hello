@@ -49,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,6 +86,21 @@ fun TimelineScreen(
             onLogEncounterClick = onLogEncounterClick
         )
 
+        // 12.dp vertical gradient scrim so scrolling timeline cards tuck smoothly beneath filter bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
         // 2. Continuous Vertical Living Timeline Spine (Future -> TODAY -> Past)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -114,9 +131,11 @@ fun TimelineScreen(
                         items = uiState.futureNodes,
                         key = { _, node -> node.id }
                     ) { index, node ->
+                        val isFirstFuture = index == 0
                         val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
                         FutureTimelineNodeRow(
                             node = node,
+                            isFirst = isFirstFuture,
                             isLast = isLastFuture,
                             onContactClick = { onContactClick(node.contactId) },
                             onMarkDone = { followUpId ->
@@ -165,9 +184,11 @@ fun TimelineScreen(
                         items = uiState.pastNodes,
                         key = { _, node -> node.id }
                     ) { index, node ->
+                        val isFirstPast = index == 0
                         val isLastPast = index == uiState.pastNodes.lastIndex
                         PastTimelineNodeRow(
                             node = node,
+                            isFirst = isFirstPast,
                             isLast = isLastPast,
                             onContactClick = { onContactClick(node.contactId) }
                         )
@@ -366,6 +387,7 @@ private fun TodayTimelineAnchor(
 @Composable
 private fun FutureTimelineNodeRow(
     node: FutureTimelineNode,
+    isFirst: Boolean,
     isLast: Boolean,
     onContactClick: () -> Unit,
     onMarkDone: (String) -> Unit,
@@ -398,8 +420,19 @@ private fun FutureTimelineNodeRow(
                         .width(2.dp)
                         .weight(1f)
                 ) {
+                    val brush = if (isFirst) {
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, dashColor),
+                            startY = 0f,
+                            endY = size.height
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            colors = listOf(dashColor, dashColor)
+                        )
+                    }
                     drawLine(
-                        color = dashColor,
+                        brush = brush,
                         start = Offset(size.width / 2f, 0f),
                         end = Offset(size.width / 2f, size.height),
                         strokeWidth = size.width,
@@ -623,6 +656,7 @@ private fun FutureNodeTypeBadge(node: FutureTimelineNode) {
 @Composable
 private fun PastTimelineNodeRow(
     node: PastTimelineNode,
+    isFirst: Boolean,
     isLast: Boolean,
     onContactClick: () -> Unit
 ) {
@@ -642,27 +676,42 @@ private fun PastTimelineNodeRow(
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
-            // Spine Column: Top half down to center, bottom half down from center (omitted if isLast)
+            // Spine Column: Top half down to center, bottom half down from center
             Column(
                 modifier = Modifier.fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val topBrush = if (isFirst) {
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, spineColor)
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, spineColor)
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .width(2.dp)
                         .weight(1f)
-                        .background(spineColor)
+                        .background(topBrush)
                 )
-                if (!isLast) {
-                    Box(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .weight(1f)
-                            .background(spineColor)
+
+                val bottomBrush = if (isLast) {
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, Color.Transparent)
                     )
                 } else {
-                    Spacer(modifier = Modifier.weight(1f))
+                    Brush.verticalGradient(
+                        colors = listOf(spineColor, spineColor)
+                    )
                 }
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(bottomBrush)
+                )
             }
 
             // Hollow Center Node Dot
