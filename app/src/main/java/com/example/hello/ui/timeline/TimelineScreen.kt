@@ -372,6 +372,8 @@ private fun FutureTimelineNodeRow(
     onSnooze: (String) -> Unit,
     onLogMet: () -> Unit
 ) {
+    val spineColor = MaterialTheme.colorScheme.onSurface
+    val dotFillColor = MaterialTheme.colorScheme.surface
     val dashColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(
@@ -379,37 +381,62 @@ private fun FutureTimelineNodeRow(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
-        // Dashed Future Spine & Outlined Node Dot
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(28.dp)
+        // Dashed Future Spine & Centered Hollow Node Dot
+        Box(
+            modifier = Modifier
+                .width(28.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
-                    )
-            )
-            if (!isLast) {
+            // Dashed Spine Column: Top half down to center, bottom half down from center
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Canvas(
                     modifier = Modifier
                         .width(2.dp)
-                        .fillMaxHeight()
+                        .weight(1f)
                 ) {
                     drawLine(
                         color = dashColor,
-                        start = Offset(size.width / 2f, 2f),
+                        start = Offset(size.width / 2f, 0f),
                         end = Offset(size.width / 2f, size.height),
                         strokeWidth = size.width,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                     )
                 }
+                if (!isLast) {
+                    Canvas(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .weight(1f)
+                    ) {
+                        drawLine(
+                            color = dashColor,
+                            start = Offset(size.width / 2f, 0f),
+                            end = Offset(size.width / 2f, size.height),
+                            strokeWidth = size.width,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
+
+            // Hollow Center Node Dot
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(dotFillColor)
+                    .border(
+                        width = 2.dp,
+                        color = spineColor,
+                        shape = CircleShape
+                    )
+            )
         }
 
         Spacer(modifier = Modifier.width(10.dp))
