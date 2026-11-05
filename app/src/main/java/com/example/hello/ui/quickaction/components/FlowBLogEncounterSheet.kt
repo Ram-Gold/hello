@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
@@ -369,7 +370,8 @@ private fun EncounterFormContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MinimalSelectableChip(
-                label = "📍 Current GPS",
+                label = "Current GPS",
+                leadingIconKey = HelloIconKey.MAP_PIN,
                 selected = false,
                 onClick = { onEvent(QuickActionUiEvent.OnRequestLocation) }
             )

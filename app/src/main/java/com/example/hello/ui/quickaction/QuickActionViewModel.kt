@@ -77,10 +77,16 @@ class QuickActionViewModel(
     private fun mapComponentToFlowAStep(component: CaptureComponent?): FlowAStep {
         return when (component?.type) {
             CaptureComponentType.NAME -> FlowAStep.NAME
+            CaptureComponentType.ROLE -> FlowAStep.ROLE
+            CaptureComponentType.COMPANY -> FlowAStep.COMPANY
+            CaptureComponentType.PHONE -> FlowAStep.PHONE
+            CaptureComponentType.EMAIL -> FlowAStep.EMAIL
+            CaptureComponentType.BIRTHDAY -> FlowAStep.BIRTHDAY
+            CaptureComponentType.CUSTOM -> FlowAStep.CUSTOM
             CaptureComponentType.PLACE -> FlowAStep.PLACE
             CaptureComponentType.CIRCLES, CaptureComponentType.TAGS -> FlowAStep.TAGS_AND_CIRCLES
             CaptureComponentType.NOTE, CaptureComponentType.CADENCE -> FlowAStep.NOTE_AND_FOLLOW_UP
-            else -> FlowAStep.NAME
+            null -> FlowAStep.NAME
         }
     }
 
@@ -98,9 +104,8 @@ class QuickActionViewModel(
 
             is QuickActionUiEvent.OnDismiss -> {
                 _uiState.update { state ->
-                    resetDraftState(state).copy(
+                    state.copy(
                         isOpen = false,
-                        currentMode = QuickActionMode.CHOICE,
                         showLocationExplainer = false
                     )
                 }
@@ -204,7 +209,7 @@ class QuickActionViewModel(
             is QuickActionUiEvent.OnToggleCircle -> {
                 _uiState.update { state ->
                     val updated = if (event.circle in state.selectedCircles) {
-                        if (state.selectedCircles.size > 1) state.selectedCircles - event.circle else state.selectedCircles
+                        state.selectedCircles - event.circle
                     } else {
                         state.selectedCircles + event.circle
                     }
@@ -223,6 +228,15 @@ class QuickActionViewModel(
                 }
             }
 
+            is QuickActionUiEvent.OnToggleCustomTagInput -> {
+                _uiState.update { state ->
+                    state.copy(
+                        isCustomTagInputExpanded = !state.isCustomTagInputExpanded,
+                        customTagInput = if (state.isCustomTagInputExpanded) "" else state.customTagInput
+                    )
+                }
+            }
+
             is QuickActionUiEvent.OnCustomTagInputChange -> {
                 _uiState.update { it.copy(customTagInput = event.input) }
             }
@@ -234,10 +248,18 @@ class QuickActionViewModel(
                     _uiState.update { state ->
                         state.copy(
                             selectedTagIds = state.selectedTagIds + addedTag.id,
-                            customTagInput = ""
+                            customTagInput = "",
+                            isCustomTagInputExpanded = false
                         )
                     }
                     refreshSuggestionsFromRepository()
+                } else {
+                    _uiState.update { state ->
+                        state.copy(
+                            customTagInput = "",
+                            isCustomTagInputExpanded = false
+                        )
+                    }
                 }
             }
 
@@ -368,10 +390,9 @@ class QuickActionViewModel(
                 )
                 refreshSuggestionsFromRepository()
                 _uiState.update { state ->
-                    resetDraftState(state).copy(
+                    state.copy(
                         isOpen = false,
-                        currentMode = QuickActionMode.CHOICE,
-                        userMessage = "Saved ${added.name} & logged encounter! ✨"
+                        userMessage = "Saved ${added.name} & logged encounter!"
                     )
                 }
             }
@@ -423,10 +444,9 @@ class QuickActionViewModel(
                 )
                 refreshSuggestionsFromRepository()
                 _uiState.update { state ->
-                    resetDraftState(state).copy(
+                    state.copy(
                         isOpen = false,
-                        currentMode = QuickActionMode.CHOICE,
-                        userMessage = "Logged encounter with ${targetContact.name}! 🔄"
+                        userMessage = "Logged encounter with ${targetContact.name}!"
                     )
                 }
             }
@@ -516,9 +536,10 @@ class QuickActionViewModel(
             email = "",
             selectedPlaceId = null,
             customPlaceName = "",
-            selectedCircles = setOf(Circle.FRIENDS),
+            selectedCircles = emptySet(),
             selectedTagIds = emptySet(),
             customTagInput = "",
+            isCustomTagInputExpanded = false,
             encounterNote = "",
             selectedFollowUpDays = null,
             customProperties = emptyMap(),

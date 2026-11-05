@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.Circle
+import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
@@ -270,7 +272,8 @@ fun FlowAAddContactCard(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 MinimalSelectableChip(
-                                    label = "📍 Current GPS",
+                                    label = "Current GPS",
+                                    leadingIconKey = HelloIconKey.MAP_PIN,
                                     selected = uiState.isLocationGranted && uiState.selectedPlaceId != null,
                                     onClick = { onEvent(QuickActionUiEvent.OnRequestLocation) }
                                 )
@@ -294,7 +297,7 @@ fun FlowAAddContactCard(
                                 Circle.entries.forEach { circle ->
                                     val isSelected = circle in uiState.selectedCircles
                                     MinimalSelectableChip(
-                                        label = circle.displayName,
+                                        label = "#${circle.displayName.lowercase()}",
                                         selected = isSelected,
                                         onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
                                     )
@@ -306,7 +309,7 @@ fun FlowAAddContactCard(
                             MinimalFilledTextField(
                                 value = uiState.customTagInput,
                                 onValueChange = { onEvent(QuickActionUiEvent.OnCustomTagInputChange(it)) },
-                                placeholder = "Type a tag...",
+                                placeholder = "Type a #tag...",
                                 focusRequester = focusRequester,
                                 imeAction = ImeAction.Done,
                                 capitalization = KeyboardCapitalization.Words,
@@ -317,6 +320,14 @@ fun FlowAAddContactCard(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Circle.entries.forEach { circle ->
+                                    val isSelected = circle in uiState.selectedCircles
+                                    MinimalSelectableChip(
+                                        label = "#${circle.displayName.lowercase()}",
+                                        selected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
+                                    )
+                                }
                                 uiState.suggestedTags.forEach { tag ->
                                     val isSelected = tag.id in uiState.selectedTagIds
                                     MinimalSelectableChip(
@@ -456,6 +467,74 @@ fun FlowAAddContactCard(
                 }
             }
         }
+
+        // Pinned Hybrid Chip Strip (ADR-0013): Life Spheres + Top Tags + "+ tag" inline custom entry
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (currentComp?.type != CaptureComponentType.CIRCLES && currentComp?.type != CaptureComponentType.TAGS) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Circle.entries.forEach { circle ->
+                        val isSelected = circle in uiState.selectedCircles
+                        MinimalSelectableChip(
+                            label = "#${circle.displayName.lowercase()}",
+                            selected = isSelected,
+                            onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
+                        )
+                    }
+                    uiState.suggestedTags.forEach { tag ->
+                        val isSelected = tag.id in uiState.selectedTagIds
+                        MinimalSelectableChip(
+                            label = "#${tag.name.lowercase()}",
+                            selected = isSelected,
+                            onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
+                        )
+                    }
+                    MinimalSelectableChip(
+                        label = if (uiState.isCustomTagInputExpanded) "× tag" else "+ tag",
+                        selected = uiState.isCustomTagInputExpanded,
+                        onClick = { onEvent(QuickActionUiEvent.OnToggleCustomTagInput) }
+                    )
+                }
+
+                if (uiState.isCustomTagInputExpanded) {
+                    MinimalFilledTextField(
+                        value = uiState.customTagInput,
+                        onValueChange = { onEvent(QuickActionUiEvent.OnCustomTagInputChange(it)) },
+                        placeholder = "Add custom #tag...",
+                        imeAction = ImeAction.Done,
+                        capitalization = KeyboardCapitalization.None,
+                        onImeAction = { onEvent(QuickActionUiEvent.OnAddCustomTag) }
+                    )
+                }
+            }
+
+            // Instant Save Escape Hatch when Name is entered (allows <3s 1-step save)
+            if (uiState.newContactName.isNotBlank() && !isLastStep) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable { onEvent(QuickActionUiEvent.OnQuickSaveFlowA) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Save ${uiState.newContactName.trim()} Now",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -522,14 +601,15 @@ internal fun MinimalSelectableChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    leadingIconKey: HelloIconKey? = null
 ) {
     val selectedFillAndBorder = MaterialTheme.colorScheme.primaryContainer
     val containerColor = if (selected) selectedFillAndBorder else Color.Transparent
     val borderColor = if (selected) selectedFillAndBorder else MaterialTheme.colorScheme.outlineVariant
     val contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
-    Box(
+    Row(
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
             .background(containerColor)
@@ -540,8 +620,16 @@ internal fun MinimalSelectableChip(
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        if (leadingIconKey != null) {
+            CustomizableIcon(
+                iconKey = leadingIconKey,
+                size = 14.dp,
+                tint = contentColor
+            )
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(

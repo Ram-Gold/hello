@@ -5,6 +5,7 @@ import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.domain.model.SubconsciousCheckInCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -251,5 +252,27 @@ class HomeViewModelTest {
         fakePrefsRepo.setUserName("Taylor")
         advanceUntilIdle()
         assertEquals("Taylor", vm.uiState.value.userName)
+    }
+
+    @Test
+    fun subconsciousCheckInCalculator_computesAdaptiveIntervalAndPrompt() {
+        // 0-1 encounters -> 30-day baseline
+        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(emptyList()))
+        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L)))
+
+        // 2 encounters 20 days apart -> 1.5 * 20 = 30 days
+        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 120L)))
+
+        // 3 encounters 4 days apart each -> avg gap 4d -> 1.5 * 4 = 6d -> clamped to min 14d
+        assertEquals(14, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 104L, 108L)))
+
+        // 2 encounters 80 days apart -> 1.5 * 80 = 120d -> clamped to max 90d
+        assertEquals(90, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 180L)))
+
+        val metPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 45, hasMultipleEncounters = true)
+        assertEquals("Met 6 weeks ago — anything new to update?", metPrompt)
+
+        val addedPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 35, hasMultipleEncounters = false)
+        assertEquals("Added 5 weeks ago — anything new to update?", addedPrompt)
     }
 }

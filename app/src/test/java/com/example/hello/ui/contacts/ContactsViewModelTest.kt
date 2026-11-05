@@ -2,6 +2,12 @@ package com.example.hello.ui.contacts
 
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -9,13 +15,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ContactsViewModelTest {
 
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: ContactsViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         viewModel = ContactsViewModel()
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -127,5 +141,219 @@ class ContactsViewModelTest {
         assertTrue(alex.notes.isNotBlank())
         assertTrue(alex.tags.isNotEmpty())
         assertTrue(alex.tags.any { it.name == "Design" })
+    }
+
+    @Test
+    fun onSelectTag_filtersByLifeSphereAndTopicTags_andClearsCleanly() {
+        // Filter by life sphere #friends
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("#friends"))
+        val friendsState = viewModel.uiState.value
+        assertEquals("friends", friendsState.selectedTag)
+        assertEquals(Circle.FRIENDS, friendsState.selectedCircle)
+        assertTrue(friendsState.contacts.isNotEmpty())
+        assertTrue(friendsState.contacts.all { Circle.FRIENDS in it.circles })
+
+        // Filter by topic tag #design
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
+        val designState = viewModel.uiState.value
+        assertEquals("design", designState.selectedTag)
+        assertNull(designState.selectedCircle)
+        assertEquals(4, designState.contacts.size)
+        assertTrue(designState.contacts.all { c -> c.tags.any { it.name.equals("design", ignoreCase = true) } })
+
+        // Clear filters resets both selectedTag and selectedCircle
+        viewModel.onEvent(ContactsUiEvent.OnClearFilters)
+        assertNull(viewModel.uiState.value.selectedTag)
+        assertNull(viewModel.uiState.value.selectedCircle)
+        assertEquals(10, viewModel.uiState.value.totalCount)
+    }
+
+    @Test
+    fun searchQuery_supportsHashtagSphereAndTopicQueries() {
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("#work"))
+        val workResults = viewModel.uiState.value.contacts
+        assertTrue(workResults.isNotEmpty())
+        assertTrue(workResults.all { Circle.WORK in it.circles })
+
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("#ai"))
+        val aiResults = viewModel.uiState.value.contacts
+        assertEquals(2, aiResults.size)
+    }
+
+    @Test
+    fun onContactLongClick_entersSelectionModeAndSelectsContact() {
+        val targetId = viewModel.uiState.value.contacts.first().id
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedContactIds)
+        assertTrue(!viewModel.uiState.value.isSelectionMode)
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(targetId))
+
+        val state = viewModel.uiState.value
+        assertEquals(setOf(targetId), state.selectedContactIds)
+        assertTrue(state.isSelectionMode)
+    }
+
+    @Test
+    fun onContactLongClick_subsequentContactAddsToSelection() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        val secondId = viewModel.uiState.value.contacts[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(secondId))
+
+        val state = viewModel.uiState.value
+        assertEquals(setOf(firstId, secondId), state.selectedContactIds)
+        assertTrue(state.isSelectionMode)
+    }
+
+    @Test
+    fun onToggleSelectContact_togglesSelectionState() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        val secondId = viewModel.uiState.value.contacts[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+
+        assertEquals(setOf(firstId, secondId), viewModel.uiState.value.selectedContactIds)
+
+        // Toggle firstId off
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(firstId))
+        assertEquals(setOf(secondId), viewModel.uiState.value.selectedContactIds)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+    }
+
+    @Test
+    fun onToggleSelectContact_deselectingLastContact_autoExitsSelectionMode() {
+        val targetId = viewModel.uiState.value.contacts.first().id
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(targetId))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Deselect the last selected contact
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(targetId))
+
+        val state = viewModel.uiState.value
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertTrue(!state.isSelectionMode)
+    }
+
+    @Test
+    fun onClearSelection_clearsAllSelectionsAndExitsSelectionMode() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        val secondId = viewModel.uiState.value.contacts[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+        assertEquals(2, viewModel.uiState.value.selectedContactIds.size)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.onEvent(ContactsUiEvent.OnClearSelection)
+
+        val state = viewModel.uiState.value
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertTrue(!state.isSelectionMode)
+    }
+
+    @Test
+    fun searchOrFilterChange_prunesSelectedContactIds() {
+        val alex = viewModel.uiState.value.contacts.first { it.name == "Alex Rivera" } // WORK
+        val elena = viewModel.uiState.value.contacts.first { it.name == "Elena Rostova" } // FRIENDS, FAMILY
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(alex.id))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(elena.id))
+        assertEquals(setOf(alex.id, elena.id), viewModel.uiState.value.selectedContactIds)
+
+        // Filter by Circle.WORK - Elena is not in WORK so she must be pruned
+        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
+        val stateAfterCircle = viewModel.uiState.value
+        assertEquals(setOf(alex.id), stateAfterCircle.selectedContactIds)
+        assertTrue(stateAfterCircle.isSelectionMode)
+
+        // Search for a query that matches nobody - Alex must be pruned, auto-exiting selection mode
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("NonExistentNameXYZ"))
+        val stateAfterSearch = viewModel.uiState.value
+        assertTrue(stateAfterSearch.selectedContactIds.isEmpty())
+        assertTrue(!stateAfterSearch.isSelectionMode)
+    }
+
+    @Test
+    fun onSelectAllVisibleContacts_selectsAllVisibleContacts() {
+        val visibleIds = viewModel.uiState.value.contacts.map { it.id }.toSet()
+        assertTrue(visibleIds.isNotEmpty())
+        assertTrue(viewModel.uiState.value.selectedContactIds.isEmpty())
+
+        viewModel.onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
+
+        val state = viewModel.uiState.value
+        assertEquals(visibleIds, state.selectedContactIds)
+        assertEquals(visibleIds.size, state.selectedContactIds.size)
+        assertTrue(state.isSelectionMode)
+    }
+
+    @Test
+    fun onSelectAllVisibleContacts_respectsActiveFilter() {
+        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
+        val workIds = viewModel.uiState.value.contacts.map { it.id }.toSet()
+        assertTrue(workIds.isNotEmpty())
+
+        viewModel.onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
+
+        val state = viewModel.uiState.value
+        assertEquals(workIds, state.selectedContactIds)
+        assertTrue(state.isSelectionMode)
+    }
+
+    @Test
+    fun onRequestDeleteSelected_andDismiss_togglesDeleteConfirmationDialog() {
+        assertEquals(false, viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        viewModel.onEvent(ContactsUiEvent.OnRequestDeleteSelected)
+        assertEquals(true, viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        viewModel.onEvent(ContactsUiEvent.OnDismissDeleteDialog)
+        assertEquals(false, viewModel.uiState.value.isDeleteConfirmationVisible)
+    }
+
+    @Test
+    fun onConfirmDeleteSelected_removesContacts_clearsSelection_andDismissesDialog() {
+        val initialCount = viewModel.uiState.value.contacts.size
+        val contact1 = viewModel.uiState.value.contacts[0]
+        val contact2 = viewModel.uiState.value.contacts[1]
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(contact1.id))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(contact2.id))
+        viewModel.onEvent(ContactsUiEvent.OnRequestDeleteSelected)
+
+        assertTrue(viewModel.uiState.value.isDeleteConfirmationVisible)
+        assertEquals(setOf(contact1.id, contact2.id), viewModel.uiState.value.selectedContactIds)
+
+        viewModel.onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+
+        val state = viewModel.uiState.value
+        assertEquals(false, state.isDeleteConfirmationVisible)
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertTrue(!state.isSelectionMode)
+        assertEquals(initialCount - 2, state.contacts.size)
+        assertEquals(initialCount - 2, state.totalCount)
+        assertTrue(state.contacts.none { it.id == contact1.id || it.id == contact2.id })
+        assertEquals("Deleted 2 contacts", state.userMessage)
+    }
+
+    @Test
+    fun onConfirmDeleteSelected_withRepository_propagatesDeletions() {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val repoViewModel = ContactsViewModel(repository = repo)
+        val initialRepoCount = repo.contacts.value.size
+        val target = repoViewModel.uiState.value.contacts.first()
+
+        repoViewModel.onEvent(ContactsUiEvent.OnContactLongClick(target.id))
+        repoViewModel.onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+
+        val state = repoViewModel.uiState.value
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertTrue(!state.isSelectionMode)
+        assertTrue(state.contacts.none { it.id == target.id })
+        assertTrue(repo.contacts.value.none { it.id == target.id })
+        assertEquals(initialRepoCount - 1, repo.contacts.value.size)
+        assertEquals("Deleted 1 contact", state.userMessage)
     }
 }

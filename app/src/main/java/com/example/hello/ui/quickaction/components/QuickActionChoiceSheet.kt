@@ -17,8 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.EditCalendar
-import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.FeatherIconSize
 
 @Composable
 fun QuickActionChoiceContent(
@@ -86,8 +86,7 @@ fun QuickActionChoiceContent(
 
         // Option 1: Add New Contact (Flow A)
         ChoiceOptionCard(
-            emoji = "👤",
-            icon = Icons.Rounded.PersonAdd,
+            iconKey = HelloIconKey.USER_PLUS,
             title = "Add Contact",
             subtitle = "Step-by-step capture for someone new",
             badgeText = "2s Escape Hatch",
@@ -98,10 +97,9 @@ fun QuickActionChoiceContent(
 
         // Option 2: Met Again / Log Encounter (Flow B)
         ChoiceOptionCard(
-            emoji = "🔄",
-            icon = Icons.Rounded.EditCalendar,
+            iconKey = HelloIconKey.CALENDAR,
             title = "Met Again / Log Encounter",
-            subtitle = "Update timeline & reset relationship cadence",
+            subtitle = "Update timeline & log a new memory",
             badgeText = "Instant Search",
             accentContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             accentContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -112,8 +110,7 @@ fun QuickActionChoiceContent(
 
 @Composable
 private fun ChoiceOptionCard(
-    emoji: String,
-    icon: ImageVector,
+    iconKey: HelloIconKey,
     title: String,
     subtitle: String,
     badgeText: String,
@@ -148,9 +145,10 @@ private fun ChoiceOptionCard(
                     .background(accentContainerColor),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = emoji,
-                    style = MaterialTheme.typography.titleLarge
+                CustomizableIcon(
+                    iconKey = iconKey,
+                    size = FeatherIconSize.FEATURE,
+                    tint = accentContentColor
                 )
             }
 

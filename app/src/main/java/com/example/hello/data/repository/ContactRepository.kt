@@ -14,8 +14,10 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
+import com.example.hello.domain.model.SubconsciousCheckInCalculator
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.UpcomingAlert
+import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeViewModel
@@ -183,10 +185,66 @@ class ContactRepository(
 
     private fun refreshBirthdayAlerts(contacts: Collection<Contact>) {
         val bdayAlerts = computeBirthdayAlerts(contacts)
+        val checkInAlerts = computeSubconsciousCheckInAlerts(
+            contacts = contacts,
+            encounters = _encounters.value,
+            pendingFollowUps = _followUps.value
+        )
         _upcomingAlerts.update { currentAlerts ->
-            val nonBdays = currentAlerts.filterNot { it is UpcomingAlert.BirthdayAlert && it.id.startsWith("bday-") }
-            bdayAlerts + nonBdays
+            val nonBdays = currentAlerts.filterNot {
+                (it is UpcomingAlert.BirthdayAlert && it.id.startsWith("bday-")) ||
+                    (it is UpcomingAlert.CadenceAlert && it.id.startsWith("checkin-"))
+            }
+            bdayAlerts + nonBdays + checkInAlerts
         }
+    }
+
+    fun computeSubconsciousCheckInAlerts(
+        contacts: Collection<Contact>,
+        encounters: List<Encounter>,
+        pendingFollowUps: List<FollowUp>,
+        today: LocalDate = LocalDate.now(),
+        zoneId: ZoneId = ZoneOffset.UTC
+    ): List<UpcomingAlert.CadenceAlert> {
+        val pendingContactIds = pendingFollowUps.filter { it.doneAt == null }.map { it.contactId }.toSet()
+        val encountersByContact = encounters.groupBy { it.contactId }
+
+        data class DriftCandidate(
+            val alert: UpcomingAlert.CadenceAlert,
+            val driftRatio: Double
+        )
+
+        return contacts
+            .filterNot { it.isArchived || it.id in pendingContactIds }
+            .mapNotNull { contact ->
+                val contactEncounters = encountersByContact[contact.id].orEmpty()
+                val epochDays = contactEncounters.map { it.occurredAt.atZone(zoneId).toLocalDate().toEpochDay() }
+                val thresholdDays = SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(epochDays)
+                val anchorInstant = contact.lastMetAt ?: contact.firstMetAt ?: return@mapNotNull null
+                val anchorDate = anchorInstant.atZone(zoneId).toLocalDate()
+                val daysSince = ChronoUnit.DAYS.between(anchorDate, today).toInt().coerceAtLeast(0)
+                if (daysSince < thresholdDays) return@mapNotNull null
+
+                val hasMultiple = contactEncounters.size >= 2 || contact.meetCount >= 2
+                val prompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(
+                    daysSince = daysSince,
+                    hasMultipleEncounters = hasMultiple
+                )
+                val alert = UpcomingAlert.CadenceAlert(
+                    id = "checkin-${contact.id}",
+                    contactName = contact.name,
+                    daysSinceLastMet = daysSince,
+                    promptText = prompt,
+                    contactId = contact.id
+                )
+                DriftCandidate(
+                    alert = alert,
+                    driftRatio = daysSince.toDouble() / thresholdDays.toDouble()
+                )
+            }
+            .sortedByDescending { it.driftRatio }
+            .take(SubconsciousCheckInCalculator.MAX_SURFACED_PROMPTS)
+            .map { it.alert }
     }
 
     private fun computeBirthdayAlerts(contacts: Collection<Contact>): List<UpcomingAlert.BirthdayAlert> {
@@ -200,7 +258,7 @@ class ContactRepository(
             val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
             if (daysUntil in 0..30) {
                 val dateText = when (daysUntil) {
-                    0L -> "Today! 🎂"
+                    0L -> "Today!"
                     1L -> "Tomorrow"
                     else -> "In $daysUntil days"
                 }
@@ -531,12 +589,7 @@ class ContactRepository(
             name = cleanName,
             contextSubtitle = subtitle,
             circles = circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
-            avatarInitials = cleanName.split(" ")
-                .mapNotNull { it.firstOrNull()?.toString() }
-                .take(2)
-                .joinToString("")
-                .uppercase()
-                .ifEmpty { "👋" },
+            avatarInitials = extractAlphanumericInitials(name),
             avatarBgIndex = (_contacts.value.size % 6),
             lastEncounterText = "Met today",
             notes = note.trim(),
@@ -836,12 +889,7 @@ class ContactRepository(
         }
 
         fun ContactEntity.toSummary(): ContactSummary {
-            val initials = name.split(" ")
-                .mapNotNull { it.firstOrNull()?.toString() }
-                .take(2)
-                .joinToString("")
-                .uppercase()
-                .ifEmpty { "👋" }
+            val initials = extractAlphanumericInitials(name)
             val subtitle = notes.ifBlank {
                 circles.firstOrNull()?.let { "${it.displayName} Circle" } ?: "Contact"
             }

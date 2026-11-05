@@ -1,23 +1,159 @@
 package com.example.hello.domain.model
 
-enum class CardType(val title: String, val iconEmoji: String) {
-    WORK("WORK CARD", "💼"),
-    SOCIAL("SOCIAL CARD", "☕")
+enum class HelloIconKey(val label: String) {
+    GLOBE("All Groups"),
+    BRIEFCASE("Work"),
+    COFFEE("Coffee & Friends"),
+    HOME("Family & Home"),
+    GRADUATION_CAP("Uni & Study"),
+    HEART("Close Circle"),
+    STAR("Favorites"),
+    USERS("Community"),
+    COMPASS("Travel & Outdoors"),
+    CODE("Tech & Builders"),
+    MUSIC("Arts & Music"),
+    BOOK("Reading & Ideas"),
+    CAKE("Birthday"),
+    CALENDAR("Calendar"),
+    CLOCK("Reminder"),
+    MAP_PIN("Location"),
+    PHONE("Phone"),
+    MAIL("Email"),
+    SPARKLES("Highlight"),
+    SEARCH("Search"),
+    USER("Contact"),
+    USER_PLUS("Add Contact"),
+    REFRESH("Reconnect"),
+    CHECK("Done"),
+    TRASH("Delete"),
+    PACKAGE("Export Bundle"),
+    TAG("Tag");
+
+    companion object {
+        val customizableGroupIcons: List<HelloIconKey> = listOf(
+            GLOBE,
+            BRIEFCASE,
+            COFFEE,
+            HOME,
+            GRADUATION_CAP,
+            HEART,
+            STAR,
+            USERS,
+            COMPASS,
+            CODE,
+            MUSIC,
+            BOOK,
+            SPARKLES
+        )
+    }
 }
 
-enum class Circle(val displayName: String) {
-    WORK("Work"),
-    FRIENDS("Friends"),
-    FAMILY("Family"),
-    UNI("Uni")
+object GroupIconRegistry {
+    private val overrides = mutableMapOf<Circle, HelloIconKey>()
+    var allGroupsIconKey: HelloIconKey = HelloIconKey.GLOBE
+        private set
+
+    fun getIconKey(circle: Circle?): HelloIconKey {
+        if (circle == null) return allGroupsIconKey
+        return overrides[circle] ?: circle.defaultIconKey
+    }
+
+    fun setIconKey(circle: Circle?, iconKey: HelloIconKey) {
+        if (circle == null) {
+            allGroupsIconKey = iconKey
+        } else {
+            overrides[circle] = iconKey
+        }
+    }
+
+    fun reset() {
+        overrides.clear()
+        allGroupsIconKey = HelloIconKey.GLOBE
+    }
+}
+
+fun extractAlphanumericInitials(name: String): String {
+    return name.trim()
+        .split(Regex("\\s+"))
+        .mapNotNull { token -> token.firstOrNull { it.isLetterOrDigit() }?.toString() }
+        .take(2)
+        .joinToString("")
+        .uppercase()
+}
+
+enum class CardType(val title: String, val iconKey: HelloIconKey) {
+    WORK("WORK CARD", HelloIconKey.BRIEFCASE),
+    SOCIAL("SOCIAL CARD", HelloIconKey.COFFEE)
+}
+
+enum class Circle(val displayName: String, val defaultIconKey: HelloIconKey) {
+    WORK("Work", HelloIconKey.BRIEFCASE),
+    FRIENDS("Friends", HelloIconKey.COFFEE),
+    FAMILY("Family", HelloIconKey.HOME),
+    UNI("Uni", HelloIconKey.GRADUATION_CAP)
 }
 
 data class CircleGroupConfig(
     val circle: Circle,
     val cadenceDays: Int = 14,
     val defaultCardType: CardType = CardType.WORK,
-    val isCadenceAlertEnabled: Boolean = true
-)
+    val isCadenceAlertEnabled: Boolean = true,
+    val iconKey: HelloIconKey = circle.defaultIconKey
+) {
+    companion object {
+        fun resolveEffectiveCadenceDays(
+            circles: List<Circle>,
+            explicitCadenceDays: Int?,
+            circleConfigs: Map<Circle, CircleGroupConfig>,
+            defaultCadenceDays: Int = 14
+        ): Int {
+            if (explicitCadenceDays != null && explicitCadenceDays > 0) {
+                return explicitCadenceDays
+            }
+            val enabledCadences = circles.mapNotNull { circle ->
+                circleConfigs[circle]?.takeIf { it.isCadenceAlertEnabled }?.cadenceDays
+            }
+            return enabledCadences.minOrNull() ?: defaultCadenceDays
+        }
+    }
+}
+
+/**
+ * Zero-configuration subconscious check-in interval calculator.
+ * Computes an adaptive threshold from past encounter history:
+ * - For 2+ encounters: 1.5x average gap between recorded encounters, clamped to 14..90 days.
+ * - For 0-1 encounters: 30-day baseline.
+ */
+object SubconsciousCheckInCalculator {
+    const val MIN_ADAPTIVE_DAYS = 14
+    const val MAX_ADAPTIVE_DAYS = 90
+    const val BASELINE_DAYS = 30
+    const val SNOOZE_DAYS = 14L
+    const val MAX_SURFACED_PROMPTS = 2
+
+    fun computeAdaptiveThresholdDays(encounterEpochDaysSortedAsc: List<Long>): Int {
+        val distinctDays = encounterEpochDaysSortedAsc.distinct().sorted()
+        if (distinctDays.size < 2) {
+            return BASELINE_DAYS
+        }
+        val totalSpan = (distinctDays.last() - distinctDays.first()).coerceAtLeast(1L)
+        val intervalsCount = distinctDays.size - 1
+        val avgGap = totalSpan.toDouble() / intervalsCount.toDouble()
+        val adaptive = kotlin.math.round(avgGap * 1.5).toInt()
+        return adaptive.coerceIn(MIN_ADAPTIVE_DAYS, MAX_ADAPTIVE_DAYS)
+    }
+
+    fun formatSubconsciousPrompt(daysSince: Int, hasMultipleEncounters: Boolean): String {
+        val durationLabel = when {
+            daysSince >= 60 -> "${daysSince / 30} months ago"
+            daysSince >= 14 -> "${daysSince / 7} weeks ago"
+            daysSince == 1 -> "yesterday"
+            else -> "$daysSince days ago"
+        }
+        val prefix = if (hasMultipleEncounters) "Met" else "Added"
+        return "$prefix $durationLabel — anything new to update?"
+    }
+}
 
 sealed interface UpcomingAlert {
     val id: String
@@ -41,7 +177,8 @@ sealed interface UpcomingAlert {
         override val id: String,
         override val contactName: String,
         val daysSinceLastMet: Int,
-        val promptText: String
+        val promptText: String,
+        val contactId: String = ""
     ) : UpcomingAlert
 }
 
@@ -71,7 +208,8 @@ data class MyCardData(
 
 enum class HomeNavTab(val label: String) {
     HOME("Home"),
-    PEOPLE("People")
+    PEOPLE("People"),
+    TIMELINE("Timeline")
 }
 
 enum class SpeedDialAction {

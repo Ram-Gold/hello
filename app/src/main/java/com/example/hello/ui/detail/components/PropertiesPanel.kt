@@ -35,7 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
+import com.example.hello.domain.model.GroupIconRegistry
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.Tag
+import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.detail.CadenceHealth
 import com.example.hello.ui.detail.CadenceStatusInfo
 import com.example.hello.ui.theme.AvatarSage
@@ -47,7 +51,7 @@ import com.example.hello.ui.theme.WarmTerracottaPrimary
 @Composable
 fun PropertiesPanel(
     contact: Contact?,
-    cadenceStatus: CadenceStatusInfo,
+    cadenceStatus: CadenceStatusInfo = CadenceStatusInfo(),
     allTags: List<Tag>,
     modifier: Modifier = Modifier
 ) {
@@ -62,9 +66,6 @@ fun PropertiesPanel(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Cadence Health Status Card
-        CadenceHealthCard(cadenceStatus = cadenceStatus)
-
         // Extended Properties Surface Card (ADR-0012)
         val hasExtendedProps = !contact?.role.isNullOrBlank() ||
             !contact?.company.isNullOrBlank() ||
@@ -98,20 +99,20 @@ fun PropertiesPanel(
                     ) {
                         if (!contact?.role.isNullOrBlank() || !contact?.company.isNullOrBlank()) {
                             val roleCompany = listOfNotNull(contact?.role?.ifBlank { null }, contact?.company?.ifBlank { null }).joinToString(" at ")
-                            PropertyChip(label = "💼 $roleCompany")
+                            PropertyChip(iconKey = HelloIconKey.BRIEFCASE, label = roleCompany)
                         }
                         if (contact?.birthday != null) {
-                            PropertyChip(label = "🎂 ${contact.birthday}")
+                            PropertyChip(iconKey = HelloIconKey.CAKE, label = "${contact.birthday}")
                         }
                         if (!contact?.phone.isNullOrBlank()) {
-                            PropertyChip(label = "📞 ${contact.phone}")
+                            PropertyChip(iconKey = HelloIconKey.PHONE, label = "${contact.phone}")
                         }
                         if (!contact?.email.isNullOrBlank()) {
-                            PropertyChip(label = "✉️ ${contact.email}")
+                            PropertyChip(iconKey = HelloIconKey.MAIL, label = "${contact.email}")
                         }
                         contact?.customProperties?.forEach { (key, value) ->
                             if (value.isNotBlank()) {
-                                PropertyChip(label = "✦ $key: $value")
+                                PropertyChip(iconKey = HelloIconKey.SPARKLES, label = "$key: $value")
                             }
                         }
                     }
@@ -130,11 +131,11 @@ fun PropertiesPanel(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Circles Row
+                    // Groups Row
                     if (circles.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "CIRCLES",
+                                text = "GROUPS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
@@ -152,11 +153,11 @@ fun PropertiesPanel(
                         }
                     }
 
-                    // Tags Row
+                    // Context Tags Row
                     if (matchingTags.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "TAGS",
+                                text = "CONTEXT #TAGS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
@@ -283,13 +284,6 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
 
 @Composable
 private fun CirclePillChip(circle: Circle) {
-    val emoji = when (circle) {
-        Circle.WORK -> "💼"
-        Circle.FRIENDS -> "☕"
-        Circle.FAMILY -> "🏡"
-        Circle.UNI -> "🎓"
-    }
-
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -298,10 +292,14 @@ private fun CirclePillChip(circle: Circle) {
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = emoji, fontSize = 13.sp)
+            CustomizableIcon(
+                iconKey = GroupIconRegistry.getIconKey(circle),
+                size = FeatherIconSize.INLINE,
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = circle.displayName,
+                text = "#${circle.displayName.lowercase()}",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -331,16 +329,26 @@ private fun TagPillChip(tag: Tag) {
 }
 
 @Composable
-private fun PropertyChip(label: String) {
+private fun PropertyChip(iconKey: HelloIconKey, label: String) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            CustomizableIcon(
+                iconKey = iconKey,
+                size = 14.dp,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }

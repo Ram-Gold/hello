@@ -10,6 +10,7 @@ import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
+import com.example.hello.domain.model.extractAlphanumericInitials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,7 +70,7 @@ class TimelineViewModel(
                         futureNodes = state.futureNodes.filterNot { node ->
                             node is FutureTimelineNode.FollowUpNode && node.followUpId == event.followUpId
                         },
-                        userMessage = "Follow-up marked as done! ✨"
+                        userMessage = "Follow-up marked as done!"
                     )
                 }
             }
@@ -89,7 +90,7 @@ class TimelineViewModel(
                     }.sortedBy { it.daysUntil }
                     state.copy(
                         futureNodes = updatedFuture,
-                        userMessage = "Snoozed for 3 days ⏰"
+                        userMessage = "Snoozed for 3 days"
                     )
                 }
             }
@@ -206,7 +207,7 @@ class TimelineViewModel(
                     val turningAge = (nextBday.year - bday.year).takeIf { it in 1..130 }
                     val formattedMonthDay = nextBday.format(DateTimeFormatter.ofPattern("MMM d"))
                     val dateLabel = when {
-                        daysUntil == 0L -> "Today! 🎂"
+                        daysUntil == 0L -> "Today!"
                         daysUntil <= 30L -> formatFutureDaysLabel(daysUntil)
                         else -> "$formattedMonthDay • In $daysUntil days"
                     }
@@ -231,7 +232,6 @@ class TimelineViewModel(
                         when (it) {
                             is FutureTimelineNode.BirthdayNode -> 0
                             is FutureTimelineNode.FollowUpNode -> 1
-                            is FutureTimelineNode.CadenceNode -> 2
                         }
                     }
                     .thenBy { it.contactName }
@@ -240,15 +240,7 @@ class TimelineViewModel(
             return Pair(sortedFuture, pastNodes)
         }
 
-        private fun extractInitials(name: String): String {
-            return name.trim()
-                .split(" ")
-                .mapNotNull { it.firstOrNull()?.toString() }
-                .take(2)
-                .joinToString("")
-                .uppercase()
-                .ifEmpty { "👋" }
-        }
+        private fun extractInitials(name: String): String = extractAlphanumericInitials(name)
 
         fun formatFutureDaysLabel(daysUntil: Long): String = when {
             daysUntil <= 0L -> "Today"

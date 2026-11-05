@@ -13,8 +13,12 @@ The user's chosen display nomenclature (People, Friends, Connections, or Contact
 _Avoid_: User Role, Category Type, Custom Entity
 
 **Circle**:
-A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context. Contacts can belong to multiple Circles simultaneously (multi-sphere membership). When a contact belongs to multiple Circles with differing cadences, the most frequent (shortest) cadence governs reminder frequency.
-_Avoid_: Group, Category, Folder
+A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context. Contacts can belong to multiple Circles simultaneously (multi-sphere membership). In the presentation UI, Circles are presented cleanly as **Groups**.
+_Avoid_: Category, Folder, Sphere
+
+**Group**:
+The user-facing presentation term for a Circle / relationship sphere. Represented in navigation as a lightweight filtering drawer that allows filtering the home overview by sphere (#work, #friends, etc.) or viewing all relationships together.
+_Avoid_: Cadence Panel, Sphere Settings, Category List
 
 **Tag**:
 A lightweight freeform label attached to Contacts to support cross-cutting categorization and ad-hoc filtering. Contacts can have multiple tags, which sit alongside Circles in unified filter strips.
@@ -32,9 +36,9 @@ _Avoid_: Venue, Location, Spot
 An actionable stay-in-touch reminder or task tied to a Contact, with a scheduled due date and completion state.
 _Avoid_: Task, To-do, Ping
 
-**Cadence**:
-A target stay-in-touch frequency established for a Contact or Circle to trigger proactive reconnection reminders when overdue.
-_Avoid_: Interval, Frequency, Ping schedule
+**Subconscious Check-In**:
+A zero-configuration, algorithmically inferred prompt surfaced gently in the Home "Keep in Touch" carousel when an active Contact has drifted past their adaptive encounter rhythm (`1.5x` average historical gap clamped to `14..90` days, or `30` days baseline). Unlike concrete dated events, Subconscious Check-Ins never clutter the Living Timeline and are capped to at most 2 ambient suggestions at a time.
+_Avoid_: Cadence, Manual Frequency, Overdue SLA, Ping Schedule
 
 **Export Bundle**:
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
@@ -61,11 +65,11 @@ The floating bottom navigation bar that houses the three primary navigation tabs
 _Avoid_: Navbar, Bottom bar, Tab bar
 
 **Timeline Tab**:
-The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (upcoming Birthdays, scheduled FollowUps, and projected Cadence reconnections with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
+The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays across a 365-day year-round horizon and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
 _Avoid_: Activity Feed, History Screen, Global Log, Audit Trail
 
 **Timeline Node**:
-A chronological waypoint along the Living Timeline representing an Encounter or scheduled touchpoint. Past nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the encounter card, connected by a 2dp high-contrast spine with atmospheric alpha gradient fades at entry and exit horizons.
+A chronological waypoint along the Living Timeline representing an Encounter, Birthday Milestone, or scheduled touchpoint. Past and milestone nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the card, connected by a 2dp high-contrast spine with atmospheric alpha gradient fades at entry and exit horizons.
 _Avoid_: Event Marker, Dot, Checkpoint
 
 **Ambient Depth Scrim**:
@@ -81,7 +85,7 @@ The Material 3 Expressive connected surface representing a Contact across the Re
 _Avoid_: People Card, Person Card, Contact Row, Contact Tile
 
 **Upcoming Alert Card**:
-The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Cadence) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons.
+The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Subconscious Check-In) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Later" / "Update" for Subconscious Check-Ins).
 _Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
 
 **Contact Selection Mode**:
@@ -89,5 +93,5 @@ The contextual interaction phase entered via long-press on a Contact Card within
 _Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen
 
 **Contact Profile Screen**:
-The dedicated Material 3 Expressive view displaying a Contact's relationship status, Cadence health, circles, tags, notes, and the living timeline of past encounters, intentionally stripped of dialer/messaging quick actions to emphasize relationship context over utility dialers.
+The dedicated Material 3 Expressive view displaying a Contact's relationship properties, Groups, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
 _Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry

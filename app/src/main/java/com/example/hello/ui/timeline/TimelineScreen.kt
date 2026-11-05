@@ -597,31 +597,6 @@ private fun FutureTimelineNodeRow(
                             lineHeight = 20.sp
                         )
                     }
-                    is FutureTimelineNode.CadenceNode -> {
-                        Text(
-                            text = node.promptText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 20.sp
-                        )
-                        FilledTonalButton(
-                            onClick = onLogMet,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Log Met",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -633,7 +608,6 @@ private fun FutureNodeTypeBadge(node: FutureTimelineNode) {
     val (icon, label) = when (node) {
         is FutureTimelineNode.FollowUpNode -> Icons.Rounded.NotificationsActive to "Next Note"
         is FutureTimelineNode.BirthdayNode -> Icons.Rounded.Cake to "Birthday"
-        is FutureTimelineNode.CadenceNode -> Icons.Rounded.Schedule to "Reconnect"
     }
 
     Surface(

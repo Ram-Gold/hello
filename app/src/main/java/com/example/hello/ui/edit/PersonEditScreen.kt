@@ -77,7 +77,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.Circle
+import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.extractAlphanumericInitials
+import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.WarmTerracottaPrimary
@@ -186,12 +190,7 @@ fun PersonEditScreen(
             // Photo / Avatar Header with Camera Badge
             PhotoPickerSection(
                 photoUri = uiState.photoUri,
-                initials = uiState.name.split(" ")
-                    .mapNotNull { it.firstOrNull()?.toString() }
-                    .take(2)
-                    .joinToString("")
-                    .uppercase()
-                    .ifEmpty { "👋" },
+                initials = extractAlphanumericInitials(uiState.name),
                 onPickPhoto = {
                     photoPickerLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -342,15 +341,6 @@ fun PersonEditScreen(
                 onOpenNewTagDialog = { onEvent(PersonEditUiEvent.OnShowNewTagDialog(true)) }
             )
 
-            // Cadence Interval Selector
-            CadenceIntervalSelector(
-                cadenceDays = uiState.cadenceDays,
-                isCustomCadence = uiState.isCustomCadence,
-                customInput = uiState.customCadenceInput,
-                onSelectCadence = { onEvent(PersonEditUiEvent.OnSelectCadence(it)) },
-                onCustomChange = { onEvent(PersonEditUiEvent.OnCustomCadenceChange(it)) }
-            )
-
             Spacer(modifier = Modifier.height(8.dp))
 
             // Bottom Lifecycle & Destructive Actions
@@ -391,7 +381,7 @@ fun PersonEditScreen(
             onDismissRequest = { onEvent(PersonEditUiEvent.OnDismissArchiveDialog) },
             title = { Text("Archive ${uiState.name}?") },
             text = {
-                Text("Cadence reminders for this contact will be paused, and they will be moved to your archived records.")
+                Text("Check-in suggestions for this contact will be paused, and they will be moved to your archived records.")
             },
             confirmButton = {
                 Button(
@@ -635,7 +625,7 @@ private fun CirclesSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "CIRCLES",
+            text = "GROUPS",
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -649,16 +639,21 @@ private fun CirclesSelector(
         ) {
             Circle.entries.forEach { circle ->
                 val isSelected = circle in selectedCircles
-                val emoji = when (circle) {
-                    Circle.WORK -> "💼 "
-                    Circle.FRIENDS -> "☕ "
-                    Circle.FAMILY -> "🏡 "
-                    Circle.UNI -> "🎓 "
-                }
                 FilterChip(
                     selected = isSelected,
                     onClick = { onToggleCircle(circle) },
-                    label = { Text("$emoji${circle.displayName}") },
+                    leadingIcon = {
+                        CustomizableIcon(
+                            iconKey = GroupIconRegistry.getIconKey(circle),
+                            size = FeatherIconSize.INLINE,
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    },
+                    label = { Text("#${circle.displayName.lowercase()}") },
                     shape = RoundedCornerShape(14.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,

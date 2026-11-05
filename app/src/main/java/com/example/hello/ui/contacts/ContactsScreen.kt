@@ -80,8 +80,10 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.platform.portability.VCardShareHelper
+import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
 import com.example.hello.ui.home.components.CircleBadge
@@ -638,9 +640,10 @@ fun ContactsEmptyState(
                     .background(if (isFilterActive) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (isFilterActive) "🔍" else "👋",
-                    style = MaterialTheme.typography.headlineSmall
+                CustomizableIcon(
+                    iconKey = if (isFilterActive) HelloIconKey.SEARCH else HelloIconKey.USER_PLUS,
+                    size = 26.dp,
+                    tint = if (isFilterActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 

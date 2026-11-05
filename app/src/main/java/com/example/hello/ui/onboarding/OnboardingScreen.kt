@@ -56,7 +56,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
@@ -186,9 +189,17 @@ fun OnboardingScreen(
                         .weight(if (uiState.currentStep > 0) 1.5f else 1f)
                         .height(52.dp)
                 ) {
+                    if (uiState.currentStep >= 2) {
+                        CustomizableIcon(
+                            iconKey = HelloIconKey.CHECK,
+                            size = FeatherIconSize.INLINE,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     Text(
-                        text = if (uiState.currentStep < 2) "Continue" else "Enter Hello ✨",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        text = if (uiState.currentStep < 2) "Continue" else "Enter Hello",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
                     )
                 }
             }
@@ -209,7 +220,7 @@ private fun OnboardingWelcomeStep(modifier: Modifier = Modifier) {
 
         // Hero Greeting Doodle
         DoodleAvatar(
-            initials = "👋",
+            initials = "",
             bgIndex = 0,
             size = 88.dp,
             shape = RoundedCornerShape(28.dp)
@@ -272,14 +283,14 @@ private fun OnboardingTerminologyStep(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Your Language",
+            text = "What should we call your directory?",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
 
         Text(
-            text = "How do you think about the people in your life? You can customize this anytime in Settings.",
+            text = "Choose a universal container for everyone in your life. You'll use flexible #tags (#friends, #work, #family) for how you know each person—so your labels never collide.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -288,8 +299,9 @@ private fun OnboardingTerminologyStep(
         Spacer(modifier = Modifier.height(6.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            RelationshipTerminology.entries.forEach { option ->
+            RelationshipTerminology.primaryDirectoryOptions.forEach { option ->
                 val isSelected = selected == option
+                val isRecommended = option == RelationshipTerminology.PEOPLE
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -314,7 +326,7 @@ private fun OnboardingTerminologyStep(
                     ) {
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -325,6 +337,19 @@ private fun OnboardingTerminologyStep(
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                if (isRecommended) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                    ) {
+                                        Text(
+                                            text = "Recommended",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.surfaceVariant
@@ -357,6 +382,73 @@ private fun OnboardingTerminologyStep(
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Live Two-Layer Taxonomy Preview Card
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "HOW YOUR DIRECTORY IS ORGANIZED",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.6.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Layer 1 • Directory Tab",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "All ${selected.pluralTitle}",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Layer 2 • Context Pills",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        RelationshipTerminology.coreSphereTags.forEach { sphere ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                            ) {
+                                Text(
+                                    text = "#$sphere",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                 )
                             }
                         }

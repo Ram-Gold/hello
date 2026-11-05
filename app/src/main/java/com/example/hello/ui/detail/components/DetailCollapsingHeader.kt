@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.ui.home.components.DoodleAvatar
 
 /**
@@ -37,12 +38,7 @@ fun DetailCollapsingHeader(
 ) {
     val name = contact?.name ?: summary?.name ?: "Contact"
     val aliases = contact?.aliases ?: emptyList()
-    val initials = summary?.avatarInitials ?: name.split(" ")
-        .mapNotNull { it.firstOrNull()?.toString() }
-        .take(2)
-        .joinToString("")
-        .uppercase()
-        .ifEmpty { "👋" }
+    val initials = summary?.avatarInitials ?: extractAlphanumericInitials(name)
     val bgIndex = summary?.avatarBgIndex ?: 0
 
     Column(

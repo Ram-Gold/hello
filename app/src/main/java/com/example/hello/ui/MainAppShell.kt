@@ -61,6 +61,7 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.components.ScreenDepthWrapper
@@ -307,6 +308,9 @@ fun MainAppShell(
                     onSelectCircle = { circle ->
                         homeViewModel.onEvent(HomeUiEvent.OnSelectCircle(circle))
                         coroutineScope.launch { drawerState.close() }
+                    },
+                    onUpdateCircleConfig = { config ->
+                        homeViewModel.onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
                     },
                     onCloseDrawer = {
                         coroutineScope.launch { drawerState.close() }
@@ -923,7 +927,7 @@ private fun MainAppNavHost(
                                     name = detailUiState.contact?.name ?: "Contact",
                                     contextSubtitle = "",
                                     circles = detailUiState.contact?.circles ?: emptyList(),
-                                    avatarInitials = detailUiState.contact?.name?.take(2)?.uppercase() ?: "👋"
+                                    avatarInitials = extractAlphanumericInitials(detailUiState.contact?.name ?: "")
                                 )
                             quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
                         },
@@ -954,7 +958,7 @@ private fun MainAppNavHost(
                         onEvent = editViewModel::onEvent,
                         onNavigateBack = { navController.popBackStack() },
                         onSaveSuccess = {
-                            scope.launch { snackbarHostState.showSnackbar("Contact updated ✨") }
+                            scope.launch { snackbarHostState.showSnackbar("Contact updated") }
                             navController.popBackStack()
                         },
                         onLifecycleSuccess = {

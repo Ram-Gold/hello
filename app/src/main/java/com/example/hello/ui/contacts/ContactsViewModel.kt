@@ -48,8 +48,11 @@ class ContactsViewModel(
             computeState(
                 searchQuery = current.searchQuery,
                 selectedCircle = current.selectedCircle,
+                selectedTag = current.selectedTag,
                 sortMode = current.sortMode,
-                contacts = allContacts
+                contacts = allContacts,
+                selectedContactIds = current.selectedContactIds,
+                isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
             )
         }
     }
@@ -62,8 +65,11 @@ class ContactsViewModel(
                     computeState(
                         searchQuery = query,
                         selectedCircle = current.selectedCircle,
+                        selectedTag = current.selectedTag,
                         sortMode = current.sortMode,
-                        contacts = allContacts
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                     )
                 }
                 if (repository != null && query.isNotBlank()) {
@@ -75,8 +81,11 @@ class ContactsViewModel(
                                 computeState(
                                     searchQuery = query,
                                     selectedCircle = current.selectedCircle,
+                                    selectedTag = current.selectedTag,
                                     sortMode = current.sortMode,
-                                    contacts = matchingSummaries
+                                    contacts = matchingSummaries,
+                                    selectedContactIds = current.selectedContactIds,
+                                    isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                                 )
                             }
                         }
@@ -89,8 +98,11 @@ class ContactsViewModel(
                     computeState(
                         searchQuery = "",
                         selectedCircle = current.selectedCircle,
+                        selectedTag = current.selectedTag,
                         sortMode = current.sortMode,
-                        contacts = allContacts
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                     )
                 }
             }
@@ -99,8 +111,28 @@ class ContactsViewModel(
                     computeState(
                         searchQuery = current.searchQuery,
                         selectedCircle = event.circle,
+                        selectedTag = event.circle?.displayName?.lowercase(),
                         sortMode = current.sortMode,
-                        contacts = allContacts
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                    )
+                }
+            }
+            is ContactsUiEvent.OnSelectTag -> {
+                val normalizedTag = event.tagName?.removePrefix("#")?.trim()?.lowercase()?.ifBlank { null }
+                val matchedCircle = Circle.entries.firstOrNull {
+                    it.displayName.equals(normalizedTag, ignoreCase = true)
+                }
+                _uiState.update { current ->
+                    computeState(
+                        searchQuery = current.searchQuery,
+                        selectedCircle = matchedCircle,
+                        selectedTag = normalizedTag,
+                        sortMode = current.sortMode,
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                     )
                 }
             }
@@ -109,21 +141,81 @@ class ContactsViewModel(
                     computeState(
                         searchQuery = current.searchQuery,
                         selectedCircle = current.selectedCircle,
+                        selectedTag = current.selectedTag,
                         sortMode = event.mode,
-                        contacts = allContacts
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                     )
                 }
             }
             is ContactsUiEvent.OnContactClick -> {
                 _uiState.update { it.copy(userMessage = "Opened profile: ${event.contactId}") }
             }
+            is ContactsUiEvent.OnContactLongClick -> {
+                _uiState.update { current ->
+                    current.copy(selectedContactIds = current.selectedContactIds + event.contactId)
+                }
+            }
+            is ContactsUiEvent.OnToggleSelectContact -> {
+                _uiState.update { current ->
+                    val updated = if (event.contactId in current.selectedContactIds) {
+                        current.selectedContactIds - event.contactId
+                    } else {
+                        current.selectedContactIds + event.contactId
+                    }
+                    current.copy(selectedContactIds = updated)
+                }
+            }
+            is ContactsUiEvent.OnClearSelection -> {
+                _uiState.update { current ->
+                    current.copy(selectedContactIds = emptySet())
+                }
+            }
+            is ContactsUiEvent.OnSelectAllVisibleContacts -> {
+                _uiState.update { current ->
+                    val allIds = current.contacts.map { it.id }.toSet()
+                    current.copy(selectedContactIds = allIds)
+                }
+            }
+            is ContactsUiEvent.OnRequestDeleteSelected -> {
+                _uiState.update { it.copy(isDeleteConfirmationVisible = true) }
+            }
+            is ContactsUiEvent.OnDismissDeleteDialog -> {
+                _uiState.update { it.copy(isDeleteConfirmationVisible = false) }
+            }
+            is ContactsUiEvent.OnConfirmDeleteSelected -> {
+                val toDelete = _uiState.value.selectedContactIds
+                if (repository != null) {
+                    toDelete.forEach { contactId ->
+                        repository.deleteContact(contactId)
+                    }
+                }
+                allContacts = allContacts.filterNot { it.id in toDelete }
+                val deleteCount = toDelete.size
+                val message = "Deleted $deleteCount contact${if (deleteCount > 1) "s" else ""}"
+                _uiState.update { current ->
+                    computeState(
+                        searchQuery = current.searchQuery,
+                        selectedCircle = current.selectedCircle,
+                        selectedTag = current.selectedTag,
+                        sortMode = current.sortMode,
+                        contacts = allContacts,
+                        selectedContactIds = emptySet(),
+                        isDeleteConfirmationVisible = false
+                    ).copy(userMessage = message)
+                }
+            }
             is ContactsUiEvent.OnClearFilters -> {
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",
                         selectedCircle = null,
+                        selectedTag = null,
                         sortMode = current.sortMode,
-                        contacts = allContacts
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
                     )
                 }
             }
@@ -138,23 +230,52 @@ class ContactsViewModel(
             searchQuery: String,
             selectedCircle: Circle?,
             sortMode: ContactSortMode,
-            contacts: List<ContactSummary>
+            contacts: List<ContactSummary>,
+            selectedTag: String? = null,
+            selectedContactIds: Set<String> = emptySet(),
+            isDeleteConfirmationVisible: Boolean = false
         ): ContactsUiState {
+            val cleanQuery = searchQuery.trim()
+            val cleanTag = selectedTag?.removePrefix("#")?.trim()?.lowercase()?.ifBlank { null }
+
             val filtered = contacts.filter { contact ->
-                val matchesQuery = if (searchQuery.isBlank()) {
+                val matchesQuery = if (cleanQuery.isBlank()) {
                     true
+                } else if (cleanQuery.startsWith("#")) {
+                    val hashTag = cleanQuery.removePrefix("#")
+                    contact.tags.any { it.name.contains(hashTag, ignoreCase = true) } ||
+                        contact.circles.any { it.displayName.contains(hashTag, ignoreCase = true) } ||
+                        contact.contextSubtitle.contains(cleanQuery, ignoreCase = true)
                 } else {
-                    contact.name.contains(searchQuery, ignoreCase = true) ||
-                            contact.contextSubtitle.contains(searchQuery, ignoreCase = true) ||
-                            contact.notes.contains(searchQuery, ignoreCase = true) ||
-                            contact.tags.any { it.name.contains(searchQuery, ignoreCase = true) }
+                    contact.name.contains(cleanQuery, ignoreCase = true) ||
+                        contact.contextSubtitle.contains(cleanQuery, ignoreCase = true) ||
+                        contact.notes.contains(cleanQuery, ignoreCase = true) ||
+                        contact.tags.any { it.name.contains(cleanQuery, ignoreCase = true) }
                 }
+
                 val matchesCircle = if (selectedCircle == null) {
                     true
                 } else {
                     selectedCircle in contact.circles
                 }
-                matchesQuery && matchesCircle
+
+                val matchesTag = if (cleanTag == null) {
+                    true
+                } else {
+                    contact.tags.any { it.name.equals(cleanTag, ignoreCase = true) } ||
+                        contact.circles.any { it.displayName.equals(cleanTag, ignoreCase = true) } ||
+                        contact.contextSubtitle.contains("#$cleanTag", ignoreCase = true)
+                }
+
+                matchesQuery && matchesCircle && matchesTag
+            }
+
+            val dynamicTags = buildList<String> {
+                addAll(ContactsUiState.DEFAULT_SMART_FILTER_TAGS)
+                contacts.flatMap { it.tags }.forEach { tag ->
+                    val lower = tag.name.lowercase()
+                    if (lower !in this) add(lower)
+                }
             }
 
             val grouped = when (sortMode) {
@@ -175,13 +296,20 @@ class ContactsViewModel(
                 }
             }
 
+            val validContactIds = filtered.map { it.id }.toSet()
+            val prunedSelectedIds = selectedContactIds.filter { it in validContactIds }.toSet()
+
             return ContactsUiState(
                 searchQuery = searchQuery,
                 selectedCircle = selectedCircle,
+                selectedTag = cleanTag,
+                smartFilterTags = dynamicTags,
                 sortMode = sortMode,
                 contacts = filtered,
                 groupedContacts = grouped,
-                totalCount = filtered.size
+                totalCount = filtered.size,
+                selectedContactIds = prunedSelectedIds,
+                isDeleteConfirmationVisible = isDeleteConfirmationVisible
             )
         }
 

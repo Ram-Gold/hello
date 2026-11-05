@@ -145,7 +145,8 @@ fun PersonDetailScreen(
                     LivingTimeline(
                         encounters = uiState.encounters,
                         placesMap = uiState.placesMap,
-                        onLogEncounterClick = onLogEncounterClick
+                        onLogEncounterClick = onLogEncounterClick,
+                        birthday = uiState.contact?.birthday
                     )
                 }
 

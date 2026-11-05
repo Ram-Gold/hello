@@ -186,11 +186,11 @@ class SettingsViewModel(
                         .build()
                     workManager.enqueue(request)
                     _uiState.update {
-                        it.copy(userMessage = "Assembling Export Bundle via WorkManager... 📦")
+                        it.copy(userMessage = "Assembling Export Bundle via WorkManager...")
                     }
                 } else {
                     _uiState.update {
-                        it.copy(userMessage = "Export Bundle scheduled 📦")
+                        it.copy(userMessage = "Export Bundle scheduled")
                     }
                 }
             }
@@ -231,7 +231,7 @@ class SettingsViewModel(
             SettingsUiEvent.OnRebuildCache -> {
                 val count = contactRepository.contacts.value.size
                 _uiState.update {
-                    it.copy(userMessage = "Rebuilt cache for $count ${it.terminology.pluralTitle.lowercase()} in 18ms ✨")
+                    it.copy(userMessage = "Rebuilt cache for $count ${it.terminology.pluralTitle.lowercase()} in 18ms")
                 }
             }
 
