@@ -125,31 +125,56 @@ private fun TimelineNodeItem(
 ) {
     val dateText = formatTimelineDate(encounter.occurredAt)
     val placeLabel = encounter.eventLabel ?: place?.label
+    val spineColor = MaterialTheme.colorScheme.onSurface
+    val dotFillColor = MaterialTheme.colorScheme.surface
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
-        // Vertical Timeline Spine & Dot
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(28.dp)
+        // High-Contrast Vertical Timeline Spine & Centered Hollow Node Dot
+        Box(
+            modifier = Modifier
+                .width(28.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
         ) {
+            // Spine Column: Top half down to center, bottom half down from center (omitted if isLast)
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(spineColor)
+                )
+                if (!isLast) {
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .weight(1f)
+                            .background(spineColor)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
+            // Hollow Center Node Dot
             Box(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(dotFillColor)
+                    .border(
+                        width = 2.dp,
+                        color = spineColor,
+                        shape = CircleShape
+                    )
             )
-            if (!isLast) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                )
-            }
         }
 
         Spacer(modifier = Modifier.width(10.dp))

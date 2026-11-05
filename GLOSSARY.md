@@ -13,11 +13,11 @@ The user's chosen display nomenclature (People, Friends, Connections, or Contact
 _Avoid_: User Role, Category Type, Custom Entity
 
 **Circle**:
-A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context.
+A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context. Contacts can belong to multiple Circles simultaneously (multi-sphere membership). When a contact belongs to multiple Circles with differing cadences, the most frequent (shortest) cadence governs reminder frequency.
 _Avoid_: Group, Category, Folder
 
 **Tag**:
-A lightweight freeform label attached to Contacts to support cross-cutting categorization and ad-hoc filtering.
+A lightweight freeform label attached to Contacts to support cross-cutting categorization and ad-hoc filtering. Contacts can have multiple tags, which sit alongside Circles in unified filter strips.
 _Avoid_: Category, Label, Folder
 
 **Encounter**:
@@ -35,10 +35,6 @@ _Avoid_: Task, To-do, Ping
 **Cadence**:
 A target stay-in-touch frequency established for a Contact or Circle to trigger proactive reconnection reminders when overdue.
 _Avoid_: Interval, Frequency, Ping schedule
-
-**My Card**:
-The user's own shareable digital identity card profile (supporting Work or Social contexts), presenting quick contact details and offline exchange capabilities.
-_Avoid_: User Profile, ID Card, Business Card
 
 **Export Bundle**:
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
@@ -61,8 +57,16 @@ _Avoid_: Field, Form Item, Input Widget
 ## Presentation & Navigation
 
 **Floating Bottom Dock**:
-The floating bottom navigation bar that houses the primary navigation tabs (Home Tab and Relationship Tab) alongside the companion Quick-Add Floating Action Button.
+The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Timeline Tab, and Relationship Tab) alongside the companion Quick-Add Floating Action Button. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
 _Avoid_: Navbar, Bottom bar, Tab bar
+
+**Timeline Tab**:
+The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (upcoming Birthdays, scheduled FollowUps, and projected Cadence reconnections with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
+_Avoid_: Activity Feed, History Screen, Global Log, Audit Trail
+
+**Timeline Node**:
+A chronological waypoint along the Living Timeline representing an Encounter or scheduled touchpoint. Past nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the encounter card, connected by a 2dp high-contrast spine.
+_Avoid_: Event Marker, Dot, Checkpoint
 
 **Relationship Tab**:
 The primary navigation tab within the Floating Bottom Dock that opens the contacts surface, dynamically labeled and styled according to the active Relationship Terminology (People, Friends, Connections, or Contacts).
@@ -75,6 +79,10 @@ _Avoid_: People Card, Person Card, Contact Row, Contact Tile
 **Upcoming Alert Card**:
 The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Cadence) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons.
 _Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
+
+**Contact Selection Mode**:
+The contextual interaction phase entered via long-press on a Contact Card within the Relationship Tab, enabling multi-contact batch actions (Share via vCard, Delete with confirmation, Select All). During this mode, selected Contact Cards visually decouple from connected groupings into independent fully-rounded surfaces with theme-aware red tinting and an inline name checkmark, while a floating vertical action tray docks on the right edge and the Floating Bottom Dock recedes off-screen.
+_Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen
 
 **Contact Profile Screen**:
 The dedicated Material 3 Expressive view displaying a Contact's relationship status, Cadence health, circles, tags, notes, and the living timeline of past encounters, intentionally stripped of dialer/messaging quick actions to emphasize relationship context over utility dialers.
