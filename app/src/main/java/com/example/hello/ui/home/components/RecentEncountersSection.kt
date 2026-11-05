@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.MotionTokens
@@ -175,9 +177,10 @@ fun EncountersEmptyState(
                     .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "☕",
-                    style = MaterialTheme.typography.titleLarge
+                CustomizableIcon(
+                    iconKey = HelloIconKey.COFFEE,
+                    size = 24.dp,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
 

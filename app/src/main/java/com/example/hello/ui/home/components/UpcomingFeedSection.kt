@@ -47,7 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.UpcomingAlert
+import com.example.hello.ui.components.CustomizableIcon
 
 @Composable
 fun UpcomingFeedSection(
@@ -72,8 +74,13 @@ fun UpcomingFeedSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                CustomizableIcon(
+                    iconKey = HelloIconKey.CALENDAR,
+                    size = 18.dp,
+                    tint = MaterialTheme.colorScheme.primary
+                )
                 Text(
-                    text = "📅 UPCOMING",
+                    text = "KEEP IN TOUCH",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -152,7 +159,7 @@ fun UpcomingAlertCard(
             iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             badgeText = alert.dateText.ifBlank { "Birthday" },
-            descriptionText = "Wish them well on their birthday 🎉"
+            descriptionText = "Wish them well on their birthday"
         )
         is UpcomingAlert.FollowUpReminder -> AlertVisualConfig(
             icon = Icons.Rounded.Notifications,
@@ -165,7 +172,7 @@ fun UpcomingAlertCard(
             icon = Icons.Rounded.Refresh,
             iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            badgeText = "Stay in touch",
+            badgeText = "Check in",
             descriptionText = alert.promptText
         )
     }
@@ -336,7 +343,7 @@ fun UpcomingAlertCard(
                             )
                         ) {
                             Text(
-                                text = "Reconnect",
+                                text = "Update",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -371,9 +378,10 @@ fun UpcomingEmptyState(
                     .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "☕",
-                    style = MaterialTheme.typography.titleLarge
+                CustomizableIcon(
+                    iconKey = HelloIconKey.COFFEE,
+                    size = 22.dp,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

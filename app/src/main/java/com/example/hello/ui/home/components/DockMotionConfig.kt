@@ -1,8 +1,12 @@
 package com.example.hello.ui.home.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.hello.domain.model.HomeNavTab
@@ -63,6 +67,7 @@ object DockMotionConfig {
      * When navigating towards Home (moving left): multiplier is -1.0f (enters from left, exits to left).
      */
     fun resolveDirectionMultiplier(selectedTab: HomeNavTab): Float = when (selectedTab) {
+        HomeNavTab.TIMELINE -> 1.0f
         HomeNavTab.PEOPLE -> 1.0f
         HomeNavTab.HOME -> -1.0f
     }
@@ -85,21 +90,31 @@ object DockMotionConfig {
 
     /**
      * Resolves the navigation tab icon based on destination and active selection state.
-     * Uses friendly rounded icons across all states.
+     * Uses Outlined icons when inactive and Filled icons when active (ADR-0014).
      */
-    fun resolveTabIcon(tab: HomeNavTab, isSelected: Boolean): ImageVector = when (tab) {
-        HomeNavTab.HOME -> Icons.Rounded.Home
-        HomeNavTab.PEOPLE -> Icons.Rounded.People
+    fun resolveTabIcon(tab: HomeNavTab, isSelected: Boolean): ImageVector = if (isSelected) {
+        when (tab) {
+            HomeNavTab.HOME -> Icons.Filled.Home
+            HomeNavTab.PEOPLE -> Icons.Filled.People
+            HomeNavTab.TIMELINE -> Icons.Filled.CalendarMonth
+        }
+    } else {
+        when (tab) {
+            HomeNavTab.HOME -> Icons.Outlined.Home
+            HomeNavTab.PEOPLE -> Icons.Outlined.People
+            HomeNavTab.TIMELINE -> Icons.Outlined.CalendarMonth
+        }
     }
 
     /**
-     * Resolves the friendly rounded navigation tab icon. The dock maintains rounded icons during
-     * transitions to eliminate jarring vector swaps, collapsing and fading out smoothly to zero width.
+     * Resolves the Outlined navigation tab icon for unselected states.
      */
-    fun tabFilledIcon(tab: HomeNavTab): ImageVector = when (tab) {
-        HomeNavTab.HOME -> Icons.Rounded.Home
-        HomeNavTab.PEOPLE -> Icons.Rounded.People
-    }
+    fun tabOutlinedIcon(tab: HomeNavTab): ImageVector = resolveTabIcon(tab, isSelected = false)
+
+    /**
+     * Resolves the Filled navigation tab icon for the active state.
+     */
+    fun tabFilledIcon(tab: HomeNavTab): ImageVector = resolveTabIcon(tab, isSelected = true)
 
     /**
      * Resolves directional horizontal slide offset fraction for tab icons during transitions.
@@ -107,6 +122,7 @@ object DockMotionConfig {
      * When entering Home or exiting People (moving left): enters left-to-right (-0.5f) and exits right-to-left (-0.5f).
      */
     fun resolveIconOffsetFraction(tab: HomeNavTab, isSelected: Boolean): Float = when (tab) {
+        HomeNavTab.TIMELINE -> if (isSelected) 0.5f else -0.5f
         HomeNavTab.PEOPLE -> if (isSelected) 0.5f else -0.5f
         HomeNavTab.HOME -> if (isSelected) -0.5f else 0.5f
     }
@@ -201,6 +217,96 @@ object DockMotionConfig {
     // Default home selection pill width providing comfortable ~15dp balanced inline padding with 1:1 icon
     const val HOME_PILL_WIDTH_DP = 96
     const val HOME_INACTIVE_SLOT_WIDTH_DP = 96
+    const val TIMELINE_PILL_WIDTH_DP = 104
+
+    /**
+     * Resolves pre-configured, deterministic 3-tab dock dimensions (`Home` | `Timeline` | `People`)
+     * per relationship terminology (ADR-0014).
+     * Active tab expands to `activePillWidthDp` (icon + label), while the 2 inactive tabs use
+     * compact icon-only slots (`inactiveSlotWidthDp`), keeping total dock width and selection pill width 100% constant.
+     */
+    fun resolveThreeTabDockDimensions(label: String?): ThreeTabDockDimensions {
+        val activePill = when (label?.lowercase()) {
+            "connections" -> 132
+            "contacts" -> 116
+            "friends" -> 112
+            "people" -> 112
+            else -> 112
+        }
+        val inactiveSlot = 52
+        val dockWidth = activePill + (inactiveSlot * 2) + 10
+        return ThreeTabDockDimensions(
+            dockWidthDp = dockWidth,
+            activePillWidthDp = activePill,
+            inactiveSlotWidthDp = inactiveSlot
+        )
+    }
+
+    /**
+     * Calculates constant-width selection pill bounds `(left, right)` across the 3-slot dock
+     * where `progress` is in `0f..2f` (`0f` = Home, `1f` = Timeline, `2f` = People).
+     * Because the active slot has width `activePillWidth` and each inactive slot has width `inactiveSlotWidth`,
+     * the pill's left edge translates cleanly by `progress * inactiveSlotWidth` while maintaining a strictly
+     * constant width of `activePillWidth`.
+     */
+    fun calculateConstantWidthThreeTabPillBounds(
+        activePillWidth: Float,
+        inactiveSlotWidth: Float,
+        progress: Float
+    ): Pair<Float, Float> {
+        val p = progress.coerceIn(0f, 2f)
+        val left = p * inactiveSlotWidth
+        val right = left + activePillWidth
+        return Pair(left, right)
+    }
+
+    /**
+     * Calculates the 3 tab slot widths `(slot0Width, slot1Width, slot2Width)` at any transition `progress` in `0f..2f`.
+     * The sum of the three slot widths is invariant (`activePillWidth + 2 * inactiveSlotWidth`), and the active slot's
+     * bounds match `calculateConstantWidthThreeTabPillBounds` at every frame.
+     */
+    fun calculateThreeTabSlotWidths(
+        activePillWidth: Float,
+        inactiveSlotWidth: Float,
+        progress: Float
+    ): Triple<Float, Float, Float> {
+        val p = progress.coerceIn(0f, 2f)
+        val (w0, w1, w2) = if (p <= 1f) {
+            Triple(1f - p, p, 0f)
+        } else {
+            Triple(0f, 2f - p, p - 1f)
+        }
+        val delta = activePillWidth - inactiveSlotWidth
+        return Triple(
+            inactiveSlotWidth + delta * w0,
+            inactiveSlotWidth + delta * w1,
+            inactiveSlotWidth + delta * w2
+        )
+    }
+
+    /**
+     * Calculates deterministic position (left) and width for the 3-slot sliding pill
+     * where `progress` is in `0f..2f` (`0f` = Home, `1f` = Timeline, `2f` = People).
+     */
+    fun calculateThreeTabPillBounds(
+        homeWidth: Float,
+        timelineWidth: Float,
+        relationshipWidth: Float,
+        progress: Float
+    ): Pair<Float, Float> {
+        val p = progress.coerceIn(0f, 2f)
+        return if (p <= 1f) {
+            val t = p
+            val left = homeWidth * t
+            val width = homeWidth + (timelineWidth - homeWidth) * t
+            Pair(left, left + width)
+        } else {
+            val t = p - 1f
+            val left = homeWidth + (timelineWidth * t)
+            val width = timelineWidth + (relationshipWidth - timelineWidth) * t
+            Pair(left, left + width)
+        }
+    }
 
     /**
      * Resolves pre-configured, deterministic dock and tab-specific selection pill dimensions per relationship terminology.
@@ -318,3 +424,12 @@ data class DockDimensions(
     // Backward-compatibility property
     val pillWidthDp: Int get() = relationshipPillWidthDp
 }
+
+data class ThreeTabDockDimensions(
+    val dockWidthDp: Int,
+    val activePillWidthDp: Int,
+    val inactiveSlotWidthDp: Int = 52,
+    val homePillWidthDp: Int = activePillWidthDp,
+    val timelinePillWidthDp: Int = activePillWidthDp,
+    val relationshipPillWidthDp: Int = activePillWidthDp
+)

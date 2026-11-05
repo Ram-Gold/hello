@@ -31,6 +31,7 @@ import com.example.hello.ui.theme.HelloTheme
 
 @Composable
 fun HomeTopBar(
+    userName: String,
     onSettingsClick: () -> Unit,
     onDrawerClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -43,58 +44,72 @@ fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Hamburger / Drawer button
-        IconButton(
-            onClick = onDrawerClick,
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Menu,
-                contentDescription = "Open Drawer",
-                modifier = Modifier.size(22.dp)
-            )
-        }
+        // Clean, bold headline matching People and Timeline screens
+        Text(
+            text = "Hello, $userName",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f, fill = false)
+        )
 
-        // Center: Active Group badge if a specific Circle is active
-        if (activeCircle != null) {
-            Box(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Center: Active Sphere #tag badge if filtered
+            if (activeCircle != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
+                        .clickable(onClick = onDrawerClick)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "#${activeCircle.displayName.lowercase()}",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            // Left: Hamburger / Drawer button
+            IconButton(
+                onClick = onDrawerClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
-                    .clickable(onClick = onDrawerClick)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
+                    .size(44.dp)
+                    .clip(CircleShape)
             ) {
-                Text(
-                    text = "${activeCircle.displayName} Circle",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                Icon(
+                    imageVector = Icons.Rounded.Menu,
+                    contentDescription = "Open Drawer",
+                    modifier = Modifier.size(22.dp)
                 )
             }
-        }
 
-        // Right: Settings button
-        IconButton(
-            onClick = onSettingsClick,
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Settings,
-                contentDescription = "Settings",
-                modifier = Modifier.size(22.dp)
-            )
+            // Right: Settings button
+            IconButton(
+                onClick = onSettingsClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }
@@ -104,6 +119,7 @@ fun HomeTopBar(
 fun HomeTopBarLightPreview() {
     HelloTheme(darkTheme = false) {
         HomeTopBar(
+            userName = "Alex",
             onSettingsClick = {},
             onDrawerClick = {}
         )
@@ -115,6 +131,7 @@ fun HomeTopBarLightPreview() {
 fun HomeTopBarDarkPreview() {
     HelloTheme(darkTheme = true) {
         HomeTopBar(
+            userName = "Alex",
             onSettingsClick = {},
             onDrawerClick = {}
         )

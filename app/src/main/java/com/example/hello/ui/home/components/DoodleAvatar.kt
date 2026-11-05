@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.theme.AvatarAmber
 import com.example.hello.ui.theme.AvatarLavender
 import com.example.hello.ui.theme.AvatarPeach
@@ -52,14 +54,22 @@ fun DoodleAvatar(
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = initials,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = (size.value * 0.38f).sp,
-                letterSpacing = 0.5.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        if (initials.isBlank()) {
+            CustomizableIcon(
+                iconKey = HelloIconKey.USER,
+                size = size * 0.48f,
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        } else {
+            Text(
+                text = initials,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (size.value * 0.38f).sp,
+                    letterSpacing = 0.5.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }

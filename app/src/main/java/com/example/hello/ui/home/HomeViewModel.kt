@@ -2,15 +2,19 @@ package com.example.hello.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hello.data.preferences.UserPreferencesRepository
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.MyCardData
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.domain.model.SubconsciousCheckInCalculator
 import com.example.hello.domain.model.UpcomingAlert
+import com.example.hello.domain.model.extractAlphanumericInitials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +23,8 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 class HomeViewModel(
-    val repository: ContactRepository? = null
+    val repository: ContactRepository? = null,
+    val preferencesRepository: UserPreferencesRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(createInitialState())
@@ -38,6 +43,13 @@ class HomeViewModel(
                 }
             }
         }
+        if (preferencesRepository != null) {
+            viewModelScope.launch {
+                preferencesRepository.userPreferencesFlow.collect { prefs ->
+                    _uiState.update { it.copy(userName = prefs.userName) }
+                }
+            }
+        }
     }
 
     fun onEvent(event: HomeUiEvent) {
@@ -49,22 +61,33 @@ class HomeViewModel(
                 _uiState.update { it.copy(isQrExpanded = event.expanded) }
             }
             is HomeUiEvent.OnReminderDone -> {
-                repository?.markFollowUpDone(event.alertId)
+                val targetAlert = _uiState.value.upcomingAlerts.firstOrNull { it.id == event.alertId }
+                if (targetAlert is UpcomingAlert.CadenceAlert && targetAlert.contactId.isNotBlank()) {
+                    repository?.logEncounterForContact(
+                        contactId = targetAlert.contactId,
+                        note = "Caught up recently"
+                    )
+                } else {
+                    repository?.markFollowUpDone(event.alertId)
+                }
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
                         upcomingAlerts = updated,
-                        userMessage = "Marked as done! ✨"
+                        userMessage = if (targetAlert is UpcomingAlert.CadenceAlert) "Updated!" else "Marked as done!"
                     )
                 }
             }
             is HomeUiEvent.OnReminderSnooze -> {
-                repository?.snoozeFollowUp(event.alertId)
+                val targetAlert = _uiState.value.upcomingAlerts.firstOrNull { it.id == event.alertId }
+                val isSubconsciousCheckIn = targetAlert is UpcomingAlert.CadenceAlert
+                val snoozeDays = if (isSubconsciousCheckIn) SubconsciousCheckInCalculator.SNOOZE_DAYS else 3L
+                repository?.snoozeFollowUp(event.alertId, days = snoozeDays)
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
                         upcomingAlerts = updated,
-                        userMessage = "Snoozed for 3 days ⏰"
+                        userMessage = if (isSubconsciousCheckIn) "Snoozed for 2 weeks" else "Snoozed for 3 days"
                     )
                 }
             }
@@ -85,12 +108,7 @@ class HomeViewModel(
                         name = event.name.trim().ifEmpty { "New Friend" },
                         contextSubtitle = event.initialNote.trim().ifEmpty { "Added just now" },
                         circles = event.circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
-                        avatarInitials = event.name.trim().split(" ")
-                            .mapNotNull { it.firstOrNull()?.toString() }
-                            .take(2)
-                            .joinToString("")
-                            .uppercase()
-                            .ifEmpty { "👋" },
+                        avatarInitials = extractAlphanumericInitials(event.name),
                         avatarBgIndex = (_uiState.value.recentContacts.size % 6),
                         lastEncounterText = "Met today"
                     )
@@ -103,7 +121,7 @@ class HomeViewModel(
                 }
                 _uiState.update { state ->
                     state.copy(
-                        userMessage = "Added ${addedSummary.name} to contacts! 🤝"
+                        userMessage = "Added ${addedSummary.name} to contacts!"
                     )
                 }
             }
@@ -127,7 +145,7 @@ class HomeViewModel(
                     }
                     state.copy(
                         recentContacts = updatedList,
-                        userMessage = "Contact updated! 📝"
+                        userMessage = "Contact updated!"
                     )
                 }
             }
@@ -180,6 +198,7 @@ class HomeViewModel(
                 }
             }
             is HomeUiEvent.OnUpdateCircleConfig -> {
+                GroupIconRegistry.setIconKey(event.config.circle, event.config.iconKey)
                 _uiState.update { state ->
                     state.copy(
                         circleConfigs = state.circleConfigs + (event.config.circle to event.config),

@@ -2,11 +2,12 @@ package com.example.hello.ui.home.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,36 +27,45 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.CircleGroupConfig
+import com.example.hello.domain.model.GroupIconRegistry
+import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.FeatherIconSize
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GroupDrawerContent(
     selectedCircle: Circle?,
-    circleConfigs: Map<Circle, CircleGroupConfig>,
+    circleConfigs: Map<Circle, CircleGroupConfig> = emptyMap(),
     onSelectCircle: (Circle?) -> Unit,
-    onUpdateCircleConfig: (CircleGroupConfig) -> Unit,
+    onUpdateCircleConfig: ((CircleGroupConfig) -> Unit)? = null,
     onCloseDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    var isCustomizingIcon by remember { mutableStateOf(false) }
+    var customizingCircle by remember { mutableStateOf<Circle?>(null) }
+    var allGroupsIconKey by remember { mutableStateOf(GroupIconRegistry.allGroupsIconKey) }
 
     Surface(
         modifier = modifier
@@ -100,12 +110,12 @@ fun GroupDrawerContent(
                     }
                     Column {
                         Text(
-                            text = "Groups & Circles",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            text = "Groups",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Configurations per circle",
+                            text = "Filter by relationship group",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -128,47 +138,124 @@ fun GroupDrawerContent(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Scrollable List of Groups and their configurations
+            // Scrollable List of Groups
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // "All Circles" Item
-                AllCirclesItem(
+                // "All Groups" Item
+                GroupListItem(
+                    title = "All Groups",
+                    iconKey = allGroupsIconKey,
                     isSelected = selectedCircle == null,
-                    onClick = { onSelectCircle(null) }
-                )
-
-                Text(
-                    text = "SEPARATE GROUP CONFIGURATIONS",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    onClick = { onSelectCircle(null) },
+                    onCustomizeIconClick = if (onUpdateCircleConfig != null) {
+                        {
+                            customizingCircle = null
+                            isCustomizingIcon = true
+                        }
+                    } else {
+                        null
+                    }
                 )
 
                 Circle.entries.forEach { circle ->
-                    val config = circleConfigs[circle] ?: CircleGroupConfig(circle = circle)
-                    GroupConfigCard(
-                        circle = circle,
-                        config = config,
+                    val currentConfig = circleConfigs[circle] ?: CircleGroupConfig(circle = circle)
+                    GroupListItem(
+                        title = circle.displayName,
+                        iconKey = currentConfig.iconKey,
                         isSelected = selectedCircle == circle,
-                        onSelect = { onSelectCircle(circle) },
-                        onUpdateConfig = onUpdateCircleConfig
+                        onClick = { onSelectCircle(circle) },
+                        onCustomizeIconClick = if (onUpdateCircleConfig != null) {
+                            {
+                                customizingCircle = circle
+                                isCustomizingIcon = true
+                            }
+                        } else {
+                            null
+                        }
                     )
                 }
             }
         }
     }
+
+    if (isCustomizingIcon && onUpdateCircleConfig != null) {
+        val targetCircle = customizingCircle
+        val currentIconKey = if (targetCircle != null) {
+            (circleConfigs[targetCircle] ?: CircleGroupConfig(circle = targetCircle)).iconKey
+        } else {
+            allGroupsIconKey
+        }
+        val groupLabel = targetCircle?.displayName ?: "All Groups"
+        AlertDialog(
+            onDismissRequest = { isCustomizingIcon = false },
+            title = { Text("Customize $groupLabel Icon") },
+            text = {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HelloIconKey.customizableGroupIcons.forEach { candidateKey ->
+                        val isCurrent = currentIconKey == candidateKey
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isCurrent) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    }
+                                )
+                                .clickable {
+                                    if (targetCircle != null) {
+                                        val currentConfig = circleConfigs[targetCircle]
+                                            ?: CircleGroupConfig(circle = targetCircle)
+                                        onUpdateCircleConfig(currentConfig.copy(iconKey = candidateKey))
+                                    } else {
+                                        GroupIconRegistry.setIconKey(null, candidateKey)
+                                        allGroupsIconKey = candidateKey
+                                    }
+                                    isCustomizingIcon = false
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CustomizableIcon(
+                                iconKey = candidateKey,
+                                size = FeatherIconSize.UI,
+                                tint = if (isCurrent) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                contentDescription = candidateKey.label
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { isCustomizingIcon = false }) {
+                    Text("Done")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-private fun AllCirclesItem(
+private fun GroupListItem(
+    title: String,
+    iconKey: HelloIconKey,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onCustomizeIconClick: (() -> Unit)?
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
@@ -176,7 +263,7 @@ private fun AllCirclesItem(
         } else {
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         },
-        label = "AllCirclesBg"
+        label = "GroupItemBg"
     )
 
     Row(
@@ -191,268 +278,63 @@ private fun AllCirclesItem(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "🌐", style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = "All Circles",
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = "Selected",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun GroupConfigCard(
-    circle: Circle,
-    config: CircleGroupConfig,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onUpdateConfig: (CircleGroupConfig) -> Unit
-) {
-    val borderColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    }
-
-    val emoji = when (circle) {
-        Circle.WORK -> "💼"
-        Circle.FRIENDS -> "☕"
-        Circle.FAMILY -> "🏡"
-        Circle.UNI -> "🎓"
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isSelected) 0.5f else 0.25f))
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Top row: Circle Name & Selection Trigger
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onSelect),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
+                    )
+                    .then(
+                        if (onCustomizeIconClick != null) {
+                            Modifier.clickable(onClick = onCustomizeIconClick)
+                        } else {
+                            Modifier
+                        }
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Text(text = emoji, style = MaterialTheme.typography.titleMedium)
-                Column {
-                    Text(
-                        text = circle.displayName,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (isSelected) "Active Circle" else "Tap to activate",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = "Active",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-
-        // Distinct Configuration Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Configuration 1: Cadence interval
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Cadence Frequency",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Touchpoint every ${config.cadenceDays} days",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    CadenceChip(
-                        days = 7,
-                        isSelected = config.cadenceDays == 7,
-                        onSelect = { onUpdateConfig(config.copy(cadenceDays = 7)) }
-                    )
-                    CadenceChip(
-                        days = 14,
-                        isSelected = config.cadenceDays == 14,
-                        onSelect = { onUpdateConfig(config.copy(cadenceDays = 14)) }
-                    )
-                    CadenceChip(
-                        days = 30,
-                        isSelected = config.cadenceDays == 30,
-                        onSelect = { onUpdateConfig(config.copy(cadenceDays = 30)) }
-                    )
-                }
-            }
-
-            // Configuration 2: Default Share Card
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Default Card",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = config.defaultCardType.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CardTypeBadge(
-                        emoji = "💼",
-                        label = "Work",
-                        isSelected = config.defaultCardType == CardType.WORK,
-                        onClick = { onUpdateConfig(config.copy(defaultCardType = CardType.WORK)) }
-                    )
-                    CardTypeBadge(
-                        emoji = "☕",
-                        label = "Social",
-                        isSelected = config.defaultCardType == CardType.SOCIAL,
-                        onClick = { onUpdateConfig(config.copy(defaultCardType = CardType.SOCIAL)) }
-                    )
-                }
-            }
-
-            // Configuration 3: Cadence reminder toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = if (config.isCadenceAlertEnabled) Icons.Rounded.Notifications else Icons.Rounded.NotificationsOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Cadence Alerts",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Switch(
-                    checked = config.isCadenceAlertEnabled,
-                    onCheckedChange = { isEnabled ->
-                        onUpdateConfig(config.copy(isCadenceAlertEnabled = isEnabled))
+                CustomizableIcon(
+                    iconKey = iconKey,
+                    size = FeatherIconSize.UI,
+                    tint = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                    modifier = Modifier.size(width = 44.dp, height = 24.dp)
+                    contentDescription = title
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                ),
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun CadenceChip(
-    days: Int,
-    isSelected: Boolean,
-    onSelect: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-            )
-            .clickable(onClick = onSelect)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "${days}d",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun CardTypeBadge(
-    emoji: String,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "$emoji $label",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-        )
     }
 }

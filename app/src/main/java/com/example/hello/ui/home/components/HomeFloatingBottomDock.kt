@@ -107,9 +107,9 @@ fun HomeFloatingBottomDock(
         Modifier
     }
 
-    // Pre-configured deterministic dock and selection pill dimensions per relationship terminology
+    // Pre-configured deterministic 3-tab dock and selection pill dimensions per relationship terminology
     val dimensions = remember(peopleTabLabel) {
-        DockMotionConfig.resolveDockDimensions(peopleTabLabel)
+        DockMotionConfig.resolveThreeTabDockDimensions(peopleTabLabel)
     }
 
     // Separate Rounded-Square Quick-Add FAB with matching elevation & spring rotation
@@ -256,21 +256,28 @@ fun HomeFloatingBottomDock(
 private fun DockTabsLayer(
     selectedTab: HomeNavTab,
     peopleTabLabel: String,
-    dimensions: DockDimensions,
+    dimensions: ThreeTabDockDimensions,
     pillAnimationSpec: AnimationSpec<Float>,
     isSpeedDialOpen: Boolean,
     onToggleSpeedDial: () -> Unit,
     onTabSelect: (HomeNavTab) -> Unit
 ) {
-    val targetProgress = if (selectedTab == HomeNavTab.HOME) 0f else 1f
+    val targetProgress = when (selectedTab) {
+        HomeNavTab.HOME -> 0f
+        HomeNavTab.PEOPLE -> 1f
+        HomeNavTab.TIMELINE -> 2f
+    }
     val pillProgressState = animateFloatAsState(
         targetValue = targetProgress,
         animationSpec = pillAnimationSpec,
         label = "dockSlidingPillProgress"
     )
 
-    val homeSlotWidthDp = dimensions.homePillWidthDp
-    val relSlotWidthDp = dimensions.relationshipPillWidthDp
+    val (slot0WidthDp, slot1WidthDp, slot2WidthDp) = DockMotionConfig.calculateThreeTabSlotWidths(
+        activePillWidth = dimensions.activePillWidthDp.toFloat(),
+        inactiveSlotWidth = dimensions.inactiveSlotWidthDp.toFloat(),
+        progress = pillProgressState.value
+    )
     val pillColor = MaterialTheme.colorScheme.secondaryContainer
 
     Box(
@@ -278,11 +285,13 @@ private fun DockTabsLayer(
             .fillMaxSize()
             .padding(horizontal = 5.dp)
             .drawBehind {
-                val progress = pillProgressState.value.coerceIn(0f, 1f)
-                val homeWidthPx = homeSlotWidthDp.dp.toPx()
-                val relWidthPx = relSlotWidthDp.dp.toPx()
-                val left = homeWidthPx * progress
-                val currentWidth = homeWidthPx + (relWidthPx - homeWidthPx) * progress
+                val progress = pillProgressState.value.coerceIn(0f, 2f)
+                val (left, right) = DockMotionConfig.calculateConstantWidthThreeTabPillBounds(
+                    activePillWidth = dimensions.activePillWidthDp.dp.toPx(),
+                    inactiveSlotWidth = dimensions.inactiveSlotWidthDp.dp.toPx(),
+                    progress = progress
+                )
+                val currentWidth = (right - left).coerceAtLeast(0f)
                 val vPaddingPx = DockMotionConfig.PILL_VERTICAL_PADDING_DP.dp.toPx()
                 val top = vPaddingPx
                 val height = size.height - (vPaddingPx * 2f)
@@ -295,12 +304,13 @@ private fun DockTabsLayer(
                 )
             }
     ) {
-        // Foreground Single TabsRow (static slots, zero weight recalculation)
+        // Foreground Single TabsRow (constant-width active pill + icon-only inactive slots)
         TabsRow(
             selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
-            homeSlotWidthDp = homeSlotWidthDp,
-            relationshipSlotWidthDp = relSlotWidthDp,
+            homeSlotWidthDp = slot0WidthDp,
+            peopleSlotWidthDp = slot1WidthDp,
+            timelineSlotWidthDp = slot2WidthDp,
             pillProgressProvider = { pillProgressState.value }
         )
 
@@ -311,7 +321,7 @@ private fun DockTabsLayer(
         ) {
             Box(
                 modifier = Modifier
-                    .width(homeSlotWidthDp.dp)
+                    .width(slot0WidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -331,7 +341,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .width(relSlotWidthDp.dp)
+                    .width(slot1WidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -349,6 +359,26 @@ private fun DockTabsLayer(
                         }
                     )
             )
+            Box(
+                modifier = Modifier
+                    .width(slot2WidthDp.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(25.dp))
+                    .semantics {
+                        role = Role.Tab
+                        selected = selectedTab == HomeNavTab.TIMELINE
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (isSpeedDialOpen) {
+                                onToggleSpeedDial()
+                            }
+                            onTabSelect(HomeNavTab.TIMELINE)
+                        }
+                    )
+            )
         }
     }
 }
@@ -357,8 +387,9 @@ private fun DockTabsLayer(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
-    homeSlotWidthDp: Int,
-    relationshipSlotWidthDp: Int,
+    homeSlotWidthDp: Float,
+    peopleSlotWidthDp: Float,
+    timelineSlotWidthDp: Float,
     pillProgressProvider: () -> Float,
     modifier: Modifier = Modifier
 ) {
@@ -366,19 +397,24 @@ private fun TabsRow(
     val homeColor = lerp(
         MaterialTheme.colorScheme.onSurfaceVariant,
         MaterialTheme.colorScheme.onSecondaryContainer,
-        (1f - progress).coerceIn(0f, 1f)
+        (1f - kotlin.math.abs(progress - 0f)).coerceIn(0f, 1f)
     )
     val relColor = lerp(
         MaterialTheme.colorScheme.onSurfaceVariant,
         MaterialTheme.colorScheme.onSecondaryContainer,
-        progress.coerceIn(0f, 1f)
+        (1f - kotlin.math.abs(progress - 1f)).coerceIn(0f, 1f)
+    )
+    val timelineColor = lerp(
+        MaterialTheme.colorScheme.onSurfaceVariant,
+        MaterialTheme.colorScheme.onSecondaryContainer,
+        (1f - kotlin.math.abs(progress - 2f)).coerceIn(0f, 1f)
     )
 
     Row(
         modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Slot 0 (Home): fixed width, permanently locked during transitions
+        // Slot 0 (Home)
         Box(
             modifier = Modifier
                 .width(homeSlotWidthDp.dp)
@@ -389,15 +425,15 @@ private fun TabsRow(
                 tab = HomeNavTab.HOME,
                 customLabel = null,
                 isSelected = selectedTab == HomeNavTab.HOME,
-                icon = DockMotionConfig.tabFilledIcon(HomeNavTab.HOME),
+                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = selectedTab == HomeNavTab.HOME),
                 contentColor = homeColor
             )
         }
 
-        // Slot 1 (Relationship Tab): fixed width, permanently locked during transitions
+        // Slot 1 (Relationship / People Tab)
         Box(
             modifier = Modifier
-                .width(relationshipSlotWidthDp.dp)
+                .width(peopleSlotWidthDp.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center
         ) {
@@ -405,8 +441,24 @@ private fun TabsRow(
                 tab = HomeNavTab.PEOPLE,
                 customLabel = peopleLabel,
                 isSelected = selectedTab == HomeNavTab.PEOPLE,
-                icon = DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE),
+                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = selectedTab == HomeNavTab.PEOPLE),
                 contentColor = relColor
+            )
+        }
+
+        // Slot 2 (Timeline)
+        Box(
+            modifier = Modifier
+                .width(timelineSlotWidthDp.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            NavTabItemContent(
+                tab = HomeNavTab.TIMELINE,
+                customLabel = null,
+                isSelected = selectedTab == HomeNavTab.TIMELINE,
+                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = selectedTab == HomeNavTab.TIMELINE),
+                contentColor = timelineColor
             )
         }
     }
@@ -431,45 +483,43 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Icon slot: only visible when active! Fades and expands horizontally
+            Icon(
+                imageVector = icon,
+                contentDescription = displayLabel,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(22.dp)
+                    .aspectRatio(1f)
+            )
+
             AnimatedVisibility(
                 visible = isSelected,
                 enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
                         expandHorizontally(
                             animationSpec = MotionTokens.tabTransitionSizeTween(),
-                            expandFrom = Alignment.End
+                            expandFrom = Alignment.Start
                         ),
                 exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
                        shrinkHorizontally(
                            animationSpec = MotionTokens.tabTransitionSizeTween(),
-                           shrinkTowards = Alignment.End
+                           shrinkTowards = Alignment.Start
                        )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .aspectRatio(1f)
-                    )
                     Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = displayLabel,
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = contentColor
+                    )
                 }
             }
-
-            // Label text: ALWAYS visible on both tabs! Centered naturally when unselected
-            Text(
-                text = displayLabel,
-                maxLines = 1,
-                softWrap = false,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = contentColor
-            )
         }
     }
 }

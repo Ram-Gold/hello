@@ -44,15 +44,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.hello.domain.model.CardType
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.UpcomingAlert
-import com.example.hello.ui.home.components.FullScreenCardDialog
 import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.home.components.HomeTopBar
-import com.example.hello.ui.home.components.MyCardWidget
 import com.example.hello.ui.home.components.RecentEncountersSection
 import com.example.hello.ui.home.components.UpcomingFeedSection
 import com.example.hello.ui.theme.HelloTheme
@@ -75,8 +72,6 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
     val coroutineScope = rememberCoroutineScope()
-    val activeCard = uiState.myCards[uiState.activeCardType]
-        ?: uiState.myCards.values.firstOrNull()
 
     val isDrawerActive = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
 
@@ -155,8 +150,9 @@ fun HomeScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(22.dp)
                 ) {
-                    // 1. Top Bar (Drawer on Left & Settings on Right)
+                    // 1. Top Bar & Headline matching People and Timeline screens
                     HomeTopBar(
+                        userName = uiState.userName,
                         onSettingsClick = onSettingsClick,
                         onDrawerClick = {
                             coroutineScope.launch { drawerState.open() }
@@ -164,43 +160,6 @@ fun HomeScreen(
                         },
                         activeCircle = uiState.selectedCircle
                     )
-
-                    // 2. Greeting Column (under the top bar)
-                    Column(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "Hello, ${uiState.userName}",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "👋",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        }
-                        Text(
-                            text = "Cultivate your circle today",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // 3. The "My Card" Widget (Hero Component)
-                    activeCard?.let { card ->
-                        MyCardWidget(
-                            cardData = card,
-                            activeCardType = uiState.activeCardType,
-                            onCardTypeSelect = remember(onEvent) { { onEvent(HomeUiEvent.OnCardTypeSelect(it)) } },
-                            onExpandClick = remember(onEvent) { { onEvent(HomeUiEvent.OnExpandQr(true)) } },
-                            modifier = Modifier.padding(horizontal = 20.dp)
-                        )
-                    }
 
                     // Filter feed and contacts when a specific circle is active
                     val filteredContacts = remember(uiState.recentContacts, uiState.selectedCircle) {
@@ -281,14 +240,6 @@ fun HomeScreen(
                             .padding(
                                 bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                             )
-                    )
-                }
-
-                // Full-Screen QR Dialog Preview
-                if (uiState.isQrExpanded && activeCard != null) {
-                    FullScreenCardDialog(
-                        cardData = activeCard,
-                        onDismiss = { onEvent(HomeUiEvent.OnExpandQr(false)) }
                     )
                 }
             }
