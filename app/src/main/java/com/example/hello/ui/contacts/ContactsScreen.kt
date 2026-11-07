@@ -447,7 +447,7 @@ private fun ContactsFilterBar(
             item {
                 val isAllSelected = selectedTags.isEmpty()
                 Surface(
-                    shape = if (isAllSelected) RoundedCornerShape(8.dp) else CircleShape,
+                    shape = CircleShape,
                     color = if (isAllSelected) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {

@@ -89,7 +89,7 @@ fun TonalTagPill(
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
     maxNameLength: Int? = null,
-    shape: Shape = if (isSelected) RoundedCornerShape(8.dp) else CircleShape,
+    shape: Shape = CircleShape,
     border: BorderStroke? = null
 ) {
     val cleanName = tag.name.trim().removePrefix("#")
