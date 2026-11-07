@@ -153,4 +153,21 @@ class AvatarStorageAndCropTest {
         assertNull(afterReset)
         assertFalse("Original avatar file should be deleted when reset is saved", File(canonical).exists())
     }
+
+    @Test
+    fun `flattenPixelOverWarmWhite composites transparent and semi-transparent pixels over solid FFFFFF`() {
+        // Fully transparent pixel -> solid Warm White (#FFFFFF)
+        assertEquals(0xFFFFFFFF.toInt(), AvatarCropGeometry.flattenPixelOverWarmWhite(0x00000000))
+
+        // Fully opaque terracotta pixel (#FFE06D3B) -> unchanged
+        assertEquals(0xFFE06D3B.toInt(), AvatarCropGeometry.flattenPixelOverWarmWhite(0xFFE06D3B.toInt()))
+
+        // 50% black pixel (0x80000000) over #FFFFFF -> mid-gray with 100% opacity (0xFF7F7F7F)
+        val blended = AvatarCropGeometry.flattenPixelOverWarmWhite(0x80000000.toInt())
+        assertEquals(0xFF, (blended ushr 24) and 0xFF)
+        assertEquals(127, (blended ushr 16) and 0xFF)
+        assertEquals(127, (blended ushr 8) and 0xFF)
+        assertEquals(127, blended and 0xFF)
+    }
 }
+

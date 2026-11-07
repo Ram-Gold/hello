@@ -341,39 +341,21 @@ class ContactRepository(
     fun updateContact(updated: Contact) {
         _fullContacts.update { it + (updated.id to updated) }
 
-        _contacts.update { list ->
-            list.map { summary ->
-                if (summary.id == updated.id) {
-                    summary.copy(
-                        name = updated.name,
-                        avatarInitials = extractAlphanumericInitials(updated.name),
-                        phone = updated.phone,
-                        email = updated.email,
-                        isArchived = updated.isArchived,
-                        photoUri = updated.photoUri
-                    )
-                } else {
-                    summary
-                }
+        val applySummaryUpdate: (ContactSummary) -> ContactSummary = { summary ->
+            if (summary.id == updated.id) {
+                summary.copy(
+                    name = updated.name,
+                    phone = updated.phone,
+                    email = updated.email,
+                    isArchived = updated.isArchived,
+                    photoUri = updated.photoUri
+                )
+            } else {
+                summary
             }
         }
-
-        _recentContacts.update { list ->
-            list.map { summary ->
-                if (summary.id == updated.id) {
-                    summary.copy(
-                        name = updated.name,
-                        avatarInitials = extractAlphanumericInitials(updated.name),
-                        phone = updated.phone,
-                        email = updated.email,
-                        isArchived = updated.isArchived,
-                        photoUri = updated.photoUri
-                    )
-                } else {
-                    summary
-                }
-            }
-        }
+        _contacts.update { list -> list.map(applySummaryUpdate) }
+        _recentContacts.update { list -> list.map(applySummaryUpdate) }
 
         val db = database
         if (db != null) {
@@ -424,13 +406,7 @@ class ContactRepository(
         contactFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
 
         val existing = _fullContacts.value[contactId]
-        existing?.photoUri?.let { uri ->
-            val file = com.example.hello.platform.avatar.AvatarStorageManager.resolveFile(uri)
-            if (file != null && file.exists() && (file.name.startsWith("contact_") || file.name.startsWith("staged_"))) {
-                file.delete()
-                com.example.hello.platform.avatar.AvatarBitmapCache.evict(uri)
-            }
-        }
+        com.example.hello.platform.avatar.AvatarStorageManager.deleteIfManagedAvatarFile(existing?.photoUri)
         _fullContacts.update { it - contactId }
         _contacts.update { list -> list.filterNot { it.id == contactId } }
         _recentContacts.update { list -> list.filterNot { it.id == contactId } }

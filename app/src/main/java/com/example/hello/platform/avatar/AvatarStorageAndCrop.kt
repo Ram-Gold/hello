@@ -27,6 +27,21 @@ object AvatarCropGeometry {
     const val MIN_ZOOM = 1f
     const val MAX_ZOOM = 4f
     const val OUTPUT_SIZE_PX = 512
+    const val WARM_WHITE_ARGB: Int = 0xFFFFFFFF.toInt()
+
+    /**
+     * Composites an ARGB pixel over solid Warm White (#FFFFFF), guaranteeing full opacity (0xFF alpha).
+     */
+    fun flattenPixelOverWarmWhite(argbPixel: Int): Int {
+        val alpha = (argbPixel ushr 24) and 0xFF
+        if (alpha == 255) return argbPixel or (0xFF shl 24)
+        if (alpha == 0) return WARM_WHITE_ARGB
+        val invAlpha = 255 - alpha
+        val r = (((argbPixel ushr 16) and 0xFF) * alpha + 255 * invAlpha + 127) / 255
+        val g = (((argbPixel ushr 8) and 0xFF) * alpha + 255 * invAlpha + 127) / 255
+        val b = ((argbPixel and 0xFF) * alpha + 255 * invAlpha + 127) / 255
+        return (0xFF shl 24) or (r.coerceIn(0, 255) shl 16) or (g.coerceIn(0, 255) shl 8) or b.coerceIn(0, 255)
+    }
 
     fun calculateBaseScale(
         imageWidth: Float,
@@ -193,7 +208,7 @@ class AvatarStorageManager(val avatarsDir: File) {
 
         val stagedFile = resolveFile(currentPhotoUri)
         if (stagedFile != null && stagedFile.exists() && stagedFile.parentFile == avatarsDir) {
-            val sanitizedId = contactId.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+            val sanitizedId = sanitizeContactId(contactId)
             val canonicalFile = File(avatarsDir, "contact_${sanitizedId}_${nowMillis}.png")
             if (stagedFile.absolutePath != canonicalFile.absolutePath) {
                 if (!stagedFile.renameTo(canonicalFile)) {
@@ -237,10 +252,21 @@ class AvatarStorageManager(val avatarsDir: File) {
     }
 
     companion object {
+        fun sanitizeContactId(contactId: String): String =
+            contactId.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+
         fun resolveFile(photoUri: String?): File? {
             if (photoUri.isNullOrBlank()) return null
             val cleanPath = photoUri.removePrefix("file://")
             return if (cleanPath.startsWith("/")) File(cleanPath) else null
+        }
+
+        fun deleteIfManagedAvatarFile(photoUri: String?) {
+            val file = resolveFile(photoUri) ?: return
+            if (file.exists() && (file.name.startsWith("contact_") || file.name.startsWith("staged_"))) {
+                file.delete()
+                AvatarBitmapCache.evict(photoUri)
+            }
         }
     }
 }
@@ -319,12 +345,31 @@ object AvatarBitmapCache {
                     BitmapFactory.decodeStream(stream, null, options)
                 } ?: return null
 
-                val rotation = context.contentResolver.openInputStream(uri)?.use { stream ->
-                    readExifRotationDegrees(stream)
-                } ?: 0
+                val exifOrientation = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    readExifOrientation(stream)
+                } ?: 1
 
-                if (rotation != 0) {
-                    val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+                if (exifOrientation != 1) {
+                    val matrix = Matrix().apply {
+                        when (exifOrientation) {
+                            2 -> postScale(-1f, 1f)
+                            3 -> postRotate(180f)
+                            4 -> {
+                                postRotate(180f)
+                                postScale(-1f, 1f)
+                            }
+                            5 -> {
+                                postRotate(90f)
+                                postScale(-1f, 1f)
+                            }
+                            6 -> postRotate(90f)
+                            7 -> {
+                                postRotate(270f)
+                                postScale(-1f, 1f)
+                            }
+                            8 -> postRotate(270f)
+                        }
+                    }
                     Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
                 } else {
                     rawBitmap
@@ -345,13 +390,22 @@ object AvatarBitmapCache {
     }
 
     /**
-     * Lightweight JPEG EXIF orientation reader (APP1 marker) without external dependency.
+     * Bounded 64KB JPEG EXIF orientation reader (APP1 marker) supporting all 8 rotation/flip orientations
+     * without reading the entire image stream into memory.
      */
-    private fun readExifRotationDegrees(input: InputStream): Int {
+    internal fun readExifOrientation(input: InputStream): Int {
         return try {
-            val bytes = input.readBytes()
+            val maxHeaderBytes = 64 * 1024
+            val buffer = ByteArray(maxHeaderBytes)
+            var totalRead = 0
+            while (totalRead < maxHeaderBytes) {
+                val read = input.read(buffer, totalRead, maxHeaderBytes - totalRead)
+                if (read <= 0) break
+                totalRead += read
+            }
+            val bytes = buffer.copyOf(totalRead)
             if (bytes.size < 14 || (bytes[0].toInt() and 0xFF) != 0xFF || (bytes[1].toInt() and 0xFF) != 0xD8) {
-                return 0
+                return 1
             }
             var offset = 2
             while (offset + 4 < bytes.size && (bytes[offset].toInt() and 0xFF) == 0xFF) {
@@ -393,12 +447,7 @@ object AvatarBitmapCache {
                                 if (entryOffset + 12 > bytes.size) break
                                 val tag = readUInt16(entryOffset)
                                 if (tag == 0x0112) {
-                                    return when (readUInt16(entryOffset + 8)) {
-                                        3 -> 180
-                                        6 -> 90
-                                        8 -> 270
-                                        else -> 0
-                                    }
+                                    return readUInt16(entryOffset + 8).coerceIn(1, 8)
                                 }
                             }
                         }
@@ -406,9 +455,10 @@ object AvatarBitmapCache {
                 }
                 offset += 2 + length
             }
-            0
+            1
         } catch (_: Exception) {
-            0
+            1
         }
     }
 }
+

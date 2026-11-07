@@ -49,7 +49,7 @@ object ExportBundleGenerator {
                 append("    \"phone\": ${quoteJson(c.phone)},\n")
                 append("    \"email\": ${quoteJson(c.email)},\n")
                 append("    \"notes\": ${quoteJson(c.notes)},\n")
-                val exportedAvatarRelPath = resolveExportAvatarEntry(c)?.first ?: c.photoUri
+                val exportedAvatarRelPath = resolveExportAvatarEntry(c)?.first
                 append("    \"photoUri\": ${quoteJson(exportedAvatarRelPath)},\n")
                 append("    \"firstMetAt\": ${quoteJson(c.firstMetAt?.toString())},\n")
                 append("    \"lastMetAt\": ${quoteJson(c.lastMetAt?.toString())},\n")
@@ -176,7 +176,7 @@ object ExportBundleGenerator {
                 if (!contact.email.isNullOrBlank()) {
                     append("email: \"${contact.email}\"\n")
                 }
-                val exportedAvatarRelPath = resolveExportAvatarEntry(contact)?.first ?: contact.photoUri
+                val exportedAvatarRelPath = resolveExportAvatarEntry(contact)?.first
                 if (!exportedAvatarRelPath.isNullOrBlank()) {
                     append("avatar: \"$exportedAvatarRelPath\"\n")
                 }
@@ -308,7 +308,7 @@ object ExportBundleGenerator {
     private fun resolveExportAvatarEntry(contact: Contact): Pair<String, File>? {
         val file = AvatarStorageManager.resolveFile(contact.photoUri) ?: return null
         if (!file.exists() || !file.isFile) return null
-        val sanitizedId = contact.id.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val sanitizedId = AvatarStorageManager.sanitizeContactId(contact.id)
         return "avatars/$sanitizedId.png" to file
     }
 

@@ -508,7 +508,7 @@ private fun FutureTimelineNodeRow(
                         DoodleAvatar(
                             initials = node.avatarInitials,
                             bgIndex = node.avatarBgIndex,
-                            size = 32.dp,
+                            size = 36.dp,
                             shape = CircleShape,
                             photoUri = node.photoUri
                         )
@@ -735,7 +735,7 @@ private fun PastTimelineNodeRow(
                         DoodleAvatar(
                             initials = node.avatarInitials,
                             bgIndex = node.avatarBgIndex,
-                            size = 32.dp,
+                            size = 36.dp,
                             shape = CircleShape,
                             photoUri = node.photoUri
                         )
