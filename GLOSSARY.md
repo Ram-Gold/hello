@@ -92,6 +92,10 @@ _Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
 The contextual interaction phase entered via long-press on a Contact Card within the Relationship Tab, enabling multi-contact batch actions (Share via vCard, Delete with confirmation, Select All). During this mode, selected Contact Cards visually decouple from connected groupings into independent fully-rounded surfaces with theme-aware red tinting and an inline name checkmark, while a floating vertical action tray docks on the right edge and the Floating Bottom Dock recedes off-screen.
 _Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen
 
+**Timeline Selection Mode**:
+The contextual interaction phase entered via long-press on an Encounter or FollowUp card within any Living Timeline surface (the global Timeline Tab and the Contact Profile Screen), enabling multi-item deletion with confirmation and Select All. During this mode, selected cards render with theme-aware error container red tinting and an inline checkmark, a floating vertical action tray docks on the right edge with Delete and Kebab (Select All), and the top header transforms into a selection bar with cancel affordance. Birthday milestone nodes remain non-selectable, and deleting encounters dynamically recalculates affected contacts' meet count and recency states.
+_Avoid_: Timeline edit mode, Event delete mode, History multi-select
+
 **Contact Profile Screen**:
 The dedicated Material 3 Expressive view displaying a Contact's relationship properties, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
 _Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry

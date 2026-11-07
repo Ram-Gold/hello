@@ -305,4 +305,68 @@ class ContactRepositoryTest {
         assertNotNull(c1FutureNode)
         assertEquals(customAvatarPath, c1FutureNode?.photoUri)
     }
+
+    @Test
+    fun deleteEncounters_recalculatesContactMeetCountAndRecencyText() {
+        val contact = repository.addContactWithInitialEncounter(
+            name = "Test Person",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "First met today",
+            followUpDays = null
+        )
+
+        // Contact starts with 1 encounter
+        val initialFullContact = repository.fullContacts.value[contact.id]
+        assertNotNull(initialFullContact)
+        assertEquals(1, initialFullContact?.meetCount)
+
+        val firstEncounter = repository.encounters.value.first { it.contactId == contact.id }
+
+        // Log a second encounter
+        val secondEncounter = repository.logEncounterForContact(
+            contactId = contact.id,
+            date = LocalDate.now(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met again"
+        )
+        val contactAfterSecond = repository.fullContacts.value[contact.id]
+        assertEquals(2, contactAfterSecond?.meetCount)
+
+        // Delete the second encounter
+        repository.deleteEncounters(setOf(secondEncounter.id))
+        val contactAfterDeleteSecond = repository.fullContacts.value[contact.id]
+        assertEquals(1, contactAfterDeleteSecond?.meetCount)
+        assertEquals(firstEncounter.occurredAt, contactAfterDeleteSecond?.lastMetAt)
+
+        // Delete initial encounter (allowed per ADR-0023)
+        repository.deleteEncounters(setOf(firstEncounter.id))
+        val contactAfterDeleteAll = repository.fullContacts.value[contact.id]
+        assertEquals(0, contactAfterDeleteAll?.meetCount)
+        assertNull(contactAfterDeleteAll?.lastMetAt)
+
+        val summaryAfterDeleteAll = repository.contacts.value.first { it.id == contact.id }
+        assertNull(summaryAfterDeleteAll.lastEncounterText)
+    }
+
+    @Test
+    fun deleteFollowUps_removesFromFollowUpsAndUpcomingAlerts() {
+        val contact = repository.addContactWithInitialEncounter(
+            name = "FollowUp Test",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Initial note",
+            followUpDays = 3
+        )
+
+        val followUp = repository.followUps.value.first { it.contactId == contact.id }
+        assertTrue(repository.upcomingAlerts.value.any { it.id == followUp.id })
+
+        repository.deleteFollowUps(setOf(followUp.id))
+        assertFalse(repository.followUps.value.any { it.id == followUp.id })
+        assertFalse(repository.upcomingAlerts.value.any { it.id == followUp.id })
+    }
 }

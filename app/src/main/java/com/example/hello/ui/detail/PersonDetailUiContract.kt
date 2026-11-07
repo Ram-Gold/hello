@@ -31,12 +31,23 @@ data class PersonDetailUiState(
     val tagsList: List<Tag> = emptyList(),
     val cadenceStatus: CadenceStatusInfo = CadenceStatusInfo(),
     val isLoading: Boolean = false,
-    val userMessage: String? = null
-)
+    val userMessage: String? = null,
+    val selectedEncounterIds: Set<String> = emptySet(),
+    val isDeleteConfirmationVisible: Boolean = false
+) {
+    val isSelectionMode: Boolean get() = selectedEncounterIds.isNotEmpty()
+}
 
 sealed interface PersonDetailUiEvent {
     data object OnPhoneClick : PersonDetailUiEvent
     data object OnMessageClick : PersonDetailUiEvent
     data object OnEmailClick : PersonDetailUiEvent
     data object OnDismissUserMessage : PersonDetailUiEvent
+    data class OnEncounterLongClick(val encounterId: String) : PersonDetailUiEvent
+    data class OnToggleSelectEncounter(val encounterId: String) : PersonDetailUiEvent
+    data object OnClearSelection : PersonDetailUiEvent
+    data object OnSelectAllEncounters : PersonDetailUiEvent
+    data object OnRequestDeleteSelected : PersonDetailUiEvent
+    data object OnConfirmDeleteSelected : PersonDetailUiEvent
+    data object OnDismissDeleteDialog : PersonDetailUiEvent
 }

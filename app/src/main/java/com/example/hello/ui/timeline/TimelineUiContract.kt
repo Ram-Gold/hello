@@ -68,12 +68,23 @@ data class TimelineUiState(
     val futureNodes: List<FutureTimelineNode> = emptyList(),
     val pastNodes: List<PastTimelineNode> = emptyList(),
     val todayLabel: String = "TODAY",
-    val userMessage: String? = null
-)
+    val userMessage: String? = null,
+    val selectedNodeIds: Set<String> = emptySet(),
+    val isDeleteConfirmationVisible: Boolean = false
+) {
+    val isSelectionMode: Boolean get() = selectedNodeIds.isNotEmpty()
+}
 
 sealed interface TimelineUiEvent {
     data class OnSelectFilter(val filter: TimelineFilter) : TimelineUiEvent
     data class OnMarkFollowUpDone(val followUpId: String) : TimelineUiEvent
     data class OnSnoozeFollowUp(val followUpId: String) : TimelineUiEvent
     data object OnDismissUserMessage : TimelineUiEvent
+    data class OnNodeLongClick(val nodeId: String) : TimelineUiEvent
+    data class OnToggleSelectNode(val nodeId: String) : TimelineUiEvent
+    data object OnClearSelection : TimelineUiEvent
+    data object OnSelectAllVisibleNodes : TimelineUiEvent
+    data object OnRequestDeleteSelected : TimelineUiEvent
+    data object OnConfirmDeleteSelected : TimelineUiEvent
+    data object OnDismissDeleteDialog : TimelineUiEvent
 }

@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.ClearTextTrailingIcon
 import com.example.hello.ui.theme.HelloTheme
 
 private val PROFILE_COLORS_DARK = Color(0xFF3E2D1A) to Color(0xFFFFCC99)
@@ -235,6 +236,13 @@ fun SettingsScreen(
                         value = inputName,
                         onValueChange = { inputName = it },
                         label = { Text("Name") },
+                        trailingIcon = {
+                            ClearTextTrailingIcon(
+                                value = inputName,
+                                onClear = { inputName = "" },
+                                contentDescription = "Clear name"
+                            )
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

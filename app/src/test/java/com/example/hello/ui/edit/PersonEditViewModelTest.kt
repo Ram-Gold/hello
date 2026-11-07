@@ -219,4 +219,39 @@ class PersonEditViewModelTest {
         assertNull(viewModel.uiState.value.pendingCropUri)
         assertEquals("Could not load selected image", viewModel.uiState.value.userMessage)
     }
+
+    @Test
+    fun clearingFields_resetsUiStateValues() = runTest {
+        val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Verify initial state has values
+        assertEquals("Alex Rivera", viewModel.uiState.value.name)
+        assertEquals("+1 (555) 876-5432", viewModel.uiState.value.phone)
+        assertEquals("alex.rivera@example.com", viewModel.uiState.value.email)
+
+        // Clear fields using change events with empty strings or null
+        viewModel.onEvent(PersonEditUiEvent.OnNameChange(""))
+        assertEquals("", viewModel.uiState.value.name)
+        assertFalse(viewModel.uiState.value.canSave) // Blank name cannot be saved
+
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange(""))
+        assertEquals("", viewModel.uiState.value.phone)
+
+        viewModel.onEvent(PersonEditUiEvent.OnEmailChange(""))
+        assertEquals("", viewModel.uiState.value.email)
+
+        viewModel.onEvent(PersonEditUiEvent.OnRoleChange(""))
+        assertEquals("", viewModel.uiState.value.role)
+
+        viewModel.onEvent(PersonEditUiEvent.OnCompanyChange(""))
+        assertEquals("", viewModel.uiState.value.company)
+
+        viewModel.onEvent(PersonEditUiEvent.OnNotesChange(""))
+        assertEquals("", viewModel.uiState.value.notes)
+
+        viewModel.onEvent(PersonEditUiEvent.OnBirthdayChange(null))
+        assertNull(viewModel.uiState.value.birthday)
+        assertTrue(viewModel.uiState.value.isModified)
+    }
 }

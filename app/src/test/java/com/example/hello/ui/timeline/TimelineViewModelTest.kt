@@ -270,4 +270,130 @@ class TimelineViewModelTest {
         assertEquals(Icons.Filled.People, DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = true))
         assertEquals(Icons.Filled.CalendarMonth, DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = true))
     }
+
+    @Test
+    fun onNodeLongClick_entersSelectionModeAndSelectsEncounter() {
+        val viewModel = TimelineViewModel()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+
+        val pastNode = viewModel.uiState.value.pastNodes.first()
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick(pastNode.id))
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isSelectionMode)
+        assertTrue(state.selectedNodeIds.contains(pastNode.id))
+        assertEquals(1, state.selectedNodeIds.size)
+    }
+
+    @Test
+    fun onNodeLongClick_birthdayNode_isNonSelectableNoOp() {
+        val viewModel = TimelineViewModel()
+        // Birthday nodes (e.g. future-bday-xyz) are not selectable
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick("future-bday-test-contact"))
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSelectionMode)
+        assertTrue(state.selectedNodeIds.isEmpty())
+    }
+
+    @Test
+    fun onToggleSelectNode_togglesSelectionState_andAutoExitsWhenEmpty() {
+        val viewModel = TimelineViewModel()
+        val pastNodes = viewModel.uiState.value.pastNodes
+        val node1 = pastNodes[0]
+        val node2 = pastNodes[1]
+
+        // Select node1 via long click
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick(node1.id))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Toggle node2 on
+        viewModel.onEvent(TimelineUiEvent.OnToggleSelectNode(node2.id))
+        assertEquals(2, viewModel.uiState.value.selectedNodeIds.size)
+        assertTrue(viewModel.uiState.value.selectedNodeIds.contains(node1.id))
+        assertTrue(viewModel.uiState.value.selectedNodeIds.contains(node2.id))
+
+        // Toggle node2 off
+        viewModel.onEvent(TimelineUiEvent.OnToggleSelectNode(node2.id))
+        assertEquals(1, viewModel.uiState.value.selectedNodeIds.size)
+        assertTrue(viewModel.uiState.value.selectedNodeIds.contains(node1.id))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Toggle node1 off -> auto-exits selection mode
+        viewModel.onEvent(TimelineUiEvent.OnToggleSelectNode(node1.id))
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedNodeIds.isEmpty())
+    }
+
+    @Test
+    fun onClearSelection_clearsAllSelectionsAndExitsSelectionMode() {
+        val viewModel = TimelineViewModel()
+        val node = viewModel.uiState.value.pastNodes.first()
+
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick(node.id))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.onEvent(TimelineUiEvent.OnClearSelection)
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedNodeIds.isEmpty())
+        assertFalse(viewModel.uiState.value.isDeleteConfirmationVisible)
+    }
+
+    @Test
+    fun onSelectAllVisibleNodes_selectsAllVisibleEncountersAndFollowUps_excludingBirthdays() {
+        val viewModel = TimelineViewModel()
+        val followUps = viewModel.uiState.value.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>()
+        val past = viewModel.uiState.value.pastNodes
+
+        assertTrue(followUps.isNotEmpty())
+        assertTrue(past.isNotEmpty())
+
+        viewModel.onEvent(TimelineUiEvent.OnSelectAllVisibleNodes)
+        val state = viewModel.uiState.value
+        assertTrue(state.isSelectionMode)
+
+        // All follow-ups and encounters selected
+        followUps.forEach { fu ->
+            assertTrue(state.selectedNodeIds.contains(fu.id))
+        }
+        past.forEach { p ->
+            assertTrue(state.selectedNodeIds.contains(p.id))
+        }
+
+        // None of the selected IDs can be birthday nodes
+        state.selectedNodeIds.forEach { id ->
+            assertFalse(id.startsWith("future-bday-"))
+        }
+    }
+
+    @Test
+    fun onConfirmDeleteSelected_deletesEncountersAndFollowUps_reconcilesStateAndClearsSelection() {
+        val viewModel = TimelineViewModel()
+        val encounterNode = viewModel.uiState.value.pastNodes.first()
+        val followUpNode = viewModel.uiState.value.futureNodes
+            .filterIsInstance<FutureTimelineNode.FollowUpNode>()
+            .first()
+
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick(encounterNode.id))
+        viewModel.onEvent(TimelineUiEvent.OnToggleSelectNode(followUpNode.id))
+        assertEquals(2, viewModel.uiState.value.selectedNodeIds.size)
+
+        // Request delete
+        viewModel.onEvent(TimelineUiEvent.OnRequestDeleteSelected)
+        assertTrue(viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        // Confirm delete
+        viewModel.onEvent(TimelineUiEvent.OnConfirmDeleteSelected)
+        val state = viewModel.uiState.value
+
+        assertFalse(state.isSelectionMode)
+        assertTrue(state.selectedNodeIds.isEmpty())
+        assertFalse(state.isDeleteConfirmationVisible)
+        assertNotNull(state.userMessage)
+        assertTrue(state.userMessage!!.contains("Deleted 1 encounter and 1 follow-up"))
+
+        // Nodes must be gone from the state
+        assertFalse(state.pastNodes.any { it.id == encounterNode.id })
+        assertFalse(state.futureNodes.any { it.id == followUpNode.id })
+    }
 }

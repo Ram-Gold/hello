@@ -1,10 +1,19 @@
 package com.example.hello.ui.timeline
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,19 +40,24 @@ import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Snooze
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +73,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
+import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TimelineScreen(
     uiState: TimelineUiState,
@@ -73,128 +89,283 @@ fun TimelineScreen(
     val showPast = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.PAST
     val showTodayDivider = uiState.selectedFilter == TimelineFilter.ALL
 
-    Column(
+    BackHandler(enabled = uiState.isSelectionMode) {
+        onEvent(TimelineUiEvent.OnClearSelection)
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2)
     ) {
-        // 1. Minimal Header + Temporal Filter Strip (All | Future | Past)
-        TimelineHeader(
-            selectedFilter = uiState.selectedFilter,
-            onSelectFilter = { onEvent(TimelineUiEvent.OnSelectFilter(it)) },
-            onLogEncounterClick = onLogEncounterClick
-        )
-
-        // 2. Continuous Vertical Living Timeline Spine with Overlay Gradient Scrim
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 0.dp,
-                    bottom = 128.dp
-                )
-            ) {
-                // Future Horizon Section (Soonest-First, Dashed Spine)
-                if (showFuture) {
-                    if (uiState.futureNodes.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
-                        item(key = "empty-future") {
-                            EmptyTimelineStateCard(
-                                title = "No upcoming events in your horizon",
-                                subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
-                            )
-                        }
-                    } else if (uiState.futureNodes.isNotEmpty()) {
-                        itemsIndexed(
-                            items = uiState.futureNodes,
-                            key = { _, node -> node.id }
-                        ) { index, node ->
-                            val isFirstFuture = index == 0
-                            val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
-                            FutureTimelineNodeRow(
-                                node = node,
-                                isFirst = isFirstFuture,
-                                isLast = isLastFuture,
-                                onContactClick = { onContactClick(node.contactId) },
-                                onMarkDone = { followUpId ->
-                                    onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
-                                },
-                                onSnooze = { followUpId ->
-                                    onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
-                                },
-                                onLogMet = {
-                                    onLogEncounterForContact(node.contactId)
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // TODAY Divider Anchor
-                if (showTodayDivider) {
-                    item(key = "today-divider-anchor") {
-                        TodayTimelineAnchor(
-                            todayLabel = uiState.todayLabel,
-                            hasPastBelow = uiState.pastNodes.isNotEmpty()
-                        )
-                    }
-                }
-
-                // Past Log Section (Newest-First, Solid Spine, First Met vs Met Again)
-                if (showPast) {
-                    if (uiState.pastNodes.isEmpty()) {
-                        item(key = "empty-past") {
-                            EmptyTimelineStateCard(
-                                title = "No encounters logged yet",
-                                subtitle = "People you add or meet again will form your living timeline."
-                            )
-                        }
-                    } else {
-                        if (uiState.selectedFilter == TimelineFilter.PAST) {
-                            item(key = "past-section-header") {
-                                TimelineSectionLabel(
-                                    title = "PAST LOG",
-                                    subtitle = "People you first met and caught up with again"
-                                )
-                            }
-                        }
-                        itemsIndexed(
-                            items = uiState.pastNodes,
-                            key = { _, node -> node.id }
-                        ) { index, node ->
-                            val isFirstPast = index == 0
-                            val isLastPast = index == uiState.pastNodes.lastIndex
-                            PastTimelineNodeRow(
-                                node = node,
-                                isFirst = isFirstPast,
-                                isLast = isLastPast,
-                                onContactClick = { onContactClick(node.contactId) }
-                            )
-                        }
-                    }
+            // 1. Minimal Header + Temporal Filter Strip / Selection Contextual Header
+            AnimatedContent(
+                targetState = uiState.isSelectionMode,
+                label = "TimelineHeaderTransition"
+            ) { isSelectionMode ->
+                if (isSelectionMode) {
+                    TimelineSelectionHeader(
+                        selectedCount = uiState.selectedNodeIds.size,
+                        onClearSelection = { onEvent(TimelineUiEvent.OnClearSelection) },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                } else {
+                    TimelineHeader(
+                        selectedFilter = uiState.selectedFilter,
+                        onSelectFilter = { onEvent(TimelineUiEvent.OnSelectFilter(it)) },
+                        onLogEncounterClick = onLogEncounterClick
+                    )
                 }
             }
 
-            // 16.dp vertical gradient scrim floating directly over the top of the scrolling list
+            // 2. Continuous Vertical Living Timeline Spine with Overlay Gradient Scrim
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(16.dp)
-                    .align(Alignment.TopCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.background,
-                                Color.Transparent
+                    .weight(1f)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 0.dp,
+                        bottom = 128.dp
+                    )
+                ) {
+                    // Future Horizon Section (Soonest-First, Dashed Spine)
+                    if (showFuture) {
+                        if (uiState.futureNodes.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
+                            item(key = "empty-future") {
+                                EmptyTimelineStateCard(
+                                    title = "No upcoming events in your horizon",
+                                    subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
+                                )
+                            }
+                        } else if (uiState.futureNodes.isNotEmpty()) {
+                            itemsIndexed(
+                                items = uiState.futureNodes,
+                                key = { _, node -> node.id }
+                            ) { index, node ->
+                                val isFirstFuture = index == 0
+                                val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
+                                val isSelected = node.id in uiState.selectedNodeIds
+                                val isFollowUp = node is FutureTimelineNode.FollowUpNode
+
+                                FutureTimelineNodeRow(
+                                    node = node,
+                                    isFirst = isFirstFuture,
+                                    isLast = isLastFuture,
+                                    isSelected = isSelected,
+                                    isSelectionMode = uiState.isSelectionMode,
+                                    onClick = {
+                                        if (uiState.isSelectionMode) {
+                                            if (isFollowUp) {
+                                                onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
+                                            }
+                                        } else {
+                                            onContactClick(node.contactId)
+                                        }
+                                    },
+                                    onLongClick = if (isFollowUp) {
+                                        { onEvent(TimelineUiEvent.OnNodeLongClick(node.id)) }
+                                    } else null,
+                                    onMarkDone = { followUpId ->
+                                        onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
+                                    },
+                                    onSnooze = { followUpId ->
+                                        onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
+                                    },
+                                    onLogMet = {
+                                        onLogEncounterForContact(node.contactId)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // TODAY Divider Anchor
+                    if (showTodayDivider) {
+                        item(key = "today-divider-anchor") {
+                            TodayTimelineAnchor(
+                                todayLabel = uiState.todayLabel,
+                                hasPastBelow = uiState.pastNodes.isNotEmpty()
+                            )
+                        }
+                    }
+
+                    // Past Log Section (Newest-First, Solid Spine, First Met vs Met Again)
+                    if (showPast) {
+                        if (uiState.pastNodes.isEmpty()) {
+                            item(key = "empty-past") {
+                                EmptyTimelineStateCard(
+                                    title = "No encounters logged yet",
+                                    subtitle = "People you add or meet again will form your living timeline."
+                                )
+                            }
+                        } else {
+                            if (uiState.selectedFilter == TimelineFilter.PAST) {
+                                item(key = "past-section-header") {
+                                    TimelineSectionLabel(
+                                        title = "PAST LOG",
+                                        subtitle = "People you first met and caught up with again"
+                                    )
+                                }
+                            }
+                            itemsIndexed(
+                                items = uiState.pastNodes,
+                                key = { _, node -> node.id }
+                            ) { index, node ->
+                                val isFirstPast = index == 0
+                                val isLastPast = index == uiState.pastNodes.lastIndex
+                                val isSelected = node.id in uiState.selectedNodeIds
+
+                                PastTimelineNodeRow(
+                                    node = node,
+                                    isFirst = isFirstPast,
+                                    isLast = isLastPast,
+                                    isSelected = isSelected,
+                                    onClick = {
+                                        if (uiState.isSelectionMode) {
+                                            onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
+                                        } else {
+                                            onContactClick(node.contactId)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        onEvent(TimelineUiEvent.OnNodeLongClick(node.id))
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 16.dp vertical gradient scrim floating directly over the top of the scrolling list
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background,
+                                    Color.Transparent
+                                )
                             )
                         )
+                )
+            }
+        }
+
+        // Floating Action Tray on the right edge
+        AnimatedVisibility(
+            visible = uiState.isSelectionMode,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+        ) {
+            TimelineSelectionActionTray(
+                onDeleteClick = { onEvent(TimelineUiEvent.OnRequestDeleteSelected) },
+                onSelectAllClick = { onEvent(TimelineUiEvent.OnSelectAllVisibleNodes) }
+            )
+        }
+
+        // Batch Deletion Confirmation Dialog
+        if (uiState.isDeleteConfirmationVisible) {
+            val encCount = uiState.pastNodes.count { it.id in uiState.selectedNodeIds }
+            val fuCount = uiState.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>().count { it.id in uiState.selectedNodeIds }
+            val titleText = when {
+                encCount > 0 && fuCount > 0 -> "Delete $encCount encounter${if (encCount > 1) "s" else ""} and $fuCount follow-up${if (fuCount > 1) "s" else ""}?"
+                encCount > 0 -> "Delete $encCount encounter${if (encCount > 1) "s" else ""}?"
+                fuCount > 0 -> "Delete $fuCount follow-up${if (fuCount > 1) "s" else ""}?"
+                else -> "Delete selected items?"
+            }
+
+            AlertDialog(
+                onDismissRequest = { onEvent(TimelineUiEvent.OnDismissDeleteDialog) },
+                title = {
+                    Text(
+                        text = titleText,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
                     )
+                },
+                text = {
+                    Text(
+                        text = "These records will be permanently removed from your timeline and device.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { onEvent(TimelineUiEvent.OnConfirmDeleteSelected) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onEvent(TimelineUiEvent.OnDismissDeleteDialog) },
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineSelectionHeader(
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$selectedCount selected",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        FilledIconButton(
+            onClick = onClearSelection,
+            shape = CircleShape,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier.size(44.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = "Cancel selection",
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -385,12 +556,16 @@ private fun TodayTimelineAnchor(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FutureTimelineNodeRow(
     node: FutureTimelineNode,
     isFirst: Boolean,
     isLast: Boolean,
-    onContactClick: () -> Unit,
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     onMarkDone: (String) -> Unit,
     onSnooze: (String) -> Unit,
     onLogMet: () -> Unit
@@ -398,6 +573,22 @@ private fun FutureTimelineNodeRow(
     val spineColor = MaterialTheme.colorScheme.onSurface
     val dotFillColor = MaterialTheme.colorScheme.surface
     val dashColor = MaterialTheme.colorScheme.outlineVariant
+
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryContentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
@@ -478,17 +669,21 @@ private fun FutureTimelineNodeRow(
         // Future Node Card
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = containerColor,
+            contentColor = contentColor,
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = 14.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .border(
                     width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                    color = if (isSelected) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                     shape = RoundedCornerShape(20.dp)
                 )
-                .clickable(onClick = onContactClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -513,17 +708,30 @@ private fun FutureTimelineNodeRow(
                             photoUri = node.photoUri
                         )
                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                            Text(
-                                text = node.contactName,
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(
+                                    text = node.contactName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = contentColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             Text(
                                 text = node.dateLabel,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = if (isSelected) secondaryContentColor else MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -537,46 +745,48 @@ private fun FutureTimelineNodeRow(
                         Text(
                             text = node.note,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = secondaryContentColor,
                             lineHeight = 20.sp
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            FilledTonalButton(
-                                onClick = { onMarkDone(node.followUpId) },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                modifier = Modifier.height(32.dp),
-                                shape = RoundedCornerShape(12.dp)
+                        if (!isSelectionMode) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Done",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                            OutlinedButton(
-                                onClick = { onSnooze(node.followUpId) },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                modifier = Modifier.height(32.dp),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Snooze,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Snooze",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                                FilledTonalButton(
+                                    onClick = { onMarkDone(node.followUpId) },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(32.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Done",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = { onSnooze(node.followUpId) },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(32.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Snooze,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Snooze",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             }
                         }
                     }
@@ -589,7 +799,7 @@ private fun FutureTimelineNodeRow(
                         Text(
                             text = bdayDescription,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = secondaryContentColor,
                             lineHeight = 20.sp
                         )
                     }
@@ -630,16 +840,35 @@ private fun FutureNodeTypeBadge(node: FutureTimelineNode) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PastTimelineNodeRow(
     node: PastTimelineNode,
     isFirst: Boolean,
     isLast: Boolean,
-    onContactClick: () -> Unit
+    isSelected: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val isFirstMet = node.badge == PastEncounterBadge.FIRST_MET
     val spineColor = MaterialTheme.colorScheme.onSurface
     val dotFillColor = MaterialTheme.colorScheme.surface
+
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryContentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
@@ -710,12 +939,16 @@ private fun PastTimelineNodeRow(
         // Past Encounter Card
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = containerColor,
+            contentColor = contentColor,
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = 16.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .clickable(onClick = onContactClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -740,17 +973,30 @@ private fun PastTimelineNodeRow(
                             photoUri = node.photoUri
                         )
                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                            Text(
-                                text = node.contactName,
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(
+                                    text = node.contactName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = contentColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             Text(
                                 text = node.dateLabel,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = secondaryContentColor
                             )
                         }
                     }
@@ -758,7 +1004,9 @@ private fun PastTimelineNodeRow(
                     // First Met vs Met Again Badge
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isFirstMet) {
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                        } else if (isFirstMet) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHigh
@@ -767,7 +1015,9 @@ private fun PastTimelineNodeRow(
                         Text(
                             text = node.badge.label,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (isFirstMet) {
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else if (isFirstMet) {
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -781,7 +1031,7 @@ private fun PastTimelineNodeRow(
                 if (!node.placeLabel.isNullOrBlank()) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                        color = if (isSelected) MaterialTheme.colorScheme.error.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -790,14 +1040,14 @@ private fun PastTimelineNodeRow(
                             Icon(
                                 imageVector = Icons.Rounded.LocationOn,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (isSelected) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = node.placeLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = secondaryContentColor
                             )
                         }
                     }
@@ -808,7 +1058,7 @@ private fun PastTimelineNodeRow(
                     Text(
                         text = node.notes,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = secondaryContentColor,
                         lineHeight = 20.sp
                     )
                 }

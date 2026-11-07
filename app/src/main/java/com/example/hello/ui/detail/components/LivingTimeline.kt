@@ -1,8 +1,10 @@
 package com.example.hello.ui.detail.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cake
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,13 +53,18 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LivingTimeline(
     encounters: List<Encounter>,
     placesMap: Map<String, Place>,
     onLogEncounterClick: () -> Unit,
     modifier: Modifier = Modifier,
-    birthday: LocalDate? = null
+    birthday: LocalDate? = null,
+    selectedEncounterIds: Set<String> = emptySet(),
+    isSelectionMode: Boolean = false,
+    onEncounterClick: (String) -> Unit = {},
+    onEncounterLongClick: (String) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -124,11 +132,21 @@ fun LivingTimeline(
             encounters.forEachIndexed { index, encounter ->
                 val isFirst = index == 0 && birthday == null
                 val isLast = index == encounters.lastIndex
+                val isSelected = encounter.id in selectedEncounterIds
                 TimelineNodeItem(
                     encounter = encounter,
                     place = encounter.placeId?.let { placesMap[it] },
                     isFirst = isFirst,
-                    isLast = isLast
+                    isLast = isLast,
+                    isSelected = isSelected,
+                    onClick = {
+                        if (isSelectionMode) {
+                            onEncounterClick(encounter.id)
+                        }
+                    },
+                    onLongClick = {
+                        onEncounterLongClick(encounter.id)
+                    }
                 )
             }
         }
@@ -292,17 +310,37 @@ private fun BirthdayMilestoneNodeItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimelineNodeItem(
     encounter: Encounter,
     place: Place?,
     isFirst: Boolean,
-    isLast: Boolean
+    isLast: Boolean,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
 ) {
     val dateText = formatTimelineDate(encounter.occurredAt)
     val placeLabel = encounter.eventLabel ?: place?.label
     val spineColor = MaterialTheme.colorScheme.onSurface
     val dotFillColor = MaterialTheme.colorScheme.surface
+
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryContentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
@@ -373,10 +411,16 @@ private fun TimelineNodeItem(
         // Encounter Content Card
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = containerColor,
+            contentColor = contentColor,
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -387,16 +431,29 @@ private fun TimelineNodeItem(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = "Selected",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = dateText,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = contentColor
+                        )
+                    }
 
                     if (!placeLabel.isNullOrBlank()) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            color = if (isSelected) MaterialTheme.colorScheme.error.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -405,14 +462,14 @@ private fun TimelineNodeItem(
                                 Icon(
                                     imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = placeLabel,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = secondaryContentColor
                                 )
                             }
                         }
@@ -423,7 +480,7 @@ private fun TimelineNodeItem(
                     Text(
                         text = encounter.notes,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = secondaryContentColor,
                         lineHeight = 20.sp
                     )
                 }

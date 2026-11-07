@@ -129,4 +129,86 @@ class PersonDetailViewModelTest {
         viewModel.onEvent(PersonDetailUiEvent.OnPhoneClick)
         assertEquals("No phone number available", viewModel.uiState.value.userMessage)
     }
+
+    @Test
+    fun onEncounterLongClick_entersSelectionModeAndSelectsEncounter() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val encounter = viewModel.uiState.value.encounters.first()
+        viewModel.onEvent(PersonDetailUiEvent.OnEncounterLongClick(encounter.id))
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isSelectionMode)
+        assertTrue(state.selectedEncounterIds.contains(encounter.id))
+        assertEquals(1, state.selectedEncounterIds.size)
+    }
+
+    @Test
+    fun onToggleSelectEncounter_togglesAndClearsSelection() = runTest {
+        repository.logEncounterForContact(
+            contactId = "c-1",
+            date = java.time.LocalDate.now(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Second meeting"
+        )
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val encounters = viewModel.uiState.value.encounters
+        assertTrue(encounters.size >= 2)
+        val enc1 = encounters[0]
+        val enc2 = encounters[1]
+
+        viewModel.onEvent(PersonDetailUiEvent.OnEncounterLongClick(enc1.id))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(enc2.id))
+        assertEquals(2, viewModel.uiState.value.selectedEncounterIds.size)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(enc2.id))
+        assertEquals(1, viewModel.uiState.value.selectedEncounterIds.size)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(enc1.id))
+        assertTrue(!viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedEncounterIds.isEmpty())
+    }
+
+    @Test
+    fun onSelectAllEncounters_selectsAllContactEncounters() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val allIds = viewModel.uiState.value.encounters.map { it.id }.toSet()
+        viewModel.onEvent(PersonDetailUiEvent.OnSelectAllEncounters)
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isSelectionMode)
+        assertEquals(allIds, state.selectedEncounterIds)
+    }
+
+    @Test
+    fun onConfirmDeleteSelected_deletesEncountersAndReconcilesContact() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val initialEncounters = viewModel.uiState.value.encounters
+        val toDelete = initialEncounters.first()
+
+        viewModel.onEvent(PersonDetailUiEvent.OnEncounterLongClick(toDelete.id))
+        viewModel.onEvent(PersonDetailUiEvent.OnRequestDeleteSelected)
+        assertTrue(viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnConfirmDeleteSelected)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(!state.isSelectionMode)
+        assertTrue(!state.isDeleteConfirmationVisible)
+        assertTrue(state.selectedEncounterIds.isEmpty())
+        assertNotNull(state.userMessage)
+        assertTrue(state.userMessage!!.contains("Deleted 1 encounter"))
+        assertTrue(state.encounters.none { it.id == toDelete.id })
+    }
 }

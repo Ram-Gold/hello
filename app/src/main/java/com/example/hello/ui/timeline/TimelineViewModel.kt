@@ -45,9 +45,12 @@ class TimelineViewModel(
                     )
                 }.collect { (futureNodes, pastNodes) ->
                     _uiState.update { state ->
+                        val allNodeIds = (futureNodes.map { it.id } + pastNodes.map { it.id }).toSet()
+                        val prunedSelected = state.selectedNodeIds.filter { it in allNodeIds }.toSet()
                         state.copy(
                             futureNodes = futureNodes,
                             pastNodes = pastNodes,
+                            selectedNodeIds = prunedSelected,
                             todayLabel = formatTodayDividerLabel(LocalDate.now())
                         )
                     }
@@ -95,7 +98,102 @@ class TimelineViewModel(
             is TimelineUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }
             }
+            is TimelineUiEvent.OnNodeLongClick -> {
+                _uiState.update { state ->
+                    val selectable = getSelectableNodeIds(state)
+                    if (event.nodeId in selectable) {
+                        state.copy(selectedNodeIds = state.selectedNodeIds + event.nodeId)
+                    } else {
+                        state
+                    }
+                }
+            }
+            is TimelineUiEvent.OnToggleSelectNode -> {
+                _uiState.update { state ->
+                    val selectable = getSelectableNodeIds(state)
+                    if (event.nodeId in selectable) {
+                        val next = if (event.nodeId in state.selectedNodeIds) {
+                            state.selectedNodeIds - event.nodeId
+                        } else {
+                            state.selectedNodeIds + event.nodeId
+                        }
+                        state.copy(selectedNodeIds = next)
+                    } else {
+                        state
+                    }
+                }
+            }
+            is TimelineUiEvent.OnClearSelection -> {
+                _uiState.update { it.copy(selectedNodeIds = emptySet(), isDeleteConfirmationVisible = false) }
+            }
+            is TimelineUiEvent.OnSelectAllVisibleNodes -> {
+                _uiState.update { state ->
+                    val visibleSelectable = getVisibleSelectableNodeIds(state)
+                    state.copy(selectedNodeIds = visibleSelectable)
+                }
+            }
+            is TimelineUiEvent.OnRequestDeleteSelected -> {
+                if (_uiState.value.selectedNodeIds.isNotEmpty()) {
+                    _uiState.update { it.copy(isDeleteConfirmationVisible = true) }
+                }
+            }
+            is TimelineUiEvent.OnDismissDeleteDialog -> {
+                _uiState.update { it.copy(isDeleteConfirmationVisible = false) }
+            }
+            is TimelineUiEvent.OnConfirmDeleteSelected -> {
+                val state = _uiState.value
+                val selected = state.selectedNodeIds
+                if (selected.isEmpty()) return
+
+                val encounterIds = state.pastNodes.map { it.id }.filter { it in selected }.toSet()
+                val followUpMap = state.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>()
+                    .associate { it.id to it.followUpId }
+                val followUpIds = followUpMap.filterKeys { it in selected }.values.toSet()
+
+                repository?.deleteEncounters(encounterIds)
+                repository?.deleteFollowUps(followUpIds)
+
+                val remainingFuture = state.futureNodes.filterNot { it.id in selected }
+                val remainingPast = state.pastNodes.filterNot { it.id in selected }
+
+                val encCount = encounterIds.size
+                val fuCount = followUpIds.size
+                val message = when {
+                    encCount > 0 && fuCount > 0 -> "Deleted $encCount encounter${if (encCount > 1) "s" else ""} and $fuCount follow-up${if (fuCount > 1) "s" else ""}"
+                    encCount > 0 -> "Deleted $encCount encounter${if (encCount > 1) "s" else ""}"
+                    fuCount > 0 -> "Deleted $fuCount follow-up${if (fuCount > 1) "s" else ""}"
+                    else -> "Deleted selected items"
+                }
+
+                _uiState.update { current ->
+                    current.copy(
+                        futureNodes = if (repository != null) current.futureNodes else remainingFuture,
+                        pastNodes = if (repository != null) current.pastNodes else remainingPast,
+                        selectedNodeIds = emptySet(),
+                        isDeleteConfirmationVisible = false,
+                        userMessage = message
+                    )
+                }
+            }
         }
+    }
+
+    private fun getSelectableNodeIds(state: TimelineUiState): Set<String> {
+        val encounters = state.pastNodes.map { it.id }
+        val followUps = state.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>().map { it.id }
+        return (encounters + followUps).toSet()
+    }
+
+    private fun getVisibleSelectableNodeIds(state: TimelineUiState): Set<String> {
+        val pastIds = if (state.selectedFilter == TimelineFilter.ALL || state.selectedFilter == TimelineFilter.PAST) {
+            state.pastNodes.map { it.id }
+        } else emptyList()
+
+        val futureIds = if (state.selectedFilter == TimelineFilter.ALL || state.selectedFilter == TimelineFilter.FUTURE) {
+            state.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>().map { it.id }
+        } else emptyList()
+
+        return (pastIds + futureIds).toSet()
     }
 
     companion object {

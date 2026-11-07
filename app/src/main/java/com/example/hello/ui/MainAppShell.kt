@@ -216,9 +216,15 @@ fun MainAppShell(
     }
     val activeTab = selectedRootTab
 
-    val isSelectionMode by remember(contactsViewModel) {
+    val isContactsSelectionMode by remember(contactsViewModel) {
         contactsViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
     }.collectAsState(initial = false)
+
+    val isTimelineSelectionMode by remember(timelineViewModel) {
+        timelineViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
+    }.collectAsState(initial = false)
+
+    val isSelectionMode = isContactsSelectionMode || isTimelineSelectionMode
 
     // Hide floating dock on non-root destinations or selection mode using pure GPU translation (matches PixelPlayer)
     val shouldHideDock by remember(currentRoute, isSelectionMode) {

@@ -59,6 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.example.hello.ui.components.ClearTextTrailingIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -211,6 +212,13 @@ fun PersonEditScreen(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.name,
+                        onClear = { onEvent(PersonEditUiEvent.OnNameChange("")) },
+                        contentDescription = "Clear full name"
+                    )
+                },
                 singleLine = true,
                 isError = uiState.name.isBlank(),
                 shape = RoundedCornerShape(16.dp),
@@ -238,6 +246,13 @@ fun PersonEditScreen(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.role,
+                        onClear = { onEvent(PersonEditUiEvent.OnRoleChange("")) },
+                        contentDescription = "Clear role"
+                    )
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -253,6 +268,13 @@ fun PersonEditScreen(
                         imageVector = Icons.Rounded.Business,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.company,
+                        onClear = { onEvent(PersonEditUiEvent.OnCompanyChange("")) },
+                        contentDescription = "Clear company"
                     )
                 },
                 singleLine = true,
@@ -275,6 +297,13 @@ fun PersonEditScreen(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.birthday?.toString().orEmpty(),
+                        onClear = { onEvent(PersonEditUiEvent.OnBirthdayChange(null)) },
+                        contentDescription = "Clear birthday"
+                    )
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -290,6 +319,13 @@ fun PersonEditScreen(
                         imageVector = Icons.Rounded.Phone,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.phone,
+                        onClear = { onEvent(PersonEditUiEvent.OnPhoneChange("")) },
+                        contentDescription = "Clear phone number"
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -310,6 +346,13 @@ fun PersonEditScreen(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.email,
+                        onClear = { onEvent(PersonEditUiEvent.OnEmailChange("")) },
+                        contentDescription = "Clear email address"
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
@@ -321,6 +364,13 @@ fun PersonEditScreen(
                 value = uiState.notes,
                 onValueChange = { onEvent(PersonEditUiEvent.OnNotesChange(it)) },
                 label = { Text("Relationship Notes & Context") },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = uiState.notes,
+                        onClear = { onEvent(PersonEditUiEvent.OnNotesChange("")) },
+                        contentDescription = "Clear notes"
+                    )
+                },
                 minLines = 3,
                 maxLines = 6,
                 shape = RoundedCornerShape(16.dp),
@@ -432,6 +482,13 @@ fun PersonEditScreen(
                     value = newTagName,
                     onValueChange = { newTagName = it },
                     label = { Text("Tag Name") },
+                    trailingIcon = {
+                        ClearTextTrailingIcon(
+                            value = newTagName,
+                            onClear = { newTagName = "" },
+                            contentDescription = "Clear tag name"
+                        )
+                    },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -603,6 +660,13 @@ private fun AliasesChipManager(
                 value = aliasInput,
                 onValueChange = onInputChange,
                 placeholder = { Text("Add a nickname (e.g. S-Lin)") },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = aliasInput,
+                        onClear = { onInputChange("") },
+                        contentDescription = "Clear nickname input"
+                    )
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -744,6 +808,13 @@ private fun CadenceIntervalSelector(
                 value = customInput,
                 onValueChange = onCustomChange,
                 label = { Text("Custom Cadence (days)") },
+                trailingIcon = {
+                    ClearTextTrailingIcon(
+                        value = customInput,
+                        onClear = { onCustomChange("") },
+                        contentDescription = "Clear custom cadence"
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),

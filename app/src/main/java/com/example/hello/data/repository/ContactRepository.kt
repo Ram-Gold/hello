@@ -851,6 +851,109 @@ class ContactRepository(
         return encounter
     }
 
+    fun deleteEncounters(encounterIds: Set<String>) {
+        if (encounterIds.isEmpty()) return
+        val encountersToDelete = _encounters.value.filter { it.id in encounterIds }
+        if (encountersToDelete.isEmpty()) return
+
+        val affectedContactIds = encountersToDelete.map { it.contactId }.distinct()
+
+        // 1. Update in-memory encounters
+        _encounters.update { list -> list.filterNot { it.id in encounterIds } }
+
+        // 2. Reconcile affected contacts
+        val remainingEncountersByContact = _encounters.value.groupBy { it.contactId }
+        val zoneId = ZoneId.systemDefault()
+
+        for (contactId in affectedContactIds) {
+            val contactEncounters = remainingEncountersByContact[contactId].orEmpty()
+                .sortedByDescending { it.occurredAt }
+            val newMeetCount = contactEncounters.size
+            val latest = contactEncounters.firstOrNull()
+            val newLastEncounterText = latest?.let {
+                formatEncounterDateText(it.occurredAt.atZone(zoneId).toLocalDate())
+            } ?: ""
+            val newLastMetAt = latest?.occurredAt
+
+            _fullContacts.update { map ->
+                val existing = map[contactId] ?: return@update map
+                map + (contactId to existing.copy(
+                    meetCount = newMeetCount,
+                    lastMetAt = newLastMetAt
+                ))
+            }
+
+            _contacts.update { list ->
+                list.map { c ->
+                    if (c.id == contactId) {
+                        c.copy(
+                            lastEncounterText = newLastEncounterText.ifBlank { null }
+                        )
+                    } else {
+                        c
+                    }
+                }
+            }
+
+            _recentContacts.update { list ->
+                list.map { c ->
+                    if (c.id == contactId) {
+                        c.copy(
+                            lastEncounterText = newLastEncounterText.ifBlank { null }
+                        )
+                    } else {
+                        c
+                    }
+                }
+            }
+        }
+
+        // 3. Database persistence
+        val db = database
+        if (db != null) {
+            coroutineScope.launch {
+                db.withTransactionSafe {
+                    encounterIds.forEach { encounterId ->
+                        db.encounterDao().deleteEncounterById(encounterId)
+                    }
+                    for (contactId in affectedContactIds) {
+                        val contactEncounters = remainingEncountersByContact[contactId].orEmpty()
+                            .sortedByDescending { it.occurredAt }
+                        val newMeetCount = contactEncounters.size
+                        val latest = contactEncounters.firstOrNull()
+                        val existingEntity = db.contactDao().getContactById(contactId)
+                        if (existingEntity != null) {
+                            db.contactDao().updateContact(
+                                existingEntity.copy(
+                                    meetCount = newMeetCount,
+                                    lastMetAt = latest?.occurredAt
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun deleteFollowUps(followUpIds: Set<String>) {
+        if (followUpIds.isEmpty()) return
+        _upcomingAlerts.update { alerts -> alerts.filterNot { it.id in followUpIds } }
+        _followUps.update { followUps -> followUps.filterNot { it.id in followUpIds } }
+        followUpIds.forEach { alertId ->
+            alarmScheduler?.cancelAlarm(alertId)
+        }
+
+        val db = database
+        if (db != null) {
+            coroutineScope.launch {
+                followUpIds.forEach { followUpId ->
+                    db.followUpDao().deleteFollowUpById(followUpId)
+                }
+            }
+        }
+    }
+
     fun markFollowUpDone(alertId: String) {
         _upcomingAlerts.update { alerts -> alerts.filterNot { it.id == alertId } }
         _followUps.update { followUps -> followUps.filterNot { it.id == alertId } }

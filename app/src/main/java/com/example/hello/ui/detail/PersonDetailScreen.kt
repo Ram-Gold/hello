@@ -1,6 +1,12 @@
 package com.example.hello.ui.detail
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,21 +15,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +60,7 @@ import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
 import com.example.hello.ui.detail.components.PropertiesPanel
 import com.example.hello.ui.theme.HelloTheme
+import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +76,10 @@ fun PersonDetailScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    BackHandler(enabled = uiState.isSelectionMode) {
+        onEvent(PersonDetailUiEvent.OnClearSelection)
+    }
+
     LaunchedEffect(uiState.userMessage) {
         uiState.userMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -72,39 +94,72 @@ fun PersonDetailScreen(
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MediumTopAppBar(
-                title = {
-                    Text(
-                        text = contactName,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold
+            if (uiState.isSelectionMode) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${uiState.selectedEncounterIds.size} selected",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    actions = {
+                        FilledIconButton(
+                            onClick = { onEvent(PersonDetailUiEvent.OnClearSelection) },
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Cancel selection",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.Edit,
-                            contentDescription = "Edit Contact",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
-            )
+            } else {
+                MediumTopAppBar(
+                    title = {
+                        Text(
+                            text = contactName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onEditClick) {
+                            Icon(
+                                imageVector = Icons.Rounded.Edit,
+                                contentDescription = "Edit Contact",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
@@ -119,38 +174,104 @@ fun PersonDetailScreen(
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
-            LazyColumn(
-                state = listState,
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                item(key = "header") {
-                    DetailCollapsingHeader(
-                        contact = uiState.contact,
-                        summary = uiState.contactSummary
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    item(key = "header") {
+                        DetailCollapsingHeader(
+                            contact = uiState.contact,
+                            summary = uiState.contactSummary
+                        )
+                    }
+
+                    item(key = "properties") {
+                        PropertiesPanel(
+                            contact = uiState.contact,
+                            cadenceStatus = uiState.cadenceStatus,
+                            allTags = uiState.tagsList
+                        )
+                    }
+
+                    item(key = "timeline") {
+                        LivingTimeline(
+                            encounters = uiState.encounters,
+                            placesMap = uiState.placesMap,
+                            onLogEncounterClick = onLogEncounterClick,
+                            birthday = uiState.contact?.birthday,
+                            selectedEncounterIds = uiState.selectedEncounterIds,
+                            isSelectionMode = uiState.isSelectionMode,
+                            onEncounterClick = { onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(it)) },
+                            onEncounterLongClick = { onEvent(PersonDetailUiEvent.OnEncounterLongClick(it)) }
+                        )
+                    }
+
+                    item(key = "bottom_spacer") {
+                        Spacer(modifier = Modifier.height(48.dp))
+                    }
+                }
+
+                // Floating Action Tray on the right edge
+                AnimatedVisibility(
+                    visible = uiState.isSelectionMode,
+                    enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+                    exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                ) {
+                    TimelineSelectionActionTray(
+                        onDeleteClick = { onEvent(PersonDetailUiEvent.OnRequestDeleteSelected) },
+                        onSelectAllClick = { onEvent(PersonDetailUiEvent.OnSelectAllEncounters) }
                     )
                 }
 
-                item(key = "properties") {
-                    PropertiesPanel(
-                        contact = uiState.contact,
-                        cadenceStatus = uiState.cadenceStatus,
-                        allTags = uiState.tagsList
+                // Batch Deletion Confirmation Dialog
+                if (uiState.isDeleteConfirmationVisible) {
+                    val count = uiState.selectedEncounterIds.size
+                    AlertDialog(
+                        onDismissRequest = { onEvent(PersonDetailUiEvent.OnDismissDeleteDialog) },
+                        title = {
+                            Text(
+                                text = "Delete $count encounter${if (count > 1) "s" else ""}?",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "These records will be permanently removed from this contact's history.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = { onEvent(PersonDetailUiEvent.OnConfirmDeleteSelected) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                               ),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text("Delete")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { onEvent(PersonDetailUiEvent.OnDismissDeleteDialog) },
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text("Cancel")
+                            }
+                        },
+                        shape = RoundedCornerShape(24.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
-                }
-
-                item(key = "timeline") {
-                    LivingTimeline(
-                        encounters = uiState.encounters,
-                        placesMap = uiState.placesMap,
-                        onLogEncounterClick = onLogEncounterClick,
-                        birthday = uiState.contact?.birthday
-                    )
-                }
-
-                item(key = "bottom_spacer") {
-                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }

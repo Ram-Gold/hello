@@ -59,6 +59,8 @@ class PersonDetailViewModel(
             val summary = repository.contacts.value.firstOrNull { it.id == contactId }
 
             _uiState.update { current ->
+                val allEncounterIds = encounters.map { it.id }.toSet()
+                val prunedSelected = current.selectedEncounterIds.filter { it in allEncounterIds }.toSet()
                 current.copy(
                     contact = contact,
                     contactSummary = summary,
@@ -66,6 +68,7 @@ class PersonDetailViewModel(
                     placesMap = placesMap,
                     tagsList = tags,
                     cadenceStatus = cadenceStatus,
+                    selectedEncounterIds = prunedSelected,
                     isLoading = false
                 )
             }
@@ -94,6 +97,60 @@ class PersonDetailViewModel(
             }
             PersonDetailUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }
+            }
+            is PersonDetailUiEvent.OnEncounterLongClick -> {
+                _uiState.update { state ->
+                    if (state.encounters.any { it.id == event.encounterId }) {
+                        state.copy(selectedEncounterIds = state.selectedEncounterIds + event.encounterId)
+                    } else {
+                        state
+                    }
+                }
+            }
+            is PersonDetailUiEvent.OnToggleSelectEncounter -> {
+                _uiState.update { state ->
+                    if (state.encounters.any { it.id == event.encounterId }) {
+                        val next = if (event.encounterId in state.selectedEncounterIds) {
+                            state.selectedEncounterIds - event.encounterId
+                        } else {
+                            state.selectedEncounterIds + event.encounterId
+                        }
+                        state.copy(selectedEncounterIds = next)
+                    } else {
+                        state
+                    }
+                }
+            }
+            PersonDetailUiEvent.OnClearSelection -> {
+                _uiState.update { it.copy(selectedEncounterIds = emptySet(), isDeleteConfirmationVisible = false) }
+            }
+            PersonDetailUiEvent.OnSelectAllEncounters -> {
+                _uiState.update { state ->
+                    state.copy(selectedEncounterIds = state.encounters.map { it.id }.toSet())
+                }
+            }
+            PersonDetailUiEvent.OnRequestDeleteSelected -> {
+                if (_uiState.value.selectedEncounterIds.isNotEmpty()) {
+                    _uiState.update { it.copy(isDeleteConfirmationVisible = true) }
+                }
+            }
+            PersonDetailUiEvent.OnDismissDeleteDialog -> {
+                _uiState.update { it.copy(isDeleteConfirmationVisible = false) }
+            }
+            PersonDetailUiEvent.OnConfirmDeleteSelected -> {
+                val toDelete = _uiState.value.selectedEncounterIds
+                if (toDelete.isNotEmpty()) {
+                    repository.deleteEncounters(toDelete)
+                    val count = toDelete.size
+                    val message = "Deleted $count encounter${if (count > 1) "s" else ""}"
+                    _uiState.update {
+                        it.copy(
+                            selectedEncounterIds = emptySet(),
+                            isDeleteConfirmationVisible = false,
+                            userMessage = message
+                        )
+                    }
+                }
             }
         }
     }
