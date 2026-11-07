@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.mock.MockDataProvider
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
@@ -170,7 +169,6 @@ fun PersonDetailScreenPreview() {
                     id = sample.id,
                     name = sample.name,
                     contextSubtitle = "Staff Engineer",
-                    circles = sample.circles,
                     avatarInitials = "SL",
                     avatarBgIndex = 1
                 ),

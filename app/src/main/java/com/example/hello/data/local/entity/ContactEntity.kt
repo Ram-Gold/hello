@@ -2,7 +2,6 @@ package com.example.hello.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import java.time.Instant
 import java.time.LocalDate
@@ -22,7 +21,6 @@ data class ContactEntity(
     val birthday: LocalDate? = null,
     val phone: String? = null,
     val email: String? = null,
-    val circles: List<Circle> = emptyList(),
     val tagIds: List<String> = emptyList(),
     val notes: String = "",
     val photoUri: String? = null,
@@ -43,7 +41,6 @@ fun Contact.toEntity(): ContactEntity = ContactEntity(
     birthday = birthday,
     phone = phone,
     email = email,
-    circles = circles,
     tagIds = tagIds,
     notes = notes,
     photoUri = photoUri,
@@ -64,7 +61,6 @@ fun ContactEntity.toDomain(): Contact = Contact(
     birthday = birthday,
     phone = phone,
     email = email,
-    circles = circles,
     tagIds = tagIds,
     notes = notes,
     photoUri = photoUri,

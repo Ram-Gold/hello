@@ -13,13 +13,71 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.example.hello.data.preferences.ThemeStyle
 
-private val DarkColorScheme = darkColorScheme(
+// Minimalist Monochrome ColorScheme (Default - .agents/design.md)
+val MonochromeLightColorScheme = lightColorScheme(
+    primary = PalettePrimary,
+    onPrimary = Color.White,
+    primaryContainer = PaletteAccent,
+    onPrimaryContainer = Color.White,
+    secondary = PaletteAccent,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFF1F5F9),
+    onSecondaryContainer = PaletteForeground,
+    tertiary = PaletteForegroundMuted,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFE2E8F0),
+    onTertiaryContainer = PaletteForeground,
+    background = PaletteBackground,
+    onBackground = PaletteForeground,
+    surface = PaletteBackground,
+    onSurface = PaletteForeground,
+    surfaceVariant = PaletteBackground,
+    onSurfaceVariant = PaletteForegroundMuted,
+    outline = PaletteBorder,
+    outlineVariant = PaletteBorder,
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF8FAFC),
+    surfaceContainer = Color(0xFFF1F5F9),
+    surfaceContainerHigh = Color(0xFFE2E8F0),
+    surfaceContainerHighest = Color(0xFFCBD5E1)
+)
+
+val MonochromeDarkColorScheme = darkColorScheme(
+    primary = DarkPalettePrimary,
+    onPrimary = DarkPalettePrimaryOn,
+    primaryContainer = DarkPaletteAccent,
+    onPrimaryContainer = Color.White,
+    secondary = DarkPaletteAccent,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFF27272A),
+    onSecondaryContainer = DarkPaletteForeground,
+    tertiary = DarkPaletteForegroundMuted,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF3F3F46),
+    onTertiaryContainer = DarkPaletteForeground,
+    background = DarkPaletteBackground,
+    onBackground = DarkPaletteForeground,
+    surface = DarkPaletteSurface,
+    onSurface = DarkPaletteForeground,
+    surfaceVariant = DarkPaletteSurfaceVariant,
+    onSurfaceVariant = DarkPaletteForegroundMuted,
+    outline = DarkPaletteBorder,
+    outlineVariant = DarkPaletteBorder,
+    surfaceContainerLowest = Color(0xFF09090B),
+    surfaceContainerLow = Color(0xFF141416),
+    surfaceContainer = Color(0xFF1E1E22),
+    surfaceContainerHigh = Color(0xFF27272A),
+    surfaceContainerHighest = Color(0xFF3F3F46)
+)
+
+// Warm Earth Schemes (Previous Theme)
+val DarkColorScheme = darkColorScheme(
     primary = BurntOrangePrimary,
     onPrimary = BurntOrangeOnPrimary,
     primaryContainer = BurntOrangeContainer,
@@ -47,7 +105,7 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = DarkSurfaceContainerHighest
 )
 
-private val LightColorScheme = lightColorScheme(
+val LightColorScheme = lightColorScheme(
     primary = WarmTerracottaPrimary,
     onPrimary = WarmTerracottaOnPrimary,
     primaryContainer = WarmTerracottaContainer,
@@ -75,7 +133,16 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerHighest = WarmSurfaceContainerHighest
 )
 
-// MD3 Expressive organic shapes for Hello
+// Design Shapes (8dp rounded-md per .agents/design.md)
+val DesignShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(6.dp),
+    medium = RoundedCornerShape(8.dp),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(16.dp)
+)
+
+// MD3 Expressive organic shapes for Hello (Warm Earth)
 val HelloShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
@@ -87,8 +154,8 @@ val HelloShapes = Shapes(
 @Composable
 fun HelloTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Preserve custom warm branding by default, allow dynamic color opt-in
     dynamicColor: Boolean = false,
+    themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -96,9 +163,16 @@ fun HelloTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        themeStyle == ThemeStyle.WARM_EARTH -> {
+            if (darkTheme) DarkColorScheme else LightColorScheme
+        }
+        else -> {
+            if (darkTheme) MonochromeDarkColorScheme else MonochromeLightColorScheme
+        }
     }
+
+    val typography = if (themeStyle == ThemeStyle.WARM_EARTH) Typography else DesignTypography
+    val shapes = if (themeStyle == ThemeStyle.WARM_EARTH) HelloShapes else DesignShapes
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -113,8 +187,8 @@ fun HelloTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
-        shapes = HelloShapes,
+        typography = typography,
+        shapes = shapes,
         content = content
     )
 }

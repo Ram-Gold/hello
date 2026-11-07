@@ -60,7 +60,8 @@ class CaptureFlowRepositoryTest {
             listOf(
                 CaptureComponentType.NAME,
                 CaptureComponentType.ROLE,
-                CaptureComponentType.COMPANY,
+                CaptureComponentType.PHONE,
+                CaptureComponentType.EMAIL,
                 CaptureComponentType.PLACE,
                 CaptureComponentType.NOTE
             ),
@@ -83,11 +84,12 @@ class CaptureFlowRepositoryTest {
         val active = presetWithDisabledRole.activeComponents
 
         assertFalse(active.any { it.type == CaptureComponentType.ROLE })
-        assertEquals(4, active.size)
+        assertEquals(5, active.size)
         assertEquals(CaptureComponentType.NAME, active[0].type)
-        assertEquals(CaptureComponentType.COMPANY, active[1].type)
-        assertEquals(CaptureComponentType.PLACE, active[2].type)
-        assertEquals(CaptureComponentType.NOTE, active[3].type)
+        assertEquals(CaptureComponentType.PHONE, active[1].type)
+        assertEquals(CaptureComponentType.EMAIL, active[2].type)
+        assertEquals(CaptureComponentType.PLACE, active[3].type)
+        assertEquals(CaptureComponentType.NOTE, active[4].type)
     }
 
     @Test
@@ -114,9 +116,13 @@ class CaptureFlowRepositoryTest {
 
         repository.resetPresetToDefault(defaultPreset.id)
         val resetPreset = repository.presets.value.first { it.id == defaultPreset.id }
-        assertEquals(5, resetPreset.components.size)
+        assertEquals(6, resetPreset.components.size)
         assertEquals(CaptureComponentType.NAME, resetPreset.components[0].type)
         assertEquals(CaptureComponentType.ROLE, resetPreset.components[1].type)
+        assertEquals(CaptureComponentType.PHONE, resetPreset.components[2].type)
+        assertEquals(CaptureComponentType.EMAIL, resetPreset.components[3].type)
+        assertEquals(CaptureComponentType.PLACE, resetPreset.components[4].type)
+        assertEquals(CaptureComponentType.NOTE, resetPreset.components[5].type)
     }
 
     @Test

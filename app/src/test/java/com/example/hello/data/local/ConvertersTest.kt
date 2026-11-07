@@ -1,6 +1,5 @@
 package com.example.hello.data.local
 
-import com.example.hello.domain.model.Circle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -44,23 +43,6 @@ class ConvertersTest {
         assertNull(converters.toUuidString(null))
         assertNull(converters.fromUuidString(null))
         assertNull(converters.fromUuidString("invalid-uuid"))
-    }
-
-    @Test
-    fun circleList_roundtrip_preservesCircles() {
-        val circles = listOf(Circle.WORK, Circle.FRIENDS)
-        val serialized = converters.toCircleListString(circles)
-        val roundtrip = converters.fromCircleListString(serialized)
-
-        assertEquals(circles, roundtrip)
-    }
-
-    @Test
-    fun circleList_handlesEmptyAndNull() {
-        assertEquals(emptyList<Circle>(), converters.fromCircleListString(null))
-        assertEquals(emptyList<Circle>(), converters.fromCircleListString(""))
-        assertEquals("", converters.toCircleListString(emptyList()))
-        assertNull(converters.toCircleListString(null as List<Circle>?))
     }
 
     @Test

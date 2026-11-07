@@ -1,7 +1,6 @@
 package com.example.hello.ui.edit
 
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

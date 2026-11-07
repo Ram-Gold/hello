@@ -43,7 +43,6 @@ object ExportBundleGenerator {
                 append("    \"role\": ${quoteJson(c.role)},\n")
                 append("    \"company\": ${quoteJson(c.company)},\n")
                 append("    \"birthday\": ${quoteJson(c.birthday?.toString())},\n")
-                append("    \"circles\": [${c.circles.joinToString(", ") { quoteJson(it.name) }}],\n")
                 append("    \"tagIds\": [${c.tagIds.joinToString(", ") { quoteJson(it) }}],\n")
                 append("    \"phone\": ${quoteJson(c.phone)},\n")
                 append("    \"email\": ${quoteJson(c.email)},\n")
@@ -164,7 +163,6 @@ object ExportBundleGenerator {
                 if (contact.birthday != null) {
                     append("birthday: \"${contact.birthday}\"\n")
                 }
-                append("circles: [${contact.circles.joinToString(", ") { "\"${it.displayName}\"" }}]\n")
                 if (resolvedTags.isNotEmpty()) {
                     append("tags: [${resolvedTags.joinToString(", ") { "\"$it\"" }}]\n")
                 }
@@ -229,12 +227,10 @@ object ExportBundleGenerator {
 
         // contacts.csv
         files["contacts.csv"] = buildString {
-            append("id,name,circles,phone,email,notes,meet_count,last_met_at,role,company,birthday\n")
+            append("id,name,phone,email,notes,meet_count,last_met_at,role,company,birthday\n")
             contacts.forEach { c ->
-                val circlesStr = c.circles.joinToString(";") { it.name }
                 append("${escapeCsv(c.id)},")
                 append("${escapeCsv(c.name)},")
-                append("${escapeCsv(circlesStr)},")
                 append("${escapeCsv(c.phone.orEmpty())},")
                 append("${escapeCsv(c.email.orEmpty())},")
                 append("${escapeCsv(c.notes)},")

@@ -17,6 +17,10 @@ data object HomeRoute {
     const val ROUTE_NAME = "home"
 }
 
+data object TimelineRoute {
+    const val ROUTE_NAME = "timeline"
+}
+
 data object PeopleRoute {
     const val ROUTE_NAME = "people"
 }
@@ -70,11 +74,12 @@ data object PersonEditRoute {
 }
 
 /**
- * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute] or [PeopleRoute]).
+ * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute], [TimelineRoute], or [PeopleRoute]).
  * Matches PixelPlayer's `MainRootRoutes.kt`.
  */
 fun isMainRootRoute(route: String?): Boolean = when (route) {
     HomeRoute.ROUTE_NAME,
+    TimelineRoute.ROUTE_NAME,
     PeopleRoute.ROUTE_NAME -> true
     else -> false
 }
@@ -86,6 +91,7 @@ fun isMainRootRoute(route: String?): Boolean = when (route) {
 fun mainRootRouteIndex(route: String?): Int? = when (route) {
     HomeRoute.ROUTE_NAME -> 0
     PeopleRoute.ROUTE_NAME -> 1
+    TimelineRoute.ROUTE_NAME -> 2
     else -> null
 }
 

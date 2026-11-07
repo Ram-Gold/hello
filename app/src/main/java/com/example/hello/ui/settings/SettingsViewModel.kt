@@ -205,7 +205,6 @@ class SettingsViewModel(
                     contactRepository.contacts.value.forEach { c ->
                         appendLine("## ${c.name}")
                         appendLine("- Context: ${c.contextSubtitle}")
-                        appendLine("- Circles: ${c.circles.joinToString { it.displayName }}")
                         appendLine()
                     }
                 }

@@ -1,7 +1,6 @@
 package com.example.hello.data.local
 
 import androidx.room.TypeConverter
-import com.example.hello.domain.model.Circle
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.UUID
@@ -42,23 +41,7 @@ class Converters {
         return uuid?.toString()
     }
 
-    @TypeConverter
-    fun fromCircleListString(value: String?): List<Circle> {
-        if (value.isNullOrBlank()) return emptyList()
-        return value.split(",").mapNotNull { name ->
-            try {
-                Circle.valueOf(name.trim())
-            } catch (e: IllegalArgumentException) {
-                null
-            }
-        }
-    }
 
-    @TypeConverter
-    fun toCircleListString(circles: List<Circle>?): String? {
-        if (circles == null) return null
-        return circles.joinToString(",") { it.name }
-    }
 
     @TypeConverter
     fun fromStringList(value: String?): List<String> {

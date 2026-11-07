@@ -40,7 +40,6 @@ class PersonEditViewModel(
                         email = contact.email.orEmpty(),
                         notes = contact.notes,
                         photoUri = contact.photoUri,
-                        selectedCircles = contact.circles.toSet(),
                         selectedTagIds = contact.tagIds.toSet(),
                         availableTags = tags,
                         customProperties = contact.customProperties,
@@ -159,20 +158,6 @@ class PersonEditViewModel(
                     )
                 }
             }
-            is PersonEditUiEvent.OnToggleCircle -> {
-                _uiState.update { current ->
-                    val updated = if (event.circle in current.selectedCircles) {
-                        current.selectedCircles - event.circle
-                    } else {
-                        current.selectedCircles + event.circle
-                    }
-                    val isMod = checkModified(current.copy(selectedCircles = updated))
-                    current.copy(
-                        selectedCircles = updated,
-                        isModified = isMod
-                    )
-                }
-            }
             is PersonEditUiEvent.OnToggleTag -> {
                 _uiState.update { current ->
                     val updated = if (event.tagId in current.selectedTagIds) {
@@ -277,14 +262,13 @@ class PersonEditViewModel(
         val sameEmail = current.email.trim() == (base.email ?: "").trim()
         val sameNotes = current.notes.trim() == base.notes.trim()
         val samePhoto = current.photoUri == base.photoUri
-        val sameCircles = current.selectedCircles == base.circles.toSet()
         val sameTags = current.selectedTagIds == base.tagIds.toSet()
         val sameCadence = current.cadenceDays == base.cadenceDays
         val sameRole = current.role.trim() == base.role.orEmpty()
         val sameCompany = current.company.trim() == base.company.orEmpty()
         val sameBirthday = current.birthday == base.birthday
 
-        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameCircles && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
+        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
     }
 
     private fun saveChanges() {
@@ -302,7 +286,6 @@ class PersonEditViewModel(
             birthday = current.birthday,
             phone = current.phone.trim().ifEmpty { null },
             email = current.email.trim().ifEmpty { null },
-            circles = current.selectedCircles.toList(),
             tagIds = current.selectedTagIds.toList(),
             notes = current.notes.trim(),
             photoUri = current.photoUri,

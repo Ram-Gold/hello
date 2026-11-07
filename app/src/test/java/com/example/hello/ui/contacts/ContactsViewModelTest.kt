@@ -1,6 +1,5 @@
 package com.example.hello.ui.contacts
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,7 +36,6 @@ class ContactsViewModelTest {
         val state = viewModel.uiState.value
 
         assertEquals("", state.searchQuery)
-        assertNull(state.selectedCircle)
         assertEquals(ContactSortMode.ALPHABETICAL, state.sortMode)
         assertTrue(state.contacts.isNotEmpty())
         assertEquals(state.contacts.size, state.totalCount)
@@ -62,27 +60,8 @@ class ContactsViewModelTest {
     }
 
     @Test
-    fun selectCircle_filtersByCircleCategory() {
-        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
-
-        val state = viewModel.uiState.value
-        assertTrue(state.contacts.isNotEmpty())
-        assertTrue(state.contacts.all { Circle.WORK in it.circles })
-    }
-
-    @Test
-    fun searchAndCircle_combinesFiltering() {
-        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
-        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("David"))
-
-        val state = viewModel.uiState.value
-        assertEquals(1, state.contacts.size)
-        assertEquals("David Kim", state.contacts.first().name)
-    }
-
-    @Test
     fun clearFilters_resetsState() {
-        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
         viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("NonExistent"))
         assertEquals(0, viewModel.uiState.value.contacts.size)
 
@@ -90,7 +69,7 @@ class ContactsViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("", state.searchQuery)
-        assertNull(state.selectedCircle)
+        assertNull(state.selectedTag)
         assertTrue(state.contacts.size > 1)
     }
 
@@ -144,36 +123,26 @@ class ContactsViewModelTest {
     }
 
     @Test
-    fun onSelectTag_filtersByLifeSphereAndTopicTags_andClearsCleanly() {
-        // Filter by life sphere #friends
-        viewModel.onEvent(ContactsUiEvent.OnSelectTag("#friends"))
-        val friendsState = viewModel.uiState.value
-        assertEquals("friends", friendsState.selectedTag)
-        assertEquals(Circle.FRIENDS, friendsState.selectedCircle)
-        assertTrue(friendsState.contacts.isNotEmpty())
-        assertTrue(friendsState.contacts.all { Circle.FRIENDS in it.circles })
-
+    fun onSelectTag_filtersByTopicTags_andClearsCleanly() {
         // Filter by topic tag #design
         viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
         val designState = viewModel.uiState.value
         assertEquals("design", designState.selectedTag)
-        assertNull(designState.selectedCircle)
         assertEquals(4, designState.contacts.size)
         assertTrue(designState.contacts.all { c -> c.tags.any { it.name.equals("design", ignoreCase = true) } })
 
-        // Clear filters resets both selectedTag and selectedCircle
+        // Clear filters resets selectedTag
         viewModel.onEvent(ContactsUiEvent.OnClearFilters)
         assertNull(viewModel.uiState.value.selectedTag)
-        assertNull(viewModel.uiState.value.selectedCircle)
         assertEquals(10, viewModel.uiState.value.totalCount)
     }
 
     @Test
-    fun searchQuery_supportsHashtagSphereAndTopicQueries() {
-        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("#work"))
-        val workResults = viewModel.uiState.value.contacts
-        assertTrue(workResults.isNotEmpty())
-        assertTrue(workResults.all { Circle.WORK in it.circles })
+    fun searchQuery_supportsHashtagTopicQueries() {
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("#design"))
+        val designResults = viewModel.uiState.value.contacts
+        assertTrue(designResults.isNotEmpty())
+        assertTrue(designResults.all { c -> c.tags.any { it.name.equals("design", ignoreCase = true) } })
 
         viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("#ai"))
         val aiResults = viewModel.uiState.value.contacts
@@ -262,11 +231,11 @@ class ContactsViewModelTest {
         viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(elena.id))
         assertEquals(setOf(alex.id, elena.id), viewModel.uiState.value.selectedContactIds)
 
-        // Filter by Circle.WORK - Elena is not in WORK so she must be pruned
-        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
-        val stateAfterCircle = viewModel.uiState.value
-        assertEquals(setOf(alex.id), stateAfterCircle.selectedContactIds)
-        assertTrue(stateAfterCircle.isSelectionMode)
+        // Filter by tag "design" - Elena has "craft" not "design", so she must be pruned if not matching
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
+        val stateAfterTag = viewModel.uiState.value
+        assertEquals(setOf(alex.id), stateAfterTag.selectedContactIds)
+        assertTrue(stateAfterTag.isSelectionMode)
 
         // Search for a query that matches nobody - Alex must be pruned, auto-exiting selection mode
         viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("NonExistentNameXYZ"))
@@ -291,14 +260,14 @@ class ContactsViewModelTest {
 
     @Test
     fun onSelectAllVisibleContacts_respectsActiveFilter() {
-        viewModel.onEvent(ContactsUiEvent.OnSelectCircle(Circle.WORK))
-        val workIds = viewModel.uiState.value.contacts.map { it.id }.toSet()
-        assertTrue(workIds.isNotEmpty())
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
+        val designIds = viewModel.uiState.value.contacts.map { it.id }.toSet()
+        assertTrue(designIds.isNotEmpty())
 
         viewModel.onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
 
         val state = viewModel.uiState.value
-        assertEquals(workIds, state.selectedContactIds)
+        assertEquals(designIds, state.selectedContactIds)
         assertTrue(state.isSelectionMode)
     }
 

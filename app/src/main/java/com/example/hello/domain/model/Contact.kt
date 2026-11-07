@@ -17,7 +17,6 @@ data class Contact(
     val birthday: LocalDate? = null,
     val phone: String? = null,
     val email: String? = null,
-    val circles: List<Circle> = emptyList(),
     val tagIds: List<String> = emptyList(),
     val notes: String = "",
     val photoUri: String? = null,

@@ -67,6 +67,7 @@ class NavigationTransitionTest {
     fun mainRootRoutes_identifyHomeAndPeopleCorrectly() {
         assertTrue(isMainRootRoute(HomeRoute.ROUTE_NAME))
         assertTrue(isMainRootRoute(PeopleRoute.ROUTE_NAME))
+        assertTrue(isMainRootRoute(TimelineRoute.ROUTE_NAME))
         assertFalse(isMainRootRoute(SettingsRoute.ROUTE_NAME))
         assertFalse(isMainRootRoute(PersonDetailRoute.ROUTE_PATTERN))
         assertFalse(isMainRootRoute(OnboardingRoute.ROUTE_NAME))
@@ -74,6 +75,7 @@ class NavigationTransitionTest {
 
         assertEquals(0, mainRootRouteIndex(HomeRoute.ROUTE_NAME))
         assertEquals(1, mainRootRouteIndex(PeopleRoute.ROUTE_NAME))
+        assertEquals(2, mainRootRouteIndex(TimelineRoute.ROUTE_NAME))
         assertEquals(null, mainRootRouteIndex(SettingsRoute.ROUTE_NAME))
     }
 
@@ -144,8 +146,9 @@ class NavigationTransitionTest {
     }
 
     @Test
-    fun shouldHideFloatingDock_hidesOnNonRootRoutesAndShowsOnHomeAndPeople() {
+    fun shouldHideFloatingDock_hidesOnNonRootRoutesAndShowsOnHomeTimelineAndPeople() {
         assertFalse(shouldHideFloatingDock(HomeRoute.ROUTE_NAME))
+        assertFalse(shouldHideFloatingDock(TimelineRoute.ROUTE_NAME))
         assertFalse(shouldHideFloatingDock(PeopleRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsTerminologyRoute.ROUTE_NAME))

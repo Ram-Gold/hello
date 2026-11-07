@@ -7,7 +7,6 @@ import com.example.hello.data.repository.CaptureFlowRepository
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.FlowPreset
 import com.example.hello.platform.location.LocationService
@@ -84,7 +83,7 @@ class QuickActionViewModel(
             CaptureComponentType.BIRTHDAY -> FlowAStep.BIRTHDAY
             CaptureComponentType.CUSTOM -> FlowAStep.CUSTOM
             CaptureComponentType.PLACE -> FlowAStep.PLACE
-            CaptureComponentType.CIRCLES, CaptureComponentType.TAGS -> FlowAStep.TAGS_AND_CIRCLES
+            CaptureComponentType.TAGS -> FlowAStep.TAGS
             CaptureComponentType.NOTE, CaptureComponentType.CADENCE -> FlowAStep.NOTE_AND_FOLLOW_UP
             null -> FlowAStep.NAME
         }
@@ -203,17 +202,6 @@ class QuickActionViewModel(
                         customPlaceName = event.customName,
                         selectedPlaceId = if (event.customName.isNotBlank()) null else it.selectedPlaceId
                     )
-                }
-            }
-
-            is QuickActionUiEvent.OnToggleCircle -> {
-                _uiState.update { state ->
-                    val updated = if (event.circle in state.selectedCircles) {
-                        state.selectedCircles - event.circle
-                    } else {
-                        state.selectedCircles + event.circle
-                    }
-                    state.copy(selectedCircles = updated)
                 }
             }
 
@@ -375,7 +363,6 @@ class QuickActionViewModel(
 
                 val added = repository.addContactWithInitialEncounter(
                     name = current.newContactName,
-                    circles = current.selectedCircles,
                     tagIds = current.selectedTagIds,
                     placeId = current.selectedPlaceId,
                     customPlaceName = current.customPlaceName.takeIf { it.isNotBlank() },
@@ -484,7 +471,7 @@ class QuickActionViewModel(
                         state.selectedPlaceId
                     }
                     val nextStep = if (event.granted && state.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && state.flowAStep == FlowAStep.PLACE) {
-                        FlowAStep.TAGS_AND_CIRCLES
+                        FlowAStep.TAGS
                     } else {
                         state.flowAStep
                     }
@@ -536,7 +523,6 @@ class QuickActionViewModel(
             email = "",
             selectedPlaceId = null,
             customPlaceName = "",
-            selectedCircles = emptySet(),
             selectedTagIds = emptySet(),
             customTagInput = "",
             isCustomTagInputExpanded = false,

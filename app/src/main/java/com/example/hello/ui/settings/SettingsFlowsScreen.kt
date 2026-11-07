@@ -399,7 +399,9 @@ fun SettingsFlowsScreen(
     // Dialog: Add Step Component
     if (showAddComponentDialog && editingPreset != null) {
         val existingTypes = editingPreset.components.map { it.type }.toSet()
-        val availableTypes = CaptureComponentType.entries.filter { it == CaptureComponentType.CUSTOM || it !in existingTypes }
+        val availableTypes = CaptureComponentType.entries.filter {
+            it != CaptureComponentType.CADENCE && (it == CaptureComponentType.CUSTOM || it !in existingTypes)
+        }
 
         AlertDialog(
             onDismissRequest = { showAddComponentDialog = false },

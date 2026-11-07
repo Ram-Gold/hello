@@ -77,7 +77,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
@@ -86,7 +85,6 @@ import com.example.hello.platform.portability.VCardShareHelper
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
-import com.example.hello.ui.home.components.CircleBadge
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.HelloTheme
@@ -145,7 +143,7 @@ fun ContactsScreen(
             }
 
             // 2. Smart #tag Filter Pills & Sort Toggle
-            val activeTagFilter = uiState.selectedTag ?: uiState.selectedCircle?.displayName?.lowercase()
+            val activeTagFilter = uiState.selectedTag
             AnimatedVisibility(
                 visible = !uiState.isSelectionMode,
                 enter = fadeIn(),
@@ -713,7 +711,6 @@ fun ContactsEmptyState(
 fun ContactsScreenLightPreview() {
     val sampleState = ContactsViewModel.computeState(
         searchQuery = "",
-        selectedCircle = null,
         sortMode = ContactSortMode.ALPHABETICAL,
         contacts = ContactsViewModel.createSampleContacts()
     )
@@ -730,7 +727,6 @@ fun ContactsScreenLightPreview() {
 fun ContactsScreenDarkPreview() {
     val sampleState = ContactsViewModel.computeState(
         searchQuery = "",
-        selectedCircle = null,
         sortMode = ContactSortMode.ALPHABETICAL,
         contacts = ContactsViewModel.createSampleContacts()
     )
@@ -748,7 +744,6 @@ fun ContactsSelectionModeLightPreview() {
     val sampleContacts = ContactsViewModel.createSampleContacts()
     val sampleState = ContactsViewModel.computeState(
         searchQuery = "",
-        selectedCircle = null,
         sortMode = ContactSortMode.ALPHABETICAL,
         contacts = sampleContacts,
         selectedContactIds = setOf(sampleContacts[0].id, sampleContacts[1].id)

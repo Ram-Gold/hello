@@ -16,6 +16,7 @@ enum class HelloIconKey(val label: String) {
     CAKE("Birthday"),
     CALENDAR("Calendar"),
     CLOCK("Reminder"),
+    BELL("Reminders"),
     MAP_PIN("Location"),
     PHONE("Phone"),
     MAIL("Email"),
@@ -28,48 +29,6 @@ enum class HelloIconKey(val label: String) {
     TRASH("Delete"),
     PACKAGE("Export Bundle"),
     TAG("Tag");
-
-    companion object {
-        val customizableGroupIcons: List<HelloIconKey> = listOf(
-            GLOBE,
-            BRIEFCASE,
-            COFFEE,
-            HOME,
-            GRADUATION_CAP,
-            HEART,
-            STAR,
-            USERS,
-            COMPASS,
-            CODE,
-            MUSIC,
-            BOOK,
-            SPARKLES
-        )
-    }
-}
-
-object GroupIconRegistry {
-    private val overrides = mutableMapOf<Circle, HelloIconKey>()
-    var allGroupsIconKey: HelloIconKey = HelloIconKey.GLOBE
-        private set
-
-    fun getIconKey(circle: Circle?): HelloIconKey {
-        if (circle == null) return allGroupsIconKey
-        return overrides[circle] ?: circle.defaultIconKey
-    }
-
-    fun setIconKey(circle: Circle?, iconKey: HelloIconKey) {
-        if (circle == null) {
-            allGroupsIconKey = iconKey
-        } else {
-            overrides[circle] = iconKey
-        }
-    }
-
-    fun reset() {
-        overrides.clear()
-        allGroupsIconKey = HelloIconKey.GLOBE
-    }
 }
 
 fun extractAlphanumericInitials(name: String): String {
@@ -84,38 +43,6 @@ fun extractAlphanumericInitials(name: String): String {
 enum class CardType(val title: String, val iconKey: HelloIconKey) {
     WORK("WORK CARD", HelloIconKey.BRIEFCASE),
     SOCIAL("SOCIAL CARD", HelloIconKey.COFFEE)
-}
-
-enum class Circle(val displayName: String, val defaultIconKey: HelloIconKey) {
-    WORK("Work", HelloIconKey.BRIEFCASE),
-    FRIENDS("Friends", HelloIconKey.COFFEE),
-    FAMILY("Family", HelloIconKey.HOME),
-    UNI("Uni", HelloIconKey.GRADUATION_CAP)
-}
-
-data class CircleGroupConfig(
-    val circle: Circle,
-    val cadenceDays: Int = 14,
-    val defaultCardType: CardType = CardType.WORK,
-    val isCadenceAlertEnabled: Boolean = true,
-    val iconKey: HelloIconKey = circle.defaultIconKey
-) {
-    companion object {
-        fun resolveEffectiveCadenceDays(
-            circles: List<Circle>,
-            explicitCadenceDays: Int?,
-            circleConfigs: Map<Circle, CircleGroupConfig>,
-            defaultCadenceDays: Int = 14
-        ): Int {
-            if (explicitCadenceDays != null && explicitCadenceDays > 0) {
-                return explicitCadenceDays
-            }
-            val enabledCadences = circles.mapNotNull { circle ->
-                circleConfigs[circle]?.takeIf { it.isCadenceAlertEnabled }?.cadenceDays
-            }
-            return enabledCadences.minOrNull() ?: defaultCadenceDays
-        }
-    }
 }
 
 /**
@@ -162,8 +89,7 @@ sealed interface UpcomingAlert {
     data class BirthdayAlert(
         override val id: String,
         override val contactName: String,
-        val dateText: String,
-        val circle: Circle? = null
+        val dateText: String
     ) : UpcomingAlert
 
     data class FollowUpReminder(
@@ -186,7 +112,6 @@ data class ContactSummary(
     val id: String,
     val name: String,
     val contextSubtitle: String,
-    val circles: List<Circle>,
     val avatarInitials: String,
     val avatarBgIndex: Int = 0,
     val lastEncounterText: String? = null,
@@ -203,7 +128,7 @@ data class MyCardData(
     val headline: String,
     val email: String,
     val phone: String,
-    val circleLabel: String
+    val subtitle: String = ""
 )
 
 enum class HomeNavTab(val label: String) {

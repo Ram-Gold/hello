@@ -1,7 +1,6 @@
 package com.example.hello.ui.detail
 
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import kotlinx.coroutines.Dispatchers

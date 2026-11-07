@@ -33,9 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
-import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.Tag
 import com.example.hello.ui.components.CustomizableIcon
@@ -55,7 +53,6 @@ fun PropertiesPanel(
     allTags: List<Tag>,
     modifier: Modifier = Modifier
 ) {
-    val circles = contact?.circles ?: emptyList()
     val tagIds = contact?.tagIds ?: emptyList()
     val matchingTags = allTags.filter { it.id in tagIds }
     val notes = contact?.notes.orEmpty()
@@ -120,8 +117,8 @@ fun PropertiesPanel(
             }
         }
 
-        // Circles & Tags Surface Card
-        if (circles.isNotEmpty() || matchingTags.isNotEmpty()) {
+        // Context Tags Surface Card
+        if (matchingTags.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -131,46 +128,21 @@ fun PropertiesPanel(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Groups Row
-                    if (circles.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "GROUPS",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                circles.forEach { circle ->
-                                    CirclePillChip(circle = circle)
-                                }
-                            }
-                        }
-                    }
-
-                    // Context Tags Row
-                    if (matchingTags.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "CONTEXT #TAGS",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                matchingTags.forEach { tag ->
-                                    TagPillChip(tag = tag)
-                                }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "CONTEXT #TAGS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            matchingTags.forEach { tag ->
+                                TagPillChip(tag = tag)
                             }
                         }
                     }
@@ -278,31 +250,6 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun CirclePillChip(circle: Circle) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CustomizableIcon(
-                iconKey = GroupIconRegistry.getIconKey(circle),
-                size = FeatherIconSize.INLINE,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "#${circle.displayName.lowercase()}",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface
-            )
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.ThemeMode
+import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.data.preferences.helloDataStore
 import com.example.hello.platform.notification.FollowUpNotificationHelper
 import com.example.hello.ui.MainAppShell
@@ -33,8 +34,13 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             val dynamicColor = userPreferences?.dynamicColor ?: false
+            val themeStyle = userPreferences?.themeStyle ?: ThemeStyle.MONOCHROME
 
-            HelloTheme(darkTheme = isDark, dynamicColor = dynamicColor) {
+            HelloTheme(
+                darkTheme = isDark,
+                dynamicColor = dynamicColor,
+                themeStyle = themeStyle
+            ) {
                 MainAppShell(
                     preferencesRepository = preferencesRepository,
                     initialContactId = initialContactId

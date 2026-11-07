@@ -1,6 +1,5 @@
 package com.example.hello.ui.edit
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Tag
 import java.time.LocalDate
 
@@ -16,7 +15,6 @@ data class PersonEditUiState(
     val email: String = "",
     val notes: String = "",
     val photoUri: String? = null,
-    val selectedCircles: Set<Circle> = emptySet(),
     val selectedTagIds: Set<String> = emptySet(),
     val availableTags: List<Tag> = emptyList(),
     val customProperties: Map<String, String> = emptyMap(),
@@ -49,7 +47,6 @@ sealed interface PersonEditUiEvent {
     data class OnNotesChange(val notes: String) : PersonEditUiEvent
     data class OnPhotoSelected(val uri: String?) : PersonEditUiEvent
     data object OnRemovePhoto : PersonEditUiEvent
-    data class OnToggleCircle(val circle: Circle) : PersonEditUiEvent
     data class OnToggleTag(val tagId: String) : PersonEditUiEvent
     data class OnCreateTag(val name: String) : PersonEditUiEvent
     data class OnSelectCadence(val days: Int?) : PersonEditUiEvent

@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.mock.MockDataProvider
-import com.example.hello.domain.model.Circle
-import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
@@ -101,13 +99,6 @@ class TimelineViewModel(
     }
 
     companion object {
-        private val defaultCircleConfigs = mapOf(
-            Circle.WORK to CircleGroupConfig(circle = Circle.WORK, cadenceDays = 7, isCadenceAlertEnabled = true),
-            Circle.FRIENDS to CircleGroupConfig(circle = Circle.FRIENDS, cadenceDays = 14, isCadenceAlertEnabled = true),
-            Circle.FAMILY to CircleGroupConfig(circle = Circle.FAMILY, cadenceDays = 7, isCadenceAlertEnabled = true),
-            Circle.UNI to CircleGroupConfig(circle = Circle.UNI, cadenceDays = 30, isCadenceAlertEnabled = true)
-        )
-
         fun createInitialState(today: LocalDate = LocalDate.now()): TimelineUiState {
             val contactsMap = MockDataProvider.contacts.associateBy { it.id }
             val placesMap = MockDataProvider.places.associateBy { it.id }
@@ -131,7 +122,6 @@ class TimelineViewModel(
             encounters: List<Encounter>,
             placesMap: Map<String, Place>,
             followUps: List<FollowUp>,
-            circleConfigs: Map<Circle, CircleGroupConfig> = defaultCircleConfigs,
             today: LocalDate = LocalDate.now(),
             zoneId: ZoneId = ZoneId.systemDefault()
         ): Pair<List<FutureTimelineNode>, List<PastTimelineNode>> {
@@ -166,8 +156,7 @@ class TimelineViewModel(
                         dateLabel = formatPastDateLabel(encounter.occurredAt, today, zoneId),
                         placeLabel = placeLabel,
                         notes = encounter.notes,
-                        badge = if (isFirstMet) PastEncounterBadge.FIRST_MET else PastEncounterBadge.MET_AGAIN,
-                        circles = contact.circles
+                        badge = if (isFirstMet) PastEncounterBadge.FIRST_MET else PastEncounterBadge.MET_AGAIN
                     )
                 }
 
@@ -189,7 +178,6 @@ class TimelineViewModel(
                         avatarBgIndex = avatarIndexByContactId[contact.id] ?: 0,
                         daysUntil = daysUntil,
                         dateLabel = formatFutureDaysLabel(daysUntil),
-                        circles = contact.circles,
                         followUpId = followUp.id,
                         note = followUp.note
                     )
@@ -219,7 +207,6 @@ class TimelineViewModel(
                         avatarBgIndex = avatarIndexByContactId[contact.id] ?: 0,
                         daysUntil = daysUntil,
                         dateLabel = dateLabel,
-                        circles = contact.circles,
                         turningAge = turningAge
                     )
                 }

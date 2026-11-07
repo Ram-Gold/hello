@@ -1,0 +1,30 @@
+# Antigravity Workspace Ignore Patterns
+# Prevents token bloat, slow indexing, and file search pollution
+
+# Build Outputs & Android Tooling
+build/
+**/build/
+.gradle/
+.idea/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+captures/
+*.iml
+local.properties
+
+# Binary assets (prevent agent from ingesting raw binary data into context)
+*.ttf
+*.otf
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.svg
+*.jar
+*.aar
+
+# System & OS caches
+.DS_Store
+Thumbs.db

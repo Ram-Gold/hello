@@ -1,6 +1,5 @@
 package com.example.hello.domain.mock
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
@@ -46,7 +45,48 @@ object MockDataProvider {
         lastUsedAt = Instant.now().minus(3, ChronoUnit.DAYS)
     )
 
-    val tags: List<Tag> = listOf(tagTech, tagDesign, tagCoffee, tagAi)
+    val tagFriends = Tag(
+        id = "tag-friends",
+        name = "Friends",
+        colorHex = "#F3A261",
+        useCount = 6,
+        lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
+    )
+
+    val tagWork = Tag(
+        id = "tag-work",
+        name = "Work",
+        colorHex = "#E06D3B",
+        useCount = 5,
+        lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
+    )
+
+    val tagFamily = Tag(
+        id = "tag-family",
+        name = "Family",
+        colorHex = "#5A9A6E",
+        useCount = 3,
+        lastUsedAt = Instant.now().minus(2, ChronoUnit.DAYS)
+    )
+
+    val tagUni = Tag(
+        id = "tag-uni",
+        name = "Uni",
+        colorHex = "#8E7CC3",
+        useCount = 3,
+        lastUsedAt = Instant.now().minus(4, ChronoUnit.DAYS)
+    )
+
+    val tags: List<Tag> = listOf(
+        tagTech,
+        tagDesign,
+        tagCoffee,
+        tagAi,
+        tagFriends,
+        tagWork,
+        tagFamily,
+        tagUni
+    )
 
     val placeBlueBottle = Place(
         id = "place-blue-bottle",
@@ -83,7 +123,6 @@ object MockDataProvider {
         aliases = listOf("S-Lin", "Sarah"),
         phone = "+1 (555) 234-5678",
         email = "sarah.lin@example.com",
-        circles = listOf(Circle.WORK),
         tagIds = listOf(tagTech.id, tagAi.id, tagCoffee.id),
         notes = "Co-founder & Staff Engineer. Loves light roast pour-overs and distributed systems.",
         photoUri = null,
@@ -99,7 +138,6 @@ object MockDataProvider {
         aliases = listOf("Rivera"),
         phone = "+1 (555) 876-5432",
         email = "alex.rivera@example.com",
-        circles = listOf(Circle.FRIENDS),
         tagIds = listOf(tagDesign.id),
         notes = "Senior Product Designer working on accessible UI design systems.",
         photoUri = null,
@@ -115,7 +153,6 @@ object MockDataProvider {
         aliases = listOf("Mom", "Elena"),
         phone = "+1 (555) 345-6789",
         email = null,
-        circles = listOf(Circle.FAMILY),
         tagIds = emptyList(),
         notes = "Weekly Sunday dinner and family gardening check-in.",
         photoUri = null,

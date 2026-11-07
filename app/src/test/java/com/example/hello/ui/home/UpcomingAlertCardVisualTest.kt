@@ -1,6 +1,5 @@
 package com.example.hello.ui.home
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.UpcomingAlert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,8 +12,7 @@ class UpcomingAlertCardVisualTest {
         val alert = UpcomingAlert.BirthdayAlert(
             id = "b-1",
             contactName = "Sarah Connor",
-            dateText = "Tomorrow",
-            circle = Circle.FRIENDS
+            dateText = "Tomorrow"
         )
 
         val badgeText = alert.dateText.ifBlank { "Birthday" }

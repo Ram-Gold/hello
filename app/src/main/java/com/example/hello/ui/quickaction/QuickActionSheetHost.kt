@@ -166,14 +166,14 @@ fun FlowAStep1Preview() {
     }
 }
 
-@Preview(name = "Flow A: Step 3 Tags & Circles", showBackground = true, widthDp = 390)
+@Preview(name = "Flow A: Step 3 Tags", showBackground = true, widthDp = 390)
 @Composable
 fun FlowAStep3Preview() {
     val vm = QuickActionViewModel()
     val state = vm.uiState.value.copy(
         isOpen = true,
         currentMode = QuickActionMode.FLOW_A_ADD_CONTACT,
-        flowAStep = FlowAStep.TAGS_AND_CIRCLES,
+        flowAStep = FlowAStep.TAGS,
         selectedTagIds = setOf("tag-tech")
     )
     HelloTheme(darkTheme = false) {

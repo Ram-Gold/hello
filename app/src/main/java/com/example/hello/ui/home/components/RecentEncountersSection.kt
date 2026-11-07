@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
@@ -232,28 +231,4 @@ fun ContactItemRow(
     )
 }
 
-@Composable
-fun CircleBadge(
-    circle: Circle,
-    modifier: Modifier = Modifier
-) {
-    val (bg, text) = when (circle) {
-        Circle.WORK -> Pair(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f), MaterialTheme.colorScheme.onPrimaryContainer)
-        Circle.FRIENDS -> Pair(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f), MaterialTheme.colorScheme.onSecondaryContainer)
-        Circle.FAMILY -> Pair(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f), MaterialTheme.colorScheme.onTertiaryContainer)
-        Circle.UNI -> Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
-    }
 
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        color = bg
-    ) {
-        Text(
-            text = circle.displayName,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-            color = text,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-        )
-    }
-}

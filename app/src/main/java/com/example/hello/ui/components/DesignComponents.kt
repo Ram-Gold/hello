@@ -176,6 +176,11 @@ fun HelloIconKey.resolveImageVector(): ImageVector = featherVectorCache.getOrPut
             "M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z",
             "M12 6v6l4 2"
         )
+        HelloIconKey.BELL -> buildFeatherVector(
+            "FeatherBell",
+            "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9",
+            "M13.73 21a2 2 0 0 1-3.46 0"
+        )
         HelloIconKey.MAP_PIN -> buildFeatherVector(
             "FeatherMapPin",
             "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z",

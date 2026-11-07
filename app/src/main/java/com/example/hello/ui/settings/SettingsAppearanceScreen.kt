@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.hello.data.preferences.ThemeMode
+import com.example.hello.data.preferences.ThemeStyle
 
 @Composable
 fun SettingsAppearanceScreen(
@@ -64,6 +65,21 @@ fun SettingsAppearanceScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
+                SettingsSubsection(title = "Design Theme") {
+                    val styles = ThemeStyle.entries
+                    styles.forEachIndexed { index, style ->
+                        SelectableSettingItem(
+                            title = style.title,
+                            subtitle = style.subtitle,
+                            selected = uiState.themeStyle == style,
+                            onClick = { onEvent(SettingsUiEvent.OnSelectThemeStyle(style)) },
+                            shape = shapeFor(index, styles.size)
+                        )
+                    }
+                }
+            }
+
+            item {
                 SettingsSubsection(title = "Theme Mode") {
                     val entries = ThemeMode.entries
                     entries.forEachIndexed { index, mode ->
@@ -71,8 +87,8 @@ fun SettingsAppearanceScreen(
                             title = mode.title,
                             subtitle = when (mode) {
                                 ThemeMode.SYSTEM -> "Follow device dark mode settings"
-                                ThemeMode.LIGHT -> "Always use warm cream & terracotta light theme"
-                                ThemeMode.DARK -> "Always use dark oatmeal & burnt orange theme"
+                                ThemeMode.LIGHT -> "Always use light theme"
+                                ThemeMode.DARK -> "Always use dark theme"
                             },
                             selected = uiState.themeMode == mode,
                             onClick = { onEvent(SettingsUiEvent.OnSelectThemeMode(mode)) },

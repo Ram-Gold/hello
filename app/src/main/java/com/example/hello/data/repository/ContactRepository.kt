@@ -8,7 +8,6 @@ import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.mock.MockDataProvider
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.Encounter
@@ -265,8 +264,7 @@ class ContactRepository(
                 UpcomingAlert.BirthdayAlert(
                     id = "bday-${contact.id}",
                     contactName = contact.name,
-                    dateText = dateText,
-                    circle = contact.circles.firstOrNull()
+                    dateText = dateText
                 )
             } else {
                 null
@@ -330,7 +328,6 @@ class ContactRepository(
                 if (summary.id == updated.id) {
                     summary.copy(
                         name = updated.name,
-                        circles = updated.circles,
                         phone = updated.phone,
                         email = updated.email,
                         isArchived = updated.isArchived
@@ -346,7 +343,6 @@ class ContactRepository(
                 if (summary.id == updated.id) {
                     summary.copy(
                         name = updated.name,
-                        circles = updated.circles,
                         phone = updated.phone,
                         email = updated.email,
                         isArchived = updated.isArchived
@@ -546,7 +542,6 @@ class ContactRepository(
 
     fun addContactWithInitialEncounter(
         name: String,
-        circles: Set<Circle>,
         tagIds: Set<String>,
         placeId: String?,
         customPlaceName: String?,
@@ -588,7 +583,6 @@ class ContactRepository(
             id = "c-${UUID.randomUUID()}",
             name = cleanName,
             contextSubtitle = subtitle,
-            circles = circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
             avatarInitials = extractAlphanumericInitials(name),
             avatarBgIndex = (_contacts.value.size % 6),
             lastEncounterText = "Met today",
@@ -618,7 +612,6 @@ class ContactRepository(
             birthday = birthday,
             phone = phone?.trim()?.ifEmpty { null },
             email = email?.trim()?.ifEmpty { null },
-            circles = newContact.circles,
             tagIds = tagIds.toList(),
             notes = note.trim(),
             firstMetAt = now,
@@ -890,9 +883,7 @@ class ContactRepository(
 
         fun ContactEntity.toSummary(): ContactSummary {
             val initials = extractAlphanumericInitials(name)
-            val subtitle = notes.ifBlank {
-                circles.firstOrNull()?.let { "${it.displayName} Circle" } ?: "Contact"
-            }
+            val subtitle = notes.ifBlank { "Contact" }
             val lastMet = when {
                 lastMetAt == null -> "Never met"
                 else -> {
@@ -912,7 +903,6 @@ class ContactRepository(
                 id = id,
                 name = name,
                 contextSubtitle = subtitle,
-                circles = circles.ifEmpty { listOf(Circle.FRIENDS) },
                 avatarInitials = initials,
                 avatarBgIndex = (id.hashCode().let { if (it < 0) -it else it } % 6),
                 lastEncounterText = lastMet,
@@ -937,7 +927,6 @@ class ContactRepository(
                     aliases = listOf("Rivera"),
                     phone = "+1 (555) 876-5432",
                     email = "alex.rivera@example.com",
-                    circles = listOf(Circle.WORK),
                     tagIds = listOf("tag-design"),
                     notes = "Senior Product Designer working on accessible UI design systems. Coffee lover.",
                     firstMetAt = Instant.now().minus(45, ChronoUnit.DAYS),
@@ -951,7 +940,6 @@ class ContactRepository(
                     aliases = listOf("Dave"),
                     phone = "+1 (555) 432-1098",
                     email = "dkim@example.com",
-                    circles = listOf(Circle.WORK, Circle.UNI),
                     tagIds = listOf("tag-tech"),
                     notes = "Mobile Dev • Discussed Compose gestures and physics.",
                     firstMetAt = Instant.now().minus(60, ChronoUnit.DAYS),
@@ -965,7 +953,6 @@ class ContactRepository(
                     aliases = listOf("Lena"),
                     phone = "+1 (555) 345-6789",
                     email = "elena.r@example.org",
-                    circles = listOf(Circle.FRIENDS, Circle.FAMILY),
                     tagIds = emptyList(),
                     notes = "Neighbor & Botanist • Exchanged rare monstera cuttings.",
                     firstMetAt = Instant.now().minus(120, ChronoUnit.DAYS),
@@ -979,7 +966,6 @@ class ContactRepository(
                     aliases = listOf("S-Lin", "Sarah"),
                     phone = "+1 (555) 234-5678",
                     email = "sarah.lin@example.com",
-                    circles = listOf(Circle.FAMILY, Circle.FRIENDS),
                     tagIds = listOf("tag-tech", "tag-ai", "tag-coffee"),
                     notes = "Biotech Researcher • Tea tasting buddy. Loves light roast pour-overs.",
                     firstMetAt = Instant.now().minus(90, ChronoUnit.DAYS),
@@ -994,7 +980,6 @@ class ContactRepository(
                     map[summary.id] = Contact(
                         id = summary.id,
                         name = summary.name,
-                        circles = summary.circles,
                         notes = summary.contextSubtitle,
                         cadenceDays = 14,
                         lastMetAt = Instant.now().minus(14, ChronoUnit.DAYS)

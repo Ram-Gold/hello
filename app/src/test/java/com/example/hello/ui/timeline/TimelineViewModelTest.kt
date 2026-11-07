@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.People
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
@@ -47,14 +46,12 @@ class TimelineViewModelTest {
         val maya = Contact(
             id = "c-maya",
             name = "Maya Patel",
-            circles = listOf(Circle.FRIENDS),
             firstMetAt = now.minus(10, ChronoUnit.DAYS),
             lastMetAt = now.minus(1, ChronoUnit.DAYS)
         )
         val alex = Contact(
             id = "c-alex",
             name = "Alex Rivera",
-            circles = listOf(Circle.WORK),
             firstMetAt = now.minus(2, ChronoUnit.DAYS),
             lastMetAt = now.minus(2, ChronoUnit.DAYS)
         )
@@ -120,7 +117,6 @@ class TimelineViewModelTest {
         val maya = Contact(
             id = "c-maya",
             name = "Maya Patel",
-            circles = listOf(Circle.FRIENDS),
             birthday = LocalDate.of(2000, 11, 6), // Tomorrow (1 day)
             lastMetAt = now.minus(4, ChronoUnit.DAYS),
             firstMetAt = now.minus(20, ChronoUnit.DAYS)
@@ -166,7 +162,6 @@ class TimelineViewModelTest {
         val summerFriend = Contact(
             id = "c-summer",
             name = "Leo Chen",
-            circles = listOf(Circle.FRIENDS),
             birthday = LocalDate.of(1998, 7, 20), // ~257 days away (> 60 days)
             firstMetAt = now.minus(30, ChronoUnit.DAYS),
             lastMetAt = now.minus(10, ChronoUnit.DAYS)

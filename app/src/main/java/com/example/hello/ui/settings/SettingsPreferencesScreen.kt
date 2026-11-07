@@ -35,13 +35,6 @@ fun SettingsPreferencesScreen(
         }
     }
 
-    val cadenceOptions = listOf(
-        14 to Pair("2 Weeks (14d)", "High-cadence check-ins for active relationships"),
-        30 to Pair("1 Month (30d)", "Standard monthly rhythm (recommended default)"),
-        60 to Pair("2 Months (60d)", "Bi-monthly check-ins for steady connections"),
-        90 to Pair("Quarterly (90d)", "Seasonal check-ins for extended network")
-    )
-
     val notificationTimes = listOf(
         8 to Pair("08:00 AM", "Early morning reminder delivery"),
         9 to Pair("09:00 AM", "Standard morning delivery (default)"),
@@ -75,20 +68,6 @@ fun SettingsPreferencesScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                SettingsSubsection(title = "Default Reconnection Cadence") {
-                    cadenceOptions.forEachIndexed { index, (days, info) ->
-                        SelectableSettingItem(
-                            title = info.first,
-                            subtitle = info.second,
-                            selected = uiState.defaultCadenceDays == days,
-                            onClick = { onEvent(SettingsUiEvent.OnSetDefaultCadenceDays(days)) },
-                            shape = shapeFor(index, cadenceOptions.size)
-                        )
-                    }
-                }
-            }
-
             item {
                 SettingsSubsection(title = "Reminder Notification Delivery") {
                     notificationTimes.forEachIndexed { index, (hour, info) ->

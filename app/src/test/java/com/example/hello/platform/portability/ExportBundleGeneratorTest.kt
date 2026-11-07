@@ -1,6 +1,5 @@
 package com.example.hello.platform.portability
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
@@ -21,7 +20,6 @@ class ExportBundleGeneratorTest {
         id = "c-123",
         name = "Ada Lovelace",
         aliases = listOf("Countess", "First Programmer"),
-        circles = listOf(Circle.WORK, Circle.FRIENDS),
         tagIds = listOf("tag-math", "tag-computing"),
         notes = "First computer programmer, wrote notes on the Analytical Engine.",
         phone = "+44 20 7946 0919",
@@ -104,7 +102,6 @@ class ExportBundleGeneratorTest {
         assertTrue(noteContent!!.startsWith("---\n"))
         assertTrue(noteContent.contains("id: \"c-123\""))
         assertTrue(noteContent.contains("name: \"Ada Lovelace\""))
-        assertTrue(noteContent.contains("circles: [\"Work\", \"Friends\"]"))
         assertTrue(noteContent.contains("tags: [\"Math\"]"))
         assertTrue(noteContent.contains("cadence_days: 14"))
         assertTrue(noteContent.contains("---"))
@@ -130,7 +127,7 @@ class ExportBundleGeneratorTest {
         assertTrue(csvFiles.containsKey("encounters.csv"))
 
         val contactsCsv = csvFiles["contacts.csv"] ?: ""
-        assertTrue(contactsCsv.contains("id,name,circles,phone,email,notes,meet_count,last_met_at"))
+        assertTrue(contactsCsv.contains("id,name,phone,email,notes,meet_count,last_met_at"))
         assertTrue(contactsCsv.contains("\"Note with, comma and \"\"quotes\"\" and\nnewline\""))
     }
 

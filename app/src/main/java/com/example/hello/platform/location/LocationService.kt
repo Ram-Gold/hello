@@ -42,7 +42,11 @@ sealed interface LocationState {
  */
 class LocationService(
     private val context: Context,
-    private val locationManager: LocationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private val locationManager: LocationManager? = try {
+        context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+    } catch (_: Throwable) {
+        null
+    }
 ) {
 
     /**
@@ -64,13 +68,14 @@ class LocationService(
      * Checks if either GPS or Network location providers are enabled.
      */
     fun isAnyProviderEnabled(): Boolean {
+        val lm = locationManager ?: return false
         val gps = try {
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
         } catch (_: Exception) {
             false
         }
         val network = try {
-            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
         } catch (_: Exception) {
             false
         }
@@ -81,9 +86,10 @@ class LocationService(
      * Returns the best available provider (GPS preferred, falling back to Network).
      */
     fun getBestProvider(): String? {
+        val lm = locationManager ?: return null
         return when {
-            try { locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) } catch (_: Exception) { false } -> LocationManager.GPS_PROVIDER
-            try { locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) } catch (_: Exception) { false } -> LocationManager.NETWORK_PROVIDER
+            try { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) } catch (_: Exception) { false } -> LocationManager.GPS_PROVIDER
+            try { lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) } catch (_: Exception) { false } -> LocationManager.NETWORK_PROVIDER
             else -> null
         }
     }
@@ -114,7 +120,7 @@ class LocationService(
                 val provider = getBestProvider() ?: LocationManager.PASSIVE_PROVIDER
                 val listener = object : LocationListener {
                     override fun onLocationChanged(loc: Location) {
-                        locationManager.removeUpdates(this)
+                        locationManager?.removeUpdates(this)
                         if (cont.isActive) {
                             cont.resume(loc)
                         }
@@ -128,7 +134,7 @@ class LocationService(
 
                 try {
                     @SuppressLint("MissingPermission")
-                    locationManager.requestLocationUpdates(
+                    locationManager?.requestLocationUpdates(
                         provider,
                         500L,
                         0f,
@@ -143,7 +149,7 @@ class LocationService(
 
                 cont.invokeOnCancellation {
                     try {
-                        locationManager.removeUpdates(listener)
+                        locationManager?.removeUpdates(listener)
                     } catch (_: Exception) {}
                 }
             }
@@ -176,6 +182,7 @@ class LocationService(
      */
     @SuppressLint("MissingPermission")
     fun getLastKnownLocationFallback(): Location? {
+        val lm = locationManager ?: return null
         if (!hasLocationPermission()) return null
         val providers = listOf(
             LocationManager.GPS_PROVIDER,
@@ -184,7 +191,7 @@ class LocationService(
         )
         for (provider in providers) {
             try {
-                val loc = locationManager.getLastKnownLocation(provider)
+                val loc = lm.getLastKnownLocation(provider)
                 if (loc != null) return loc
             } catch (_: Exception) {}
         }

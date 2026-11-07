@@ -6,7 +6,6 @@ import com.example.hello.data.repository.ContactRepository
 import com.example.hello.data.repository.ContactRepository.Companion.toSummary
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.mock.MockDataProvider
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +24,6 @@ class ContactsViewModel(
     private val _uiState = MutableStateFlow(
         computeState(
             searchQuery = "",
-            selectedCircle = null,
             sortMode = ContactSortMode.ALPHABETICAL,
             contacts = allContacts
         )
@@ -47,7 +45,6 @@ class ContactsViewModel(
         _uiState.update { current ->
             computeState(
                 searchQuery = current.searchQuery,
-                selectedCircle = current.selectedCircle,
                 selectedTag = current.selectedTag,
                 sortMode = current.sortMode,
                 contacts = allContacts,
@@ -64,7 +61,6 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = query,
-                        selectedCircle = current.selectedCircle,
                         selectedTag = current.selectedTag,
                         sortMode = current.sortMode,
                         contacts = allContacts,
@@ -80,7 +76,6 @@ class ContactsViewModel(
                             _uiState.update { current ->
                                 computeState(
                                     searchQuery = query,
-                                    selectedCircle = current.selectedCircle,
                                     selectedTag = current.selectedTag,
                                     sortMode = current.sortMode,
                                     contacts = matchingSummaries,
@@ -97,21 +92,7 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",
-                        selectedCircle = current.selectedCircle,
                         selectedTag = current.selectedTag,
-                        sortMode = current.sortMode,
-                        contacts = allContacts,
-                        selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
-                    )
-                }
-            }
-            is ContactsUiEvent.OnSelectCircle -> {
-                _uiState.update { current ->
-                    computeState(
-                        searchQuery = current.searchQuery,
-                        selectedCircle = event.circle,
-                        selectedTag = event.circle?.displayName?.lowercase(),
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
@@ -121,13 +102,9 @@ class ContactsViewModel(
             }
             is ContactsUiEvent.OnSelectTag -> {
                 val normalizedTag = event.tagName?.removePrefix("#")?.trim()?.lowercase()?.ifBlank { null }
-                val matchedCircle = Circle.entries.firstOrNull {
-                    it.displayName.equals(normalizedTag, ignoreCase = true)
-                }
                 _uiState.update { current ->
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedCircle = matchedCircle,
                         selectedTag = normalizedTag,
                         sortMode = current.sortMode,
                         contacts = allContacts,
@@ -140,7 +117,6 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedCircle = current.selectedCircle,
                         selectedTag = current.selectedTag,
                         sortMode = event.mode,
                         contacts = allContacts,
@@ -197,7 +173,6 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedCircle = current.selectedCircle,
                         selectedTag = current.selectedTag,
                         sortMode = current.sortMode,
                         contacts = allContacts,
@@ -210,7 +185,6 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",
-                        selectedCircle = null,
                         selectedTag = null,
                         sortMode = current.sortMode,
                         contacts = allContacts,
@@ -228,7 +202,6 @@ class ContactsViewModel(
     companion object {
         fun computeState(
             searchQuery: String,
-            selectedCircle: Circle?,
             sortMode: ContactSortMode,
             contacts: List<ContactSummary>,
             selectedTag: String? = null,
@@ -244,7 +217,6 @@ class ContactsViewModel(
                 } else if (cleanQuery.startsWith("#")) {
                     val hashTag = cleanQuery.removePrefix("#")
                     contact.tags.any { it.name.contains(hashTag, ignoreCase = true) } ||
-                        contact.circles.any { it.displayName.contains(hashTag, ignoreCase = true) } ||
                         contact.contextSubtitle.contains(cleanQuery, ignoreCase = true)
                 } else {
                     contact.name.contains(cleanQuery, ignoreCase = true) ||
@@ -253,21 +225,14 @@ class ContactsViewModel(
                         contact.tags.any { it.name.contains(cleanQuery, ignoreCase = true) }
                 }
 
-                val matchesCircle = if (selectedCircle == null) {
-                    true
-                } else {
-                    selectedCircle in contact.circles
-                }
-
                 val matchesTag = if (cleanTag == null) {
                     true
                 } else {
                     contact.tags.any { it.name.equals(cleanTag, ignoreCase = true) } ||
-                        contact.circles.any { it.displayName.equals(cleanTag, ignoreCase = true) } ||
                         contact.contextSubtitle.contains("#$cleanTag", ignoreCase = true)
                 }
 
-                matchesQuery && matchesCircle && matchesTag
+                matchesQuery && matchesTag
             }
 
             val dynamicTags = buildList<String> {
@@ -301,7 +266,6 @@ class ContactsViewModel(
 
             return ContactsUiState(
                 searchQuery = searchQuery,
-                selectedCircle = selectedCircle,
                 selectedTag = cleanTag,
                 smartFilterTags = dynamicTags,
                 sortMode = sortMode,
@@ -319,7 +283,6 @@ class ContactsViewModel(
                     id = "c-1",
                     name = "Alex Rivera",
                     contextSubtitle = "Product Designer & Tinkerer",
-                    circles = listOf(Circle.WORK),
                     avatarInitials = "AR",
                     avatarBgIndex = 0,
                     lastEncounterText = "Met today",
@@ -330,7 +293,6 @@ class ContactsViewModel(
                     id = "c-2",
                     name = "David Kim",
                     contextSubtitle = "Mobile Dev • Discussed Compose gestures",
-                    circles = listOf(Circle.WORK, Circle.UNI),
                     avatarInitials = "DK",
                     avatarBgIndex = 1,
                     lastEncounterText = "10 days ago",
@@ -341,7 +303,6 @@ class ContactsViewModel(
                     id = "c-3",
                     name = "Elena Rostova",
                     contextSubtitle = "Neighbor & Botanist • Exchanged plants",
-                    circles = listOf(Circle.FRIENDS, Circle.FAMILY),
                     avatarInitials = "ER",
                     avatarBgIndex = 2,
                     lastEncounterText = "Last Sunday",
@@ -352,7 +313,6 @@ class ContactsViewModel(
                     id = "c-4",
                     name = "Liam Chen",
                     contextSubtitle = "Architect • Coffee and urban photography",
-                    circles = listOf(Circle.FRIENDS),
                     avatarInitials = "LC",
                     avatarBgIndex = 3,
                     lastEncounterText = "2 weeks ago",
@@ -363,7 +323,6 @@ class ContactsViewModel(
                     id = "c-5",
                     name = "Marcus Vance",
                     contextSubtitle = "Founder @ Studio Arc • Met at Coffee Lab",
-                    circles = listOf(Circle.WORK),
                     avatarInitials = "MV",
                     avatarBgIndex = 4,
                     lastEncounterText = "4 days ago",
@@ -374,7 +333,6 @@ class ContactsViewModel(
                     id = "c-6",
                     name = "Maya Patel",
                     contextSubtitle = "CS '27 • Met yesterday at Hackathon",
-                    circles = listOf(Circle.UNI, Circle.FRIENDS),
                     avatarInitials = "MP",
                     avatarBgIndex = 5,
                     lastEncounterText = "Met yesterday",
@@ -385,7 +343,6 @@ class ContactsViewModel(
                     id = "c-7",
                     name = "Noah Albright",
                     contextSubtitle = "High School Friend • Catch up quarterly",
-                    circles = listOf(Circle.FRIENDS),
                     avatarInitials = "NA",
                     avatarBgIndex = 0,
                     lastEncounterText = "1 month ago",
@@ -396,7 +353,6 @@ class ContactsViewModel(
                     id = "c-8",
                     name = "Sarah Lin",
                     contextSubtitle = "Biotech Researcher • Tea tasting buddy",
-                    circles = listOf(Circle.FAMILY, Circle.FRIENDS),
                     avatarInitials = "SL",
                     avatarBgIndex = 1,
                     lastEncounterText = "45 days ago",
@@ -407,7 +363,6 @@ class ContactsViewModel(
                     id = "c-9",
                     name = "Sophia Martinez",
                     contextSubtitle = "UX Researcher • Working on accessibility tooling",
-                    circles = listOf(Circle.WORK),
                     avatarInitials = "SM",
                     avatarBgIndex = 2,
                     lastEncounterText = "Yesterday",
@@ -418,7 +373,6 @@ class ContactsViewModel(
                     id = "c-10",
                     name = "Zoe Washington",
                     contextSubtitle = "Ceramics artist & Studio host",
-                    circles = listOf(Circle.FRIENDS),
                     avatarInitials = "ZW",
                     avatarBgIndex = 3,
                     lastEncounterText = "3 weeks ago",

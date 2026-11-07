@@ -39,7 +39,7 @@ import com.example.hello.data.local.entity.TagEntity
         CaptureFlowPresetEntity::class,
         CaptureFlowComponentEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

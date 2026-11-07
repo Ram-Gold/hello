@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,6 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.hello.data.local.HelloDatabase
+import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
+import com.example.hello.data.preferences.ThemeMode
+import com.example.hello.data.preferences.ThemeStyle
+import com.example.hello.data.preferences.helloDataStore
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
@@ -52,7 +57,17 @@ class QuickCaptureActivity : ComponentActivity() {
         viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
 
         setContent {
-            HelloTheme {
+            val preferencesRepository = remember { DataStoreUserPreferencesRepository(applicationContext.helloDataStore) }
+            val userPreferences by preferencesRepository.userPreferencesFlow.collectAsState(initial = null)
+            val isDark = when (userPreferences?.themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                else -> isSystemInDarkTheme()
+            }
+            val dynamicColor = userPreferences?.dynamicColor ?: false
+            val themeStyle = userPreferences?.themeStyle ?: ThemeStyle.MONOCHROME
+
+            HelloTheme(darkTheme = isDark, dynamicColor = dynamicColor, themeStyle = themeStyle) {
                 val uiState by viewModel.uiState.collectAsState()
 
                 // Intercept back button to step backward or dismiss immediately

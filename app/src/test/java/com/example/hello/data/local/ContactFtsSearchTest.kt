@@ -4,7 +4,6 @@ import android.content.Context
 import com.example.hello.data.local.entity.ContactEntity
 import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel

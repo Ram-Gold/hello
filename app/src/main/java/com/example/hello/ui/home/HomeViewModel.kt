@@ -5,10 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hello.data.preferences.UserPreferencesRepository
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CardType
-import com.example.hello.domain.model.Circle
-import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.ContactSummary
-import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.MyCardData
 import com.example.hello.domain.model.SpeedDialAction
@@ -95,7 +92,6 @@ class HomeViewModel(
                 val addedSummary = if (repository != null) {
                     repository.addContactWithInitialEncounter(
                         name = event.name,
-                        circles = event.circles,
                         tagIds = emptySet(),
                         placeId = null,
                         customPlaceName = null,
@@ -107,7 +103,6 @@ class HomeViewModel(
                         id = UUID.randomUUID().toString(),
                         name = event.name.trim().ifEmpty { "New Friend" },
                         contextSubtitle = event.initialNote.trim().ifEmpty { "Added just now" },
-                        circles = event.circles.toList().ifEmpty { listOf(Circle.FRIENDS) },
                         avatarInitials = extractAlphanumericInitials(event.name),
                         avatarBgIndex = (_uiState.value.recentContacts.size % 6),
                         lastEncounterText = "Met today"
@@ -182,30 +177,6 @@ class HomeViewModel(
             is HomeUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }
             }
-            is HomeUiEvent.OnOpenDrawer -> {
-                _uiState.update { it.copy(isDrawerOpen = true) }
-            }
-            is HomeUiEvent.OnCloseDrawer -> {
-                _uiState.update { it.copy(isDrawerOpen = false) }
-            }
-            is HomeUiEvent.OnSelectCircle -> {
-                _uiState.update { state ->
-                    state.copy(
-                        selectedCircle = event.circle,
-                        isDrawerOpen = false,
-                        userMessage = event.circle?.let { "Switched to ${it.displayName} Circle" } ?: "Showing All Circles"
-                    )
-                }
-            }
-            is HomeUiEvent.OnUpdateCircleConfig -> {
-                GroupIconRegistry.setIconKey(event.config.circle, event.config.iconKey)
-                _uiState.update { state ->
-                    state.copy(
-                        circleConfigs = state.circleConfigs + (event.config.circle to event.config),
-                        userMessage = "Updated ${event.config.circle.displayName} configuration"
-                    )
-                }
-            }
         }
     }
 
@@ -229,7 +200,7 @@ class HomeViewModel(
                 headline = "Product Designer & Tinkerer",
                 email = "alex.rivera@craft.design",
                 phone = "+1 (415) 890-1234",
-                circleLabel = "Design Systems • Local-First"
+                subtitle = "Design Systems • Local-First"
             )
             val socialCard = MyCardData(
                 cardType = CardType.SOCIAL,
@@ -237,15 +208,14 @@ class HomeViewModel(
                 headline = "Weekend Cyclist & Bookworm",
                 email = "alex@hey.com",
                 phone = "+1 (415) 890-1234",
-                circleLabel = "Specialty Coffee • Gravel Bikes"
+                subtitle = "Specialty Coffee • Gravel Bikes"
             )
 
             val upcoming = listOf(
                 UpcomingAlert.BirthdayAlert(
                     id = "alert-1",
                     contactName = "Maya Patel",
-                    dateText = "Tomorrow",
-                    circle = Circle.FRIENDS
+                    dateText = "Tomorrow"
                 ),
                 UpcomingAlert.FollowUpReminder(
                     id = "alert-2",
@@ -266,7 +236,6 @@ class HomeViewModel(
                     id = "c-1",
                     name = "Maya Patel",
                     contextSubtitle = "CS '27 • Met yesterday at Hackathon",
-                    circles = listOf(Circle.UNI, Circle.FRIENDS),
                     avatarInitials = "MP",
                     avatarBgIndex = 0,
                     lastEncounterText = "Met yesterday"
@@ -275,7 +244,6 @@ class HomeViewModel(
                     id = "c-2",
                     name = "Marcus Vance",
                     contextSubtitle = "Founder @ Studio Arc • Met at Coffee Lab",
-                    circles = listOf(Circle.WORK),
                     avatarInitials = "MV",
                     avatarBgIndex = 1,
                     lastEncounterText = "4 days ago"
@@ -284,7 +252,6 @@ class HomeViewModel(
                     id = "c-3",
                     name = "Elena Rostova",
                     contextSubtitle = "Neighbor & Botanist • Exchanged plants last Sunday",
-                    circles = listOf(Circle.FRIENDS, Circle.FAMILY),
                     avatarInitials = "ER",
                     avatarBgIndex = 2,
                     lastEncounterText = "Last Sunday"
@@ -293,37 +260,9 @@ class HomeViewModel(
                     id = "c-4",
                     name = "David Kim",
                     contextSubtitle = "Mobile Dev • Discussed Compose gestures & spring physics",
-                    circles = listOf(Circle.WORK, Circle.UNI),
                     avatarInitials = "DK",
                     avatarBgIndex = 3,
                     lastEncounterText = "10 days ago"
-                )
-            )
-
-            val initialConfigs = mapOf(
-                Circle.WORK to CircleGroupConfig(
-                    circle = Circle.WORK,
-                    cadenceDays = 7,
-                    defaultCardType = CardType.WORK,
-                    isCadenceAlertEnabled = true
-                ),
-                Circle.FRIENDS to CircleGroupConfig(
-                    circle = Circle.FRIENDS,
-                    cadenceDays = 14,
-                    defaultCardType = CardType.SOCIAL,
-                    isCadenceAlertEnabled = true
-                ),
-                Circle.FAMILY to CircleGroupConfig(
-                    circle = Circle.FAMILY,
-                    cadenceDays = 7,
-                    defaultCardType = CardType.SOCIAL,
-                    isCadenceAlertEnabled = true
-                ),
-                Circle.UNI to CircleGroupConfig(
-                    circle = Circle.UNI,
-                    cadenceDays = 30,
-                    defaultCardType = CardType.SOCIAL,
-                    isCadenceAlertEnabled = true
                 )
             )
 
@@ -338,10 +277,7 @@ class HomeViewModel(
                 upcomingAlerts = upcoming,
                 recentContacts = contacts,
                 isSpeedDialOpen = false,
-                selectedNavTab = HomeNavTab.HOME,
-                isDrawerOpen = false,
-                selectedCircle = null,
-                circleConfigs = initialConfigs
+                selectedNavTab = HomeNavTab.HOME
             )
         }
     }

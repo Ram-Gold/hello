@@ -75,7 +75,6 @@ import com.example.hello.ui.edit.PersonEditViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
-import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.navigation.HomeRoute
 import com.example.hello.ui.navigation.NavigationTransitionConfig
@@ -272,64 +271,17 @@ fun MainAppShell(
 
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
     val homeUiState by homeViewModel.uiState.collectAsState()
-    val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
-    val isDrawerActive = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
 
-    BackHandler(enabled = isDrawerActive) {
-        coroutineScope.launch { drawerState.close() }
-        homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
-    }
-
-    LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Closed && homeUiState.isDrawerOpen) {
-            homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
-        }
-    }
-
-    LaunchedEffect(homeUiState.isDrawerOpen) {
-        if (homeUiState.isDrawerOpen && drawerState.isClosed) {
-            drawerState.open()
-        } else if (!homeUiState.isDrawerOpen && isDrawerActive) {
-            drawerState.close()
-        }
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = isDrawerActive,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                drawerTonalElevation = 2.dp
-            ) {
-                GroupDrawerContent(
-                    selectedCircle = homeUiState.selectedCircle,
-                    circleConfigs = homeUiState.circleConfigs,
-                    onSelectCircle = { circle ->
-                        homeViewModel.onEvent(HomeUiEvent.OnSelectCircle(circle))
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onUpdateCircleConfig = { config ->
-                        homeViewModel.onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
-                    },
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                        homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
-                    }
-                )
-            }
-        }
-    ) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
                 if (hasCompletedOnboarding || (currentRoute != null && currentRoute != OnboardingRoute.ROUTE_NAME)) {
                     WarmRootTabsHost(
                         navController = navController,
@@ -372,7 +324,6 @@ fun MainAppShell(
             }
         }
     }
-}
 
 /**
  * Keeps both [HomeScreen] and [ContactsScreen] permanently composed and laid out in memory
@@ -926,7 +877,6 @@ private fun MainAppNavHost(
                                     id = contactId,
                                     name = detailUiState.contact?.name ?: "Contact",
                                     contextSubtitle = "",
-                                    circles = detailUiState.contact?.circles ?: emptyList(),
                                     avatarInitials = extractAlphanumericInitials(detailUiState.contact?.name ?: "")
                                 )
                             quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
@@ -1026,7 +976,6 @@ private fun FloatingDockOverlay(
                 if (isSpeedDialOpen) {
                     homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
                 }
-                homeViewModel.onEvent(HomeUiEvent.OnCloseDrawer)
                 val targetRoute = when (tab) {
                     HomeNavTab.HOME -> HomeRoute.ROUTE_NAME
                     HomeNavTab.PEOPLE -> PeopleRoute.ROUTE_NAME

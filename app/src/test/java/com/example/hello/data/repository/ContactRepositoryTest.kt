@@ -1,6 +1,5 @@
 package com.example.hello.data.repository
 
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.UpcomingAlert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,7 +37,6 @@ class ContactRepositoryTest {
 
         val addedContact = repository.addContactWithInitialEncounter(
             name = "Hannah Abbott",
-            circles = setOf(Circle.FRIENDS, Circle.WORK),
             tagIds = setOf(targetTag.id),
             placeId = targetPlace.id,
             customPlaceName = null,
@@ -75,7 +73,6 @@ class ContactRepositoryTest {
 
         val addedContact = repository.addContactWithInitialEncounter(
             name = "Oliver Wood",
-            circles = setOf(Circle.UNI),
             tagIds = emptySet(),
             placeId = null,
             customPlaceName = "Tartine Bakery",

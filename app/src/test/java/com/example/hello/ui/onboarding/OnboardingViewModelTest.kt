@@ -91,4 +91,20 @@ class OnboardingViewModelTest {
         assertTrue(viewModel.uiState.value.isCompleted)
         assertTrue(callbackCalled)
     }
+
+    @Test
+    fun twoLayerTerminology_exposesPrimaryDirectoryOptionsAndCoreSphereTags() {
+        assertEquals(
+            listOf(RelationshipTerminology.PEOPLE, RelationshipTerminology.CONTACTS),
+            RelationshipTerminology.primaryDirectoryOptions
+        )
+        assertEquals(
+            listOf("friends", "work", "family", "uni"),
+            RelationshipTerminology.coreSphereTags
+        )
+        assertEquals(
+            "No people tagged #friends yet.",
+            RelationshipTerminology.PEOPLE.emptyTagFilterMessage("#friends")
+        )
+    }
 }

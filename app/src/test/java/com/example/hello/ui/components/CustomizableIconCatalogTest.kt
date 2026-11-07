@@ -1,14 +1,10 @@
 package com.example.hello.ui.components
 
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.domain.model.Circle
-import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.Contact
-import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.ui.contacts.ContactsViewModel
-import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.quickaction.QuickActionViewModel
 import com.example.hello.ui.settings.SettingsUiState
@@ -37,33 +33,11 @@ class CustomizableIconCatalogTest {
     }
 
     @Test
-    fun circleDefaultIconsAndCustomOverrides_resolveThroughHelloIconKeyCatalog() {
-        assertEquals(HelloIconKey.BRIEFCASE, Circle.WORK.defaultIconKey)
-        assertEquals(HelloIconKey.COFFEE, Circle.FRIENDS.defaultIconKey)
-        assertEquals(HelloIconKey.HOME, Circle.FAMILY.defaultIconKey)
-        assertEquals(HelloIconKey.GRADUATION_CAP, Circle.UNI.defaultIconKey)
-
+    fun allHelloIconKeys_resolveThroughHelloIconKeyCatalog() {
         // Every HelloIconKey resolves to a non-null ImageVector
         HelloIconKey.entries.forEach { key ->
             assertNotNull("Expected ImageVector for $key", key.resolveImageVector())
         }
-
-        // User can customize a Group's icon via CircleGroupConfig in HomeViewModel
-        val homeViewModel = HomeViewModel()
-        val initialWorkConfig = homeViewModel.uiState.value.circleConfigs[Circle.WORK]
-        assertNotNull(initialWorkConfig)
-        assertEquals(HelloIconKey.BRIEFCASE, initialWorkConfig?.iconKey)
-
-        val customizedWorkConfig = initialWorkConfig!!.copy(iconKey = HelloIconKey.CODE)
-        homeViewModel.onEvent(HomeUiEvent.OnUpdateCircleConfig(customizedWorkConfig))
-
-        assertEquals(
-            HelloIconKey.CODE,
-            homeViewModel.uiState.value.circleConfigs[Circle.WORK]?.iconKey
-        )
-        assertEquals(HelloIconKey.CODE, GroupIconRegistry.getIconKey(Circle.WORK))
-        assertTrue(HelloIconKey.customizableGroupIcons.contains(HelloIconKey.CODE))
-        GroupIconRegistry.reset()
     }
 
     @Test
@@ -71,7 +45,6 @@ class CustomizableIconCatalogTest {
         val repository = ContactRepository()
         val addedBlank = repository.addContactWithInitialEncounter(
             name = "   ",
-            circles = setOf(Circle.FRIENDS),
             tagIds = emptySet(),
             placeId = null,
             customPlaceName = null,
@@ -89,7 +62,6 @@ class CustomizableIconCatalogTest {
         val bdayContact = Contact(
             id = "c-bday-today",
             name = "Nora Vance",
-            circles = listOf(Circle.FRIENDS),
             birthday = LocalDate.of(1996, 11, 6),
             firstMetAt = Instant.now(),
             lastMetAt = Instant.now()

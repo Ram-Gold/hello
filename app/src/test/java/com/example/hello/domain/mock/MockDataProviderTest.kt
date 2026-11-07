@@ -1,6 +1,5 @@
 package com.example.hello.domain.mock
 
-import com.example.hello.domain.model.Circle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -21,17 +20,14 @@ class MockDataProviderTest {
         assertEquals(3, sarah!!.meetCount)
         assertEquals(30, sarah.cadenceDays)
         assertTrue("Sarah should have aliases", sarah.aliases.contains("S-Lin"))
-        assertTrue("Sarah should have WORK circle", sarah.circles.contains(Circle.WORK))
 
         val alex = contacts.find { it.name == "Alex Rivera" }
         assertNotNull("Alex Rivera should exist in mock contacts", alex)
         assertEquals(1, alex!!.meetCount)
-        assertTrue("Alex should have FRIENDS circle", alex.circles.contains(Circle.FRIENDS))
 
         val elena = contacts.find { it.name == "Elena Gomez" }
         assertNotNull("Elena Gomez should exist in mock contacts", elena)
-        assertTrue("Elena should have FAMILY circle", elena!!.circles.contains(Circle.FAMILY))
-        assertEquals(7, elena.cadenceDays)
+        assertEquals(7, elena!!.cadenceDays)
     }
 
     @Test

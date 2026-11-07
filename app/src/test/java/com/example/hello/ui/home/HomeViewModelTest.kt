@@ -1,8 +1,6 @@
 package com.example.hello.ui.home
 
 import com.example.hello.data.preferences.FakeUserPreferencesRepository
-import com.example.hello.domain.model.Circle
-import com.example.hello.domain.model.CircleGroupConfig
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.domain.model.SubconsciousCheckInCalculator
@@ -49,98 +47,6 @@ class HomeViewModelTest {
         assertFalse(state.isSpeedDialOpen)
         assertNull(state.userMessage)
         assertEquals(HomeNavTab.HOME, state.selectedNavTab)
-        assertFalse(state.isDrawerOpen)
-        assertNull(state.selectedCircle)
-    }
-
-    @Test
-    fun onOpenDrawer_and_onCloseDrawer_updatesDrawerState() {
-        assertFalse(viewModel.uiState.value.isDrawerOpen)
-
-        viewModel.onEvent(HomeUiEvent.OnOpenDrawer)
-        assertTrue(viewModel.uiState.value.isDrawerOpen)
-
-        viewModel.onEvent(HomeUiEvent.OnCloseDrawer)
-        assertFalse(viewModel.uiState.value.isDrawerOpen)
-    }
-
-    @Test
-    fun onSelectCircle_updatesActiveCircle_and_closesDrawer() {
-        assertNull(viewModel.uiState.value.selectedCircle)
-
-        viewModel.onEvent(HomeUiEvent.OnOpenDrawer)
-        assertTrue(viewModel.uiState.value.isDrawerOpen)
-
-        viewModel.onEvent(HomeUiEvent.OnSelectCircle(Circle.WORK))
-        assertEquals(Circle.WORK, viewModel.uiState.value.selectedCircle)
-        assertFalse(viewModel.uiState.value.isDrawerOpen)
-        assertTrue(viewModel.uiState.value.userMessage?.contains("Work") == true)
-
-        // Select All Circles (null)
-        viewModel.onEvent(HomeUiEvent.OnSelectCircle(null))
-        assertNull(viewModel.uiState.value.selectedCircle)
-        assertFalse(viewModel.uiState.value.isDrawerOpen)
-    }
-
-    @Test
-    fun onUpdateCircleConfig_persistsPerGroupConfigurationChanges() {
-        val workConfig = viewModel.uiState.value.circleConfigs[Circle.WORK]
-        assertNotNull(workConfig)
-        assertEquals(7, workConfig?.cadenceDays)
-        assertTrue(workConfig?.isCadenceAlertEnabled == true)
-
-        val updatedConfig = workConfig!!.copy(
-            cadenceDays = 21,
-            isCadenceAlertEnabled = false
-        )
-        viewModel.onEvent(HomeUiEvent.OnUpdateCircleConfig(updatedConfig))
-
-        val currentWorkConfig = viewModel.uiState.value.circleConfigs[Circle.WORK]
-        assertEquals(21, currentWorkConfig?.cadenceDays)
-        assertFalse(currentWorkConfig?.isCadenceAlertEnabled == true)
-        assertTrue(viewModel.uiState.value.userMessage?.contains("Work configuration") == true)
-    }
-
-    @Test
-    fun resolveEffectiveCadenceDays_arbitratesExplicitAndShortestCircleCadence() {
-        val configs = mapOf(
-            Circle.WORK to CircleGroupConfig(circle = Circle.WORK, cadenceDays = 7, isCadenceAlertEnabled = true),
-            Circle.FRIENDS to CircleGroupConfig(circle = Circle.FRIENDS, cadenceDays = 30, isCadenceAlertEnabled = true),
-            Circle.UNI to CircleGroupConfig(circle = Circle.UNI, cadenceDays = 3, isCadenceAlertEnabled = false)
-        )
-
-        // 1. Explicit per-contact cadence wins over circle cadences
-        val explicitResult = CircleGroupConfig.resolveEffectiveCadenceDays(
-            circles = listOf(Circle.WORK, Circle.FRIENDS),
-            explicitCadenceDays = 14,
-            circleConfigs = configs
-        )
-        assertEquals(14, explicitResult)
-
-        // 2. When no explicit cadence is set, shortest enabled circle cadence wins (Work 7d < Friends 30d)
-        val shortestCircleResult = CircleGroupConfig.resolveEffectiveCadenceDays(
-            circles = listOf(Circle.WORK, Circle.FRIENDS),
-            explicitCadenceDays = null,
-            circleConfigs = configs
-        )
-        assertEquals(7, shortestCircleResult)
-
-        // 3. Disabled circle alerts are ignored (Uni @ 3d disabled, Friends @ 30d enabled -> 30d)
-        val disabledIgnoredResult = CircleGroupConfig.resolveEffectiveCadenceDays(
-            circles = listOf(Circle.UNI, Circle.FRIENDS),
-            explicitCadenceDays = null,
-            circleConfigs = configs
-        )
-        assertEquals(30, disabledIgnoredResult)
-
-        // 4. Empty circles or no enabled circles fall back to defaultCadenceDays
-        val fallbackResult = CircleGroupConfig.resolveEffectiveCadenceDays(
-            circles = emptyList(),
-            explicitCadenceDays = null,
-            circleConfigs = configs,
-            defaultCadenceDays = 21
-        )
-        assertEquals(21, fallbackResult)
     }
 
     @Test
@@ -176,7 +82,6 @@ class HomeViewModelTest {
         viewModel.onEvent(
             HomeUiEvent.OnQuickAddContact(
                 name = "Taylor Swift",
-                circles = setOf(Circle.WORK, Circle.FRIENDS),
                 initialNote = "Met backstage at tour"
             )
         )
@@ -187,7 +92,6 @@ class HomeViewModelTest {
         val added = state.recentContacts.first()
         assertEquals("Taylor Swift", added.name)
         assertEquals("TS", added.avatarInitials)
-        assertEquals(2, added.circles.size)
         assertEquals("Met backstage at tour", added.contextSubtitle)
     }
 

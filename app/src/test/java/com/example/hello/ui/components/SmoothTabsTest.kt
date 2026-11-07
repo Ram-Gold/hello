@@ -2,8 +2,12 @@ package com.example.hello.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.People
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.home.components.DockMotionConfig
 import com.example.hello.ui.navigation.shouldInterceptPeopleBack
@@ -78,42 +82,59 @@ class SmoothTabsTest {
     }
 
     @Test
-    fun resolveTabIcon_returnsFriendlyRoundedIcons() {
+    fun resolveTabIcon_returnsFilledWhenSelectedAndOutlinedWhenUnselected() {
         // Home tab
         assertEquals(
-            "Selected Home tab must use rounded icon",
-            Icons.Rounded.Home,
+            "Selected Home tab must use filled icon",
+            Icons.Filled.Home,
             DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = true)
         )
         assertEquals(
-            "Unselected Home tab must use rounded icon",
-            Icons.Rounded.Home,
+            "Unselected Home tab must use outlined icon",
+            Icons.Outlined.Home,
             DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = false)
+        )
+
+        // Timeline tab
+        assertEquals(
+            "Selected Timeline tab must use filled icon",
+            Icons.Filled.CalendarMonth,
+            DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = true)
+        )
+        assertEquals(
+            "Unselected Timeline tab must use outlined icon",
+            Icons.Outlined.CalendarMonth,
+            DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = false)
         )
 
         // People tab
         assertEquals(
-            "Selected People tab must use rounded icon",
-            Icons.Rounded.People,
+            "Selected People tab must use filled icon",
+            Icons.Filled.People,
             DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = true)
         )
         assertEquals(
-            "Unselected People tab must use rounded icon",
-            Icons.Rounded.People,
+            "Unselected People tab must use outlined icon",
+            Icons.Outlined.People,
             DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = false)
         )
     }
 
     @Test
-    fun tabFilledIcon_alwaysReturnsRoundedIconsForSmoothTransitions() {
+    fun tabFilledIcon_returnsFilledIconsForActiveState() {
         assertEquals(
-            "Home tab must always use rounded icon during transitions",
-            Icons.Rounded.Home,
+            "Home tab must use filled icon when active",
+            Icons.Filled.Home,
             DockMotionConfig.tabFilledIcon(HomeNavTab.HOME)
         )
         assertEquals(
-            "People tab must always use rounded icon during transitions",
-            Icons.Rounded.People,
+            "Timeline tab must use filled icon when active",
+            Icons.Filled.CalendarMonth,
+            DockMotionConfig.tabFilledIcon(HomeNavTab.TIMELINE)
+        )
+        assertEquals(
+            "People tab must use filled icon when active",
+            Icons.Filled.People,
             DockMotionConfig.tabFilledIcon(HomeNavTab.PEOPLE)
         )
     }
@@ -490,6 +511,58 @@ class SmoothTabsTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun calculateThreeTabSlotWidths_alignsExactlyWithTabSlotIndices() {
+        val activePillWidth = 112f
+        val inactiveSlotWidth = 52f
+
+        // When Home (index 0) is active
+        val (s0Home, s1Home, s2Home) = DockMotionConfig.calculateThreeTabSlotWidths(
+            activePillWidth = activePillWidth,
+            inactiveSlotWidth = inactiveSlotWidth,
+            progress = 0f
+        )
+        assertEquals(112f, s0Home, 0.001f)
+        assertEquals(52f, s1Home, 0.001f)
+        assertEquals(52f, s2Home, 0.001f)
+
+        // When People (index 1) is active
+        val (s0People, s1People, s2People) = DockMotionConfig.calculateThreeTabSlotWidths(
+            activePillWidth = activePillWidth,
+            inactiveSlotWidth = inactiveSlotWidth,
+            progress = 1f
+        )
+        assertEquals(52f, s0People, 0.001f)
+        assertEquals(112f, s1People, 0.001f)
+        assertEquals(52f, s2People, 0.001f)
+
+        // When Timeline (index 2) is active
+        val (s0Timeline, s1Timeline, s2Timeline) = DockMotionConfig.calculateThreeTabSlotWidths(
+            activePillWidth = activePillWidth,
+            inactiveSlotWidth = inactiveSlotWidth,
+            progress = 2f
+        )
+        assertEquals(52f, s0Timeline, 0.001f)
+        assertEquals(52f, s1Timeline, 0.001f)
+        assertEquals(112f, s2Timeline, 0.001f)
+
+        // Invariant: total row width remains constant across all progress points
+        val expectedTotal = activePillWidth + (2 * inactiveSlotWidth)
+        var p = 0f
+        while (p <= 2.01f) {
+            val (w0, w1, w2) = DockMotionConfig.calculateThreeTabSlotWidths(activePillWidth, inactiveSlotWidth, p)
+            assertEquals(expectedTotal, w0 + w1 + w2, 0.01f)
+            p += 0.1f
+        }
+    }
+
+    @Test
+    fun threeTabOrder_preservesHomePeopleTimelineContract() {
+        assertEquals(0, HomeNavTab.HOME.ordinal)
+        assertEquals(1, HomeNavTab.PEOPLE.ordinal)
+        assertEquals(2, HomeNavTab.TIMELINE.ordinal)
     }
 
     @Test

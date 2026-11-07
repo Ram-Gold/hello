@@ -56,7 +56,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.quickaction.QuickActionUiEvent
@@ -80,7 +79,7 @@ fun FlowAAddContactCard(
     // Sequence focus request after the frame settles to avoid IME flicker
     LaunchedEffect(currentStep, currentComp?.type) {
         val type = currentComp?.type
-        if (type != CaptureComponentType.CIRCLES && type != CaptureComponentType.CADENCE) {
+        if (type != CaptureComponentType.CADENCE) {
             withFrameNanos { }
             if (type == CaptureComponentType.NAME) {
                 delay(45)
@@ -289,22 +288,6 @@ fun FlowAAddContactCard(
                             }
                         }
 
-                        CaptureComponentType.CIRCLES -> {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Circle.entries.forEach { circle ->
-                                    val isSelected = circle in uiState.selectedCircles
-                                    MinimalSelectableChip(
-                                        label = "#${circle.displayName.lowercase()}",
-                                        selected = isSelected,
-                                        onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
-                                    )
-                                }
-                            }
-                        }
-
                         CaptureComponentType.TAGS -> {
                             MinimalFilledTextField(
                                 value = uiState.customTagInput,
@@ -320,14 +303,6 @@ fun FlowAAddContactCard(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Circle.entries.forEach { circle ->
-                                    val isSelected = circle in uiState.selectedCircles
-                                    MinimalSelectableChip(
-                                        label = "#${circle.displayName.lowercase()}",
-                                        selected = isSelected,
-                                        onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
-                                    )
-                                }
                                 uiState.suggestedTags.forEach { tag ->
                                     val isSelected = tag.id in uiState.selectedTagIds
                                     MinimalSelectableChip(
@@ -468,12 +443,12 @@ fun FlowAAddContactCard(
             }
         }
 
-        // Pinned Hybrid Chip Strip (ADR-0013): Life Spheres + Top Tags + "+ tag" inline custom entry
+        // Pinned Tag Chip Strip: Top Tags + "+ tag" inline custom entry
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (currentComp?.type != CaptureComponentType.CIRCLES && currentComp?.type != CaptureComponentType.TAGS) {
+            if (currentComp?.type != CaptureComponentType.TAGS) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -481,14 +456,6 @@ fun FlowAAddContactCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Circle.entries.forEach { circle ->
-                        val isSelected = circle in uiState.selectedCircles
-                        MinimalSelectableChip(
-                            label = "#${circle.displayName.lowercase()}",
-                            selected = isSelected,
-                            onClick = { onEvent(QuickActionUiEvent.OnToggleCircle(circle)) }
-                        )
-                    }
                     uiState.suggestedTags.forEach { tag ->
                         val isSelected = tag.id in uiState.selectedTagIds
                         MinimalSelectableChip(

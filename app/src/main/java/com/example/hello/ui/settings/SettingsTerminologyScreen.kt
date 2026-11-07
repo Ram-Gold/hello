@@ -74,28 +74,48 @@ fun SettingsTerminologyScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                SettingsSubsection(title = "Nomenclature Presets") {
-                    val entries = RelationshipTerminology.entries
-                    entries.forEachIndexed { index, option ->
+                SettingsSubsection(title = "Layer 1 • Universal Directory Containers (Recommended)") {
+                    val primaryEntries = RelationshipTerminology.primaryDirectoryOptions
+                    primaryEntries.forEachIndexed { index, option ->
+                        val titleText = if (option == RelationshipTerminology.PEOPLE) {
+                            "${option.pluralTitle} (Recommended)"
+                        } else {
+                            option.pluralTitle
+                        }
                         SelectableSettingItem(
-                            title = option.pluralTitle,
+                            title = titleText,
                             subtitle = option.description,
                             selected = uiState.terminology == option,
                             onClick = { onEvent(SettingsUiEvent.OnSelectTerminology(option)) },
-                            shape = shapeFor(index, entries.size)
+                            shape = shapeFor(index, primaryEntries.size)
                         )
                     }
                 }
             }
 
             item {
-                SettingsSubsection(title = "Domain Invariant") {
+                SettingsSubsection(title = "Specialized Labels") {
+                    val secondaryEntries = RelationshipTerminology.entries.filterNot { it.isPrimaryDirectoryOption }
+                    secondaryEntries.forEachIndexed { index, option ->
+                        SelectableSettingItem(
+                            title = option.pluralTitle,
+                            subtitle = option.description,
+                            selected = uiState.terminology == option,
+                            onClick = { onEvent(SettingsUiEvent.OnSelectTerminology(option)) },
+                            shape = shapeFor(index, secondaryEntries.size)
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsSubsection(title = "Two-Layer Taxonomy Architecture") {
                     Surface(
                         shape = shapeFor(0, 1),
                         color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -107,14 +127,14 @@ fun SettingsTerminologyScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "Decoupled Presentation (ADR-0005)",
+                                    text = "Why Two Layers? (ADR-0005)",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Text(
-                                text = "Contact is the invariant SQLite Room & Markdown frontmatter identifier. Your display nomenclature choice applies strictly to presentation labels (tabs, headers, and speed-dial actions) with zero risk to data stability.",
+                                text = "Layer 1 names your global directory container (${uiState.terminology.pluralTitle}), while Layer 2 uses flat #tags (#friends, #work, #family, #uni) for life spheres. This prevents overlapping labels and keeps your SQLite & Markdown schemas 100% portable.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )

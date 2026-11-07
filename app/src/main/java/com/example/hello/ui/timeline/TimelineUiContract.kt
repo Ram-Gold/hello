@@ -1,6 +1,5 @@
 package com.example.hello.ui.timeline
 
-import com.example.hello.domain.model.Circle
 import java.time.Instant
 
 enum class TimelineFilter(val label: String) {
@@ -22,7 +21,6 @@ sealed interface FutureTimelineNode {
     val avatarBgIndex: Int
     val daysUntil: Long
     val dateLabel: String
-    val circles: List<Circle>
 
     data class FollowUpNode(
         override val id: String,
@@ -32,7 +30,6 @@ sealed interface FutureTimelineNode {
         override val avatarBgIndex: Int,
         override val daysUntil: Long,
         override val dateLabel: String,
-        override val circles: List<Circle>,
         val followUpId: String,
         val note: String
     ) : FutureTimelineNode
@@ -45,7 +42,6 @@ sealed interface FutureTimelineNode {
         override val avatarBgIndex: Int,
         override val daysUntil: Long,
         override val dateLabel: String,
-        override val circles: List<Circle>,
         val turningAge: Int? = null
     ) : FutureTimelineNode
 }
@@ -60,8 +56,7 @@ data class PastTimelineNode(
     val dateLabel: String,
     val placeLabel: String?,
     val notes: String,
-    val badge: PastEncounterBadge,
-    val circles: List<Circle>
+    val badge: PastEncounterBadge
 )
 
 data class TimelineUiState(

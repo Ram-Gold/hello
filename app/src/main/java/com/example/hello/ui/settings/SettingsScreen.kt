@@ -154,7 +154,7 @@ fun SettingsScreen(
                     }
                     ExpressiveNavigationItem(
                         title = "Tag Taxonomy",
-                        subtitle = "${uiState.tags.size} active #tags • Layer 2 life spheres & topics",
+                        subtitle = "${uiState.tags.size} active #tags • Layer 2 groups & topics",
                         icon = Icons.AutoMirrored.Rounded.Label,
                         colors = tagColors,
                         onClick = onNavigateToTags,
@@ -213,7 +213,7 @@ fun SettingsScreen(
                     }
                     ExpressiveNavigationItem(
                         title = "Preferences",
-                        subtitle = "Cadence: ${uiState.defaultCadenceDays}d • Notif: ${uiState.notificationHour}:00 • Location",
+                        subtitle = "Notif: ${uiState.notificationHour}:00 • Location",
                         icon = Icons.Rounded.Settings,
                         colors = prefColors,
                         onClick = onNavigateToPreferences,

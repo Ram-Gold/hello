@@ -12,17 +12,9 @@ _Avoid_: Person, Connection, Client, Account
 The user's chosen display nomenclature (People, Friends, Connections, or Contacts) applied across the presentation layer to describe Contacts according to personal mental models.
 _Avoid_: User Role, Category Type, Custom Entity
 
-**Circle**:
-A relationship sphere or community grouping (e.g., Work, Friends, Family, Uni) used to categorize contacts and manage context. Contacts can belong to multiple Circles simultaneously (multi-sphere membership). In the presentation UI, Circles are presented cleanly as **Groups**.
-_Avoid_: Category, Folder, Sphere
-
-**Group**:
-The user-facing presentation term for a Circle / relationship sphere. Represented in navigation as a lightweight filtering drawer that allows filtering the home overview by sphere (#work, #friends, etc.) or viewing all relationships together.
-_Avoid_: Cadence Panel, Sphere Settings, Category List
-
 **Tag**:
-A lightweight freeform label attached to Contacts to support cross-cutting categorization and ad-hoc filtering. Contacts can have multiple tags, which sit alongside Circles in unified filter strips.
-_Avoid_: Category, Label, Folder
+A lightweight freeform label attached to Contacts to support flexible categorization and ad-hoc filtering. Serves as the single categorization primitive across the entire application.
+_Avoid_: Circle, Group, Sphere, Category, Label, Folder
 
 **Encounter**:
 A recorded interaction or meeting between the user and a Contact, preserving context, notes, and recency.
@@ -93,5 +85,5 @@ The contextual interaction phase entered via long-press on a Contact Card within
 _Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen
 
 **Contact Profile Screen**:
-The dedicated Material 3 Expressive view displaying a Contact's relationship properties, Groups, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
+The dedicated Material 3 Expressive view displaying a Contact's relationship properties, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
 _Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry

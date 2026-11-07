@@ -76,8 +76,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.mock.MockDataProvider
-import com.example.hello.domain.model.Circle
-import com.example.hello.domain.model.GroupIconRegistry
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.ui.components.CustomizableIcon
@@ -325,12 +323,6 @@ fun PersonEditScreen(
                 maxLines = 6,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
-            )
-
-            // Circles Multi-select
-            CirclesSelector(
-                selectedCircles = uiState.selectedCircles,
-                onToggleCircle = { onEvent(PersonEditUiEvent.OnToggleCircle(it)) }
             )
 
             // Tags Manager
@@ -619,54 +611,6 @@ private fun AliasesChipManager(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CirclesSelector(
-    selectedCircles: Set<Circle>,
-    onToggleCircle: (Circle) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "GROUPS",
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Circle.entries.forEach { circle ->
-                val isSelected = circle in selectedCircles
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onToggleCircle(circle) },
-                    leadingIcon = {
-                        CustomizableIcon(
-                            iconKey = GroupIconRegistry.getIconKey(circle),
-                            size = FeatherIconSize.INLINE,
-                            tint = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
-                    },
-                    label = { Text("#${circle.displayName.lowercase()}") },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
 private fun TagsManager(
     availableTags: List<Tag>,
     selectedTagIds: Set<String>,
@@ -872,7 +816,6 @@ fun PersonEditScreenPreview() {
                 phone = "+1 (555) 234-5678",
                 email = "sarah.lin@example.com",
                 notes = "Co-founder & Staff Engineer.",
-                selectedCircles = setOf(Circle.WORK),
                 availableTags = MockDataProvider.tags,
                 cadenceDays = 30
             ),

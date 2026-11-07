@@ -1,7 +1,6 @@
 package com.example.hello.ui.home
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -24,36 +23,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
-import com.example.hello.domain.model.UpcomingAlert
-import com.example.hello.ui.home.components.GroupDrawerContent
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.home.components.HomeTopBar
 import com.example.hello.ui.home.components.RecentEncountersSection
 import com.example.hello.ui.home.components.UpcomingFeedSection
 import com.example.hello.ui.theme.HelloTheme
-import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -70,32 +57,6 @@ fun HomeScreen(
 ) {
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val drawerState = remember { DrawerState(initialValue = DrawerValue.Closed) }
-    val coroutineScope = rememberCoroutineScope()
-
-    val isDrawerActive = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
-
-    // Intercept system back press when drawer is open
-    BackHandler(enabled = isDrawerActive) {
-        coroutineScope.launch { drawerState.close() }
-        onEvent(HomeUiEvent.OnCloseDrawer)
-    }
-
-    // Synchronize ViewModel state when drawer finishes closing
-    LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Closed && uiState.isDrawerOpen) {
-            onEvent(HomeUiEvent.OnCloseDrawer)
-        }
-    }
-
-    // Allow external requests to open or close drawer
-    LaunchedEffect(uiState.isDrawerOpen) {
-        if (uiState.isDrawerOpen && drawerState.isClosed) {
-            drawerState.open()
-        } else if (!uiState.isDrawerOpen && isDrawerActive) {
-            drawerState.close()
-        }
-    }
 
     // Display feedback messages via Snackbar only when standalone (MainAppShell handles it otherwise)
     if (showBottomDock) {
@@ -107,159 +68,106 @@ fun HomeScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = isDrawerActive,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                drawerTonalElevation = 2.dp
+    val mainContent: @Composable (Modifier) -> Unit = { contentModifier ->
+        Box(
+            modifier = contentModifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Main Vertically Scrollable Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2,
+                        bottom = 120.dp
+                    ),
+                verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                GroupDrawerContent(
-                    selectedCircle = uiState.selectedCircle,
-                    circleConfigs = uiState.circleConfigs,
-                    onSelectCircle = { circle ->
-                        onEvent(HomeUiEvent.OnSelectCircle(circle))
-                        coroutineScope.launch { drawerState.close() }
+                // 1. Top Bar & Headline matching People and Timeline screens
+                HomeTopBar(
+                    userName = uiState.userName,
+                    onSettingsClick = onSettingsClick
+                )
+
+                // 2. "Upcoming" Feed (Horizontal Alert Carousel)
+                UpcomingFeedSection(
+                    alerts = uiState.upcomingAlerts,
+                    onReminderDone = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderDone(it)) } },
+                    onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } }
+                )
+
+                // 3. Recent Encounters List
+                RecentEncountersSection(
+                    contacts = uiState.recentContacts,
+                    onContactClick = onContactClick,
+                    onNavigateToPeople = onNavigateToPeople,
+                    hasContacts = uiState.recentContacts.isNotEmpty(),
+                    onLogEncounterClick = onLogEncounterClick,
+                    onAddContactClick = onAddContactClick,
+                    terminology = terminology
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (showBottomDock) {
+                // Scrim to dismiss Speed Dial when tapping outside
+                AnimatedVisibility(
+                    visible = uiState.isSpeedDialOpen,
+                    enter = fadeIn(animationSpec = tween(200)),
+                    exit = fadeOut(animationSpec = tween(150))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                onEvent(HomeUiEvent.OnCloseSpeedDial)
+                            }
+                    )
+                }
+
+                // Floating Bottom Navigation Dock & Companion Quick-Add FAB
+                HomeFloatingBottomDock(
+                    selectedTab = uiState.selectedNavTab,
+                    onTabSelect = { tab ->
+                        if (uiState.isSpeedDialOpen) {
+                            onEvent(HomeUiEvent.OnCloseSpeedDial)
+                        }
+                        onEvent(HomeUiEvent.OnNavTabSelect(tab))
                     },
-                    onUpdateCircleConfig = { config ->
-                        onEvent(HomeUiEvent.OnUpdateCircleConfig(config))
-                    },
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                        onEvent(HomeUiEvent.OnCloseDrawer)
-                    }
+                    isSpeedDialOpen = uiState.isSpeedDialOpen,
+                    onToggleSpeedDial = { onEvent(HomeUiEvent.OnToggleSpeedDial) },
+                    onSpeedDialAction = { onEvent(HomeUiEvent.OnSpeedDialAction(it)) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        )
                 )
             }
         }
-    ) {
-        val mainContent: @Composable (Modifier) -> Unit = { contentModifier ->
-            Box(
-                modifier = contentModifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                // Main Vertically Scrollable Content
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2,
-                            bottom = 120.dp
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(22.dp)
-                ) {
-                    // 1. Top Bar & Headline matching People and Timeline screens
-                    HomeTopBar(
-                        userName = uiState.userName,
-                        onSettingsClick = onSettingsClick,
-                        onDrawerClick = {
-                            coroutineScope.launch { drawerState.open() }
-                            onEvent(HomeUiEvent.OnOpenDrawer)
-                        },
-                        activeCircle = uiState.selectedCircle
-                    )
+    }
 
-                    // Filter feed and contacts when a specific circle is active
-                    val filteredContacts = remember(uiState.recentContacts, uiState.selectedCircle) {
-                        if (uiState.selectedCircle == null) {
-                            uiState.recentContacts
-                        } else {
-                            uiState.recentContacts.filter { it.circles.contains(uiState.selectedCircle) }
-                        }
-                    }
-                    val filteredAlerts = remember(uiState.upcomingAlerts, uiState.selectedCircle) {
-                        if (uiState.selectedCircle == null) {
-                            uiState.upcomingAlerts
-                        } else {
-                            uiState.upcomingAlerts.filter { alert ->
-                                when (alert) {
-                                    is UpcomingAlert.BirthdayAlert -> alert.circle == null || alert.circle == uiState.selectedCircle
-                                    else -> true
-                                }
-                            }
-                        }
-                    }
-
-                    // 3. "Upcoming" Feed (Horizontal Alert Carousel)
-                    UpcomingFeedSection(
-                        alerts = filteredAlerts,
-                        onReminderDone = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderDone(it)) } },
-                        onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } }
-                    )
-
-                    // 4. Recent Encounters List
-                    RecentEncountersSection(
-                        contacts = filteredContacts,
-                        onContactClick = onContactClick,
-                        onNavigateToPeople = onNavigateToPeople,
-                        hasContacts = uiState.recentContacts.isNotEmpty(),
-                        onLogEncounterClick = onLogEncounterClick,
-                        onAddContactClick = onAddContactClick,
-                        terminology = terminology
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                if (showBottomDock) {
-                    // Scrim to dismiss Speed Dial when tapping outside
-                    AnimatedVisibility(
-                        visible = uiState.isSpeedDialOpen,
-                        enter = fadeIn(animationSpec = tween(200)),
-                        exit = fadeOut(animationSpec = tween(150))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) {
-                                    onEvent(HomeUiEvent.OnCloseSpeedDial)
-                                }
-                        )
-                    }
-
-                    // 6. Floating Bottom Navigation Dock & Companion Quick-Add FAB
-                    HomeFloatingBottomDock(
-                        selectedTab = uiState.selectedNavTab,
-                        onTabSelect = { tab ->
-                            if (uiState.isSpeedDialOpen) {
-                                onEvent(HomeUiEvent.OnCloseSpeedDial)
-                            }
-                            onEvent(HomeUiEvent.OnNavTabSelect(tab))
-                        },
-                        isSpeedDialOpen = uiState.isSpeedDialOpen,
-                        onToggleSpeedDial = { onEvent(HomeUiEvent.OnToggleSpeedDial) },
-                        onSpeedDialAction = { onEvent(HomeUiEvent.OnSpeedDialAction(it)) },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(
-                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                            )
-                    )
+    if (showBottomDock) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = {
+                Box {
+                    SnackbarHost(hostState = snackbarHostState)
                 }
             }
+        ) { innerPadding ->
+            mainContent(Modifier.padding(innerPadding))
         }
-
-        if (showBottomDock) {
-            Scaffold(
-                modifier = modifier.fillMaxSize(),
-                containerColor = MaterialTheme.colorScheme.background,
-                snackbarHost = {
-                    Box {
-                        SnackbarHost(hostState = snackbarHostState)
-                    }
-                }
-            ) { innerPadding ->
-                mainContent(Modifier.padding(innerPadding))
-            }
-        } else {
-            mainContent(modifier)
-        }
+    } else {
+        mainContent(modifier)
     }
 }
 

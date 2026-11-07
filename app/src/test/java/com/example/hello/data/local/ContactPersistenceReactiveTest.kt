@@ -4,7 +4,6 @@ import android.content.Context
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.Contact
 import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel
@@ -67,7 +66,6 @@ class ContactPersistenceReactiveTest {
             aliases = listOf("Tester", "TP"),
             phone = "+1 (555) 123-4567",
             email = "tester@example.com",
-            circles = listOf(Circle.WORK, Circle.FRIENDS),
             tagIds = listOf("tag-tech", "tag-coffee"),
             notes = "Met at Kotlin conference. Loves coroutines.",
             photoUri = "content://media/photo/123",
@@ -84,7 +82,6 @@ class ContactPersistenceReactiveTest {
         assertEquals(original.aliases, entity.aliases)
         assertEquals(original.phone, entity.phone)
         assertEquals(original.email, entity.email)
-        assertEquals(original.circles, entity.circles)
         assertEquals(original.tagIds, entity.tagIds)
         assertEquals(original.notes, entity.notes)
         assertEquals(original.photoUri, entity.photoUri)
@@ -104,7 +101,6 @@ class ContactPersistenceReactiveTest {
         val contact1 = Contact(
             id = "c-100",
             name = "Alice Wonder",
-            circles = listOf(Circle.FRIENDS),
             notes = "Enjoys chess"
         ).toEntity()
 
@@ -132,7 +128,6 @@ class ContactPersistenceReactiveTest {
         val contact = Contact(
             id = "c-bench-1",
             name = "Speedy Gonzales",
-            circles = listOf(Circle.FRIENDS),
             notes = "Benchmark target"
         ).toEntity()
 
@@ -179,7 +174,6 @@ class ContactPersistenceReactiveTest {
             // Quick add a new contact
             val added = repository.addContactWithInitialEncounter(
                 name = "Grace Hopper",
-                circles = setOf(Circle.WORK),
                 tagIds = emptySet(),
                 placeId = null,
                 customPlaceName = null,

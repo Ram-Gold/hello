@@ -75,22 +75,17 @@ fun UpcomingFeedSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CustomizableIcon(
-                    iconKey = HelloIconKey.CALENDAR,
+                    iconKey = HelloIconKey.BELL,
                     size = 18.dp,
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "KEEP IN TOUCH",
+                    text = "Reminders",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "(Next 14 Days)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

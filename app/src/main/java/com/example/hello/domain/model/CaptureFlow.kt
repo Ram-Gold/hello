@@ -13,7 +13,6 @@ enum class CaptureComponentType(
     ROLE("What do they do?"),
     COMPANY("Where do they work or study?"),
     PLACE("Where did you meet?"),
-    CIRCLES("Which circle?"),
     TAGS("Add tags"),
     EMAIL("Email address"),
     PHONE("Phone number"),
@@ -66,15 +65,16 @@ data class FlowPreset(
             FlowPreset(
                 id = PRESET_DEFAULT,
                 name = "Default",
-                description = "Name → Role → Company → Place → Note",
+                description = "Name → Role → Phone → Email → Place → Note",
                 iconName = "Sparkles",
                 isSystemPreset = true,
                 components = listOf(
                     CaptureComponent(id = "comp_def_1", type = CaptureComponentType.NAME, stepOrder = 0, isRequired = true),
                     CaptureComponent(id = "comp_def_2", type = CaptureComponentType.ROLE, stepOrder = 1),
-                    CaptureComponent(id = "comp_def_3", type = CaptureComponentType.COMPANY, stepOrder = 2),
-                    CaptureComponent(id = "comp_def_4", type = CaptureComponentType.PLACE, stepOrder = 3),
-                    CaptureComponent(id = "comp_def_5", type = CaptureComponentType.NOTE, stepOrder = 4)
+                    CaptureComponent(id = "comp_def_3", type = CaptureComponentType.PHONE, stepOrder = 2),
+                    CaptureComponent(id = "comp_def_4", type = CaptureComponentType.EMAIL, stepOrder = 3),
+                    CaptureComponent(id = "comp_def_5", type = CaptureComponentType.PLACE, stepOrder = 4),
+                    CaptureComponent(id = "comp_def_6", type = CaptureComponentType.NOTE, stepOrder = 5)
                 )
             ),
             FlowPreset(
@@ -109,13 +109,13 @@ data class FlowPreset(
             FlowPreset(
                 id = PRESET_CAMPUS,
                 name = "Campus / Uni",
-                description = "Name → University → Circles → Phone → Note",
+                description = "Name → University → Tags → Phone → Note",
                 iconName = "School",
                 isSystemPreset = true,
                 components = listOf(
                     CaptureComponent(id = "comp_campus_1", type = CaptureComponentType.NAME, stepOrder = 0, isRequired = true),
                     CaptureComponent(id = "comp_campus_2", type = CaptureComponentType.COMPANY, label = "University / Major", stepOrder = 1),
-                    CaptureComponent(id = "comp_campus_3", type = CaptureComponentType.CIRCLES, stepOrder = 2),
+                    CaptureComponent(id = "comp_campus_3", type = CaptureComponentType.TAGS, stepOrder = 2),
                     CaptureComponent(id = "comp_campus_4", type = CaptureComponentType.PHONE, stepOrder = 3),
                     CaptureComponent(id = "comp_campus_5", type = CaptureComponentType.NOTE, stepOrder = 4)
                 )

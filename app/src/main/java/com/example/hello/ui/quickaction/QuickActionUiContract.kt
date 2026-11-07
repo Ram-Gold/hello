@@ -2,7 +2,6 @@ package com.example.hello.ui.quickaction
 
 import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
-import com.example.hello.domain.model.Circle
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.Place
@@ -15,11 +14,17 @@ enum class QuickActionMode {
     FLOW_B_LOG_ENCOUNTER
 }
 
-enum class FlowAStep(val stepNumber: Int, val totalSteps: Int = 4, val title: String) {
-    NAME(1, 4, "Who did you meet?"),
-    PLACE(2, 4, "Where did you meet?"),
-    TAGS_AND_CIRCLES(3, 4, "Circles & Tags"),
-    NOTE_AND_FOLLOW_UP(4, 4, "Quick Note & Follow-Up")
+enum class FlowAStep(val stepNumber: Int, val totalSteps: Int = 6, val title: String) {
+    NAME(1, 6, "Who did you meet?"),
+    ROLE(2, 6, "What do they do?"),
+    COMPANY(2, 6, "Where do they work or study?"),
+    PHONE(3, 6, "Phone number"),
+    EMAIL(4, 6, "Email address"),
+    BIRTHDAY(4, 6, "When is their birthday?"),
+    CUSTOM(4, 6, "Custom property"),
+    PLACE(5, 6, "Where did you meet?"),
+    TAGS(5, 6, "Tags"),
+    NOTE_AND_FOLLOW_UP(6, 6, "Quick Note & Follow-Up")
 }
 
 data class QuickActionUiState(
@@ -31,7 +36,7 @@ data class QuickActionUiState(
     val allContacts: List<ContactSummary> = emptyList(),
     val recentContacts: List<ContactSummary> = emptyList(),
     val filteredContacts: List<ContactSummary> = emptyList(),
-    // Flow A: Modular Capture Engine State (ADR-0012)
+    // Flow A: Modular Capture Engine State (ADR-0012 & ADR-0013)
     val activeFlowPreset: FlowPreset? = null,
     val currentStepIndex: Int = 0,
     val flowAStep: FlowAStep = FlowAStep.NAME,
@@ -43,9 +48,9 @@ data class QuickActionUiState(
     val email: String = "",
     val selectedPlaceId: String? = null,
     val customPlaceName: String = "",
-    val selectedCircles: Set<Circle> = setOf(Circle.FRIENDS),
     val selectedTagIds: Set<String> = emptySet(),
     val customTagInput: String = "",
+    val isCustomTagInputExpanded: Boolean = false,
     val encounterNote: String = "",
     val selectedFollowUpDays: Int? = null,
     val customProperties: Map<String, String> = emptyMap(),
@@ -86,8 +91,8 @@ sealed interface QuickActionUiEvent {
     data class OnEmailChange(val email: String) : QuickActionUiEvent
     data class OnSelectPlaceChip(val placeId: String) : QuickActionUiEvent
     data class OnCustomPlaceNameChange(val customName: String) : QuickActionUiEvent
-    data class OnToggleCircle(val circle: Circle) : QuickActionUiEvent
     data class OnToggleTag(val tagId: String) : QuickActionUiEvent
+    data object OnToggleCustomTagInput : QuickActionUiEvent
     data class OnCustomTagInputChange(val input: String) : QuickActionUiEvent
     data object OnAddCustomTag : QuickActionUiEvent
     data class OnNoteChange(val note: String) : QuickActionUiEvent
