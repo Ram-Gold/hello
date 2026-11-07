@@ -24,10 +24,8 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -109,4 +107,10 @@ tasks.withType<Test>().configureEach {
     dependsOn(extractSqliteJni)
     val jniDir = layout.buildDirectory.dir("jniLibs").get().asFile
     systemProperty("java.library.path", "${jniDir.absolutePath}:${System.getProperty("java.library.path")}")
+}
+
+tasks.register<Exec>("measureTabSwitchingPerformance") {
+    group = "verification"
+    description = "Measures bottom-navigation tab switching frame timing and jank metrics on connected physical device"
+    commandLine("python3", "${rootDir}/scripts/measure_tab_switching_performance.py")
 }

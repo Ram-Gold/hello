@@ -20,10 +20,34 @@ class PersonDetailViewModel(
     val repository: ContactRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(PersonDetailUiState(contactId = contactId, isLoading = true))
-    val uiState: StateFlow<PersonDetailUiState> = _uiState.asStateFlow()
+    private val _uiState: MutableStateFlow<PersonDetailUiState>
+    val uiState: StateFlow<PersonDetailUiState>
 
     init {
+        val initialContact = repository.getContact(contactId)
+        val initialSummary = repository.contacts.value.firstOrNull { it.id == contactId }
+        val initialPlaces = repository.places.value.associateBy { it.id }
+        val initialTags = repository.tags.value
+        val initialEncounters = repository.encounters.value
+            .filter { it.contactId == contactId }
+            .sortedByDescending { it.occurredAt }
+        val initialCadence = calculateCadenceStatus(initialContact, initialEncounters)
+        val initialLoading = initialContact == null && initialSummary == null
+
+        _uiState = MutableStateFlow(
+            PersonDetailUiState(
+                contactId = contactId,
+                contact = initialContact,
+                contactSummary = initialSummary,
+                encounters = initialEncounters,
+                placesMap = initialPlaces,
+                tagsList = initialTags,
+                cadenceStatus = initialCadence,
+                isLoading = initialLoading
+            )
+        )
+        uiState = _uiState.asStateFlow()
+
         combine(
             repository.getContactFlow(contactId),
             repository.getEncountersForContact(contactId),

@@ -31,9 +31,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -107,6 +110,7 @@ import com.example.hello.ui.navigation.navigateSafely
 import com.example.hello.ui.navigation.navigateToTopLevelSafely
 import com.example.hello.ui.navigation.popEnterTransition
 import com.example.hello.ui.navigation.popExitTransition
+import com.example.hello.ui.navigation.resolveActiveTransitionTabs
 import com.example.hello.ui.navigation.shouldHideFloatingDock
 import com.example.hello.ui.onboarding.OnboardingScreen
 import com.example.hello.ui.onboarding.OnboardingViewModel
@@ -198,16 +202,16 @@ fun MainAppShell(
         }
     }
 
-    // Active tab derived directly from NavController destination (ADR 0003 & ADR 0014)
-    val activeTab by remember(currentRoute) {
-        derivedStateOf {
-            when (currentRoute) {
-                PeopleRoute.ROUTE_NAME -> HomeNavTab.PEOPLE
-                TimelineRoute.ROUTE_NAME -> HomeNavTab.TIMELINE
-                else -> HomeNavTab.HOME
-            }
+    // Active tab derived directly from NavController destination, retaining last root tab on deeper routes
+    var selectedRootTab by rememberSaveable { mutableStateOf(HomeNavTab.HOME) }
+    LaunchedEffect(currentRoute) {
+        when (currentRoute) {
+            HomeRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.HOME
+            PeopleRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.PEOPLE
+            TimelineRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.TIMELINE
         }
     }
+    val activeTab = selectedRootTab
 
     val contactsUiState by contactsViewModel.uiState.collectAsState()
 
@@ -621,28 +625,28 @@ private fun MainAppNavHost(
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = enterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 exitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = exitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 },
                 popEnterTransition = {
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popEnterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 popExitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popExitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 }
             ) {
@@ -655,28 +659,28 @@ private fun MainAppNavHost(
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = enterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 exitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = exitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 },
                 popEnterTransition = {
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popEnterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 popExitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popExitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 }
             ) {
@@ -689,28 +693,28 @@ private fun MainAppNavHost(
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = enterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 exitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = exitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 },
                 popEnterTransition = {
                     mainRootEnterTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popEnterTransition()
+                        fallback = PersonDetailMotionConfig.rootPopEnterTransition()
                     )
                 },
                 popExitTransition = {
                     mainRootExitTransition(
                         fromRoute = initialState.destination.route,
                         toRoute = targetState.destination.route,
-                        fallback = popExitTransition()
+                        fallback = PersonDetailMotionConfig.rootExitTransition()
                     )
                 }
             ) {

@@ -37,6 +37,19 @@ class PersonDetailViewModelTest {
     }
 
     @Test
+    fun initialState_whenContactInMemory_isPopulatedImmediatelyWithoutLoading() {
+        // Must be populated synchronously on frame 0 to avoid spinner flash & mid-transition layout thrashing
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        val state = viewModel.uiState.value
+
+        assertEquals(false, state.isLoading)
+        assertNotNull(state.contact)
+        assertEquals("Alex Rivera", state.contact?.name)
+        assertNotNull(state.contactSummary)
+        assertTrue(state.encounters.isNotEmpty())
+    }
+
+    @Test
     fun loadContact_populatesStateWithContactAndEncounters() = runTest {
         val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
         testDispatcher.scheduler.advanceUntilIdle()

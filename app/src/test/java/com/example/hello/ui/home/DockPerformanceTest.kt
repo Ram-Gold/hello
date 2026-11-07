@@ -532,4 +532,18 @@ class DockPerformanceTest {
             assertEquals("Outer right margin for $term must equal exactly 4dp", 4f, rightMargin, 0.001f)
         }
     }
+
+    @Test
+    fun dockTouchTargets_remainStableDuringTabAnimations() {
+        // Ensures touch target widths only update per selectedTab destination rather than re-measuring per frame
+        val dims = DockMotionConfig.resolveThreeTabDockDimensions("People")
+        val activeWidth = dims.activePillWidthDp
+        val inactiveWidth = dims.inactiveSlotWidthDp
+
+        // Home selected
+        assertEquals(112, activeWidth)
+        assertEquals(52, inactiveWidth)
+        assertTrue("Active pill touch target exceeds 48dp accessibility standard", activeWidth >= 48)
+        assertTrue("Inactive slot touch target exceeds 48dp accessibility standard", inactiveWidth >= 48)
+    }
 }

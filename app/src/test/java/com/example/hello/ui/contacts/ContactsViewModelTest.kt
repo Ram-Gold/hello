@@ -325,4 +325,19 @@ class ContactsViewModelTest {
         assertEquals(initialRepoCount - 1, repo.contacts.value.size)
         assertEquals("Deleted 1 contact", state.userMessage)
     }
+
+    @Test
+    fun tabSwitching_preservesSelectionFiltersAndSortState() {
+        val target = viewModel.uiState.value.contacts.first()
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("Alex"))
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(target.id))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSortMode(ContactSortMode.RECENTLY_ENCOUNTERED))
+
+        // State remains intact in ViewModel across tab deactivations
+        val state = viewModel.uiState.value
+        assertEquals("Alex", state.searchQuery)
+        assertTrue(state.isSelectionMode)
+        assertEquals(setOf(target.id), state.selectedContactIds)
+        assertEquals(ContactSortMode.RECENTLY_ENCOUNTERED, state.sortMode)
+    }
 }

@@ -1,9 +1,11 @@
 package com.example.hello.ui.home.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -64,6 +66,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -71,6 +74,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -273,11 +277,9 @@ private fun DockTabsLayer(
         label = "dockSlidingPillProgress"
     )
 
-    val (slot0WidthDp, slot1WidthDp, slot2WidthDp) = DockMotionConfig.calculateThreeTabSlotWidths(
-        activePillWidth = dimensions.activePillWidthDp.toFloat(),
-        inactiveSlotWidth = dimensions.inactiveSlotWidthDp.toFloat(),
-        progress = pillProgressState.value
-    )
+    val touchSlot0WidthDp = if (selectedTab == HomeNavTab.HOME) dimensions.activePillWidthDp else dimensions.inactiveSlotWidthDp
+    val touchSlot1WidthDp = if (selectedTab == HomeNavTab.PEOPLE) dimensions.activePillWidthDp else dimensions.inactiveSlotWidthDp
+    val touchSlot2WidthDp = if (selectedTab == HomeNavTab.TIMELINE) dimensions.activePillWidthDp else dimensions.inactiveSlotWidthDp
     val pillColor = MaterialTheme.colorScheme.secondaryContainer
 
     Box(
@@ -308,9 +310,7 @@ private fun DockTabsLayer(
         TabsRow(
             selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
-            homeSlotWidthDp = slot0WidthDp,
-            peopleSlotWidthDp = slot1WidthDp,
-            timelineSlotWidthDp = slot2WidthDp,
+            dimensions = dimensions,
             pillProgressProvider = { pillProgressState.value }
         )
 
@@ -321,7 +321,7 @@ private fun DockTabsLayer(
         ) {
             Box(
                 modifier = Modifier
-                    .width(slot0WidthDp.dp)
+                    .width(touchSlot0WidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -341,7 +341,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .width(slot1WidthDp.dp)
+                    .width(touchSlot1WidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -361,7 +361,7 @@ private fun DockTabsLayer(
             )
             Box(
                 modifier = Modifier
-                    .width(slot2WidthDp.dp)
+                    .width(touchSlot2WidthDp.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(25.dp))
                     .semantics {
@@ -387,79 +387,82 @@ private fun DockTabsLayer(
 private fun TabsRow(
     selectedTab: HomeNavTab,
     peopleLabel: String = "People",
-    homeSlotWidthDp: Float,
-    peopleSlotWidthDp: Float,
-    timelineSlotWidthDp: Float,
+    dimensions: ThreeTabDockDimensions,
     pillProgressProvider: () -> Float,
     modifier: Modifier = Modifier
 ) {
-    val progress = pillProgressProvider()
-    val homeColor = lerp(
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        MaterialTheme.colorScheme.onSecondaryContainer,
-        (1f - kotlin.math.abs(progress - 0f)).coerceIn(0f, 1f)
-    )
-    val relColor = lerp(
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        MaterialTheme.colorScheme.onSecondaryContainer,
-        (1f - kotlin.math.abs(progress - 1f)).coerceIn(0f, 1f)
-    )
-    val timelineColor = lerp(
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        MaterialTheme.colorScheme.onSecondaryContainer,
-        (1f - kotlin.math.abs(progress - 2f)).coerceIn(0f, 1f)
-    )
+    val density = LocalDensity.current
+    val activePillWidthPx = with(density) { dimensions.activePillWidthDp.dp.toPx() }
+    val inactiveSlotWidthPx = with(density) { dimensions.inactiveSlotWidthDp.dp.toPx() }
 
-    Row(
-        modifier = modifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Slot 0 (Home)
-        Box(
-            modifier = Modifier
-                .width(homeSlotWidthDp.dp)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            NavTabItemContent(
-                tab = HomeNavTab.HOME,
-                customLabel = null,
-                isSelected = selectedTab == HomeNavTab.HOME,
-                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = selectedTab == HomeNavTab.HOME),
-                contentColor = homeColor
-            )
-        }
+    Layout(
+        content = {
+            // Slot 0 (Home)
+            Box(
+                modifier = Modifier.fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                NavTabItemContent(
+                    tab = HomeNavTab.HOME,
+                    customLabel = null,
+                    isSelected = selectedTab == HomeNavTab.HOME,
+                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = selectedTab == HomeNavTab.HOME)
+                )
+            }
 
-        // Slot 1 (Relationship / People Tab)
-        Box(
-            modifier = Modifier
-                .width(peopleSlotWidthDp.dp)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            NavTabItemContent(
-                tab = HomeNavTab.PEOPLE,
-                customLabel = peopleLabel,
-                isSelected = selectedTab == HomeNavTab.PEOPLE,
-                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = selectedTab == HomeNavTab.PEOPLE),
-                contentColor = relColor
-            )
-        }
+            // Slot 1 (Relationship / People Tab)
+            Box(
+                modifier = Modifier.fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                NavTabItemContent(
+                    tab = HomeNavTab.PEOPLE,
+                    customLabel = peopleLabel,
+                    isSelected = selectedTab == HomeNavTab.PEOPLE,
+                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = selectedTab == HomeNavTab.PEOPLE)
+                )
+            }
 
-        // Slot 2 (Timeline)
-        Box(
-            modifier = Modifier
-                .width(timelineSlotWidthDp.dp)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            NavTabItemContent(
-                tab = HomeNavTab.TIMELINE,
-                customLabel = null,
-                isSelected = selectedTab == HomeNavTab.TIMELINE,
-                icon = DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = selectedTab == HomeNavTab.TIMELINE),
-                contentColor = timelineColor
-            )
+            // Slot 2 (Timeline)
+            Box(
+                modifier = Modifier.fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                NavTabItemContent(
+                    tab = HomeNavTab.TIMELINE,
+                    customLabel = null,
+                    isSelected = selectedTab == HomeNavTab.TIMELINE,
+                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = selectedTab == HomeNavTab.TIMELINE)
+                )
+            }
+        },
+        modifier = modifier.fillMaxSize()
+    ) { measurables, constraints ->
+        val progress = pillProgressProvider()
+        val p = progress.coerceIn(0f, 2f)
+        val delta = activePillWidthPx - inactiveSlotWidthPx
+        val w0 = if (p <= 1f) 1f - p else 0f
+        val w1 = if (p <= 1f) p else 2f - p
+        val w2 = if (p <= 1f) 0f else p - 1f
+
+        val width0 = (inactiveSlotWidthPx + delta * w0).roundToInt()
+        val width1 = (inactiveSlotWidthPx + delta * w1).roundToInt()
+        val width2 = (inactiveSlotWidthPx + delta * w2).roundToInt()
+
+        val placeable0 = measurables[0].measure(
+            Constraints.fixed(width0, constraints.maxHeight)
+        )
+        val placeable1 = measurables[1].measure(
+            Constraints.fixed(width1, constraints.maxHeight)
+        )
+        val placeable2 = measurables[2].measure(
+            Constraints.fixed(width2, constraints.maxHeight)
+        )
+
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeable0.place(0, 0)
+            placeable1.place(width0, 0)
+            placeable2.place(width0 + width1, 0)
         }
     }
 }
@@ -470,10 +473,21 @@ private fun NavTabItemContent(
     customLabel: String?,
     isSelected: Boolean,
     icon: ImageVector,
-    contentColor: Color,
     modifier: Modifier = Modifier
 ) {
     val displayLabel = customLabel ?: tab.label
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(
+            durationMillis = DockMotionConfig.SCREEN_FADE_DURATION_MS,
+            easing = MotionTokens.M3EmphasizedEasing
+        ),
+        label = "navTabContentColor"
+    )
 
     Box(
         modifier = modifier.fillMaxSize(),

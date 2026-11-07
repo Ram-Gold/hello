@@ -91,6 +91,19 @@ fun resolveTabSlideDirection(from: HomeNavTab, to: HomeNavTab): NavigationTabDir
     }
 }
 
+/**
+ * Resolves which tabs must remain active/composed during a root tab transition.
+ *
+ * For adjacent transitions (e.g. Home <-> People), only the outgoing and incoming tabs are
+ * active. For non-adjacent transitions (e.g. Home <-> Timeline), intermediate tabs are also included
+ * to prevent visual flicker as the continuous offset passes them.
+ */
+fun resolveActiveTransitionTabs(from: HomeNavTab, to: HomeNavTab): Set<HomeNavTab> {
+    val minOrdinal = minOf(from.ordinal, to.ordinal)
+    val maxOrdinal = maxOf(from.ordinal, to.ordinal)
+    return HomeNavTab.entries.filter { it.ordinal in minOrdinal..maxOrdinal }.toSet()
+}
+
 private val TabSlideSpec = MotionTokens.MAIN_ROOT_TRANSITION_SPEC
 private val TabFadeSpec = MotionTokens.MAIN_ROOT_FADE_SPEC
 

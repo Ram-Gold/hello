@@ -16,42 +16,73 @@ class PersonEditViewModel(
     val repository: ContactRepository
 ) : ViewModel() {
 
-    private var initialContact: Contact? = null
+    private var initialContact: Contact? = repository.getContact(contactId)
 
-    private val _uiState = MutableStateFlow(PersonEditUiState(contactId = contactId))
-    val uiState: StateFlow<PersonEditUiState> = _uiState.asStateFlow()
+    private val _uiState: MutableStateFlow<PersonEditUiState>
+    val uiState: StateFlow<PersonEditUiState>
 
     init {
-        viewModelScope.launch {
-            val contact = repository.getContactFlow(contactId).firstOrNull() ?: repository.getContact(contactId)
-            initialContact = contact
-            val tags = repository.tags.value
+        val contact = initialContact
+        val tags = repository.tags.value
+        val initialState = if (contact != null) {
+            val isCustom = contact.cadenceDays != null && contact.cadenceDays !in listOf(7, 14, 30, 90)
+            PersonEditUiState(
+                contactId = contactId,
+                name = contact.name,
+                aliases = contact.aliases,
+                role = contact.role.orEmpty(),
+                company = contact.company.orEmpty(),
+                birthday = contact.birthday,
+                phone = contact.phone.orEmpty(),
+                email = contact.email.orEmpty(),
+                notes = contact.notes,
+                photoUri = contact.photoUri,
+                selectedTagIds = contact.tagIds.toSet(),
+                availableTags = tags,
+                customProperties = contact.customProperties,
+                cadenceDays = contact.cadenceDays,
+                isCustomCadence = isCustom,
+                customCadenceInput = if (isCustom) contact.cadenceDays.toString() else "",
+                isModified = false,
+                canSave = contact.name.isNotBlank()
+            )
+        } else {
+            PersonEditUiState(
+                contactId = contactId,
+                availableTags = tags
+            )
+        }
+        _uiState = MutableStateFlow(initialState)
+        uiState = _uiState.asStateFlow()
 
-            if (contact != null) {
-                val isCustom = contact.cadenceDays != null && contact.cadenceDays !in listOf(7, 14, 30, 90)
-                _uiState.update { current ->
-                    current.copy(
-                        name = contact.name,
-                        aliases = contact.aliases,
-                        role = contact.role.orEmpty(),
-                        company = contact.company.orEmpty(),
-                        birthday = contact.birthday,
-                        phone = contact.phone.orEmpty(),
-                        email = contact.email.orEmpty(),
-                        notes = contact.notes,
-                        photoUri = contact.photoUri,
-                        selectedTagIds = contact.tagIds.toSet(),
-                        availableTags = tags,
-                        customProperties = contact.customProperties,
-                        cadenceDays = contact.cadenceDays,
-                        isCustomCadence = isCustom,
-                        customCadenceInput = if (isCustom) contact.cadenceDays.toString() else "",
-                        isModified = false,
-                        canSave = contact.name.isNotBlank()
-                    )
+        viewModelScope.launch {
+            if (initialContact == null) {
+                val fetchedContact = repository.getContactFlow(contactId).firstOrNull() ?: repository.getContact(contactId)
+                if (fetchedContact != null) {
+                    initialContact = fetchedContact
+                    val isCustom = fetchedContact.cadenceDays != null && fetchedContact.cadenceDays !in listOf(7, 14, 30, 90)
+                    _uiState.update { current ->
+                        current.copy(
+                            name = fetchedContact.name,
+                            aliases = fetchedContact.aliases,
+                            role = fetchedContact.role.orEmpty(),
+                            company = fetchedContact.company.orEmpty(),
+                            birthday = fetchedContact.birthday,
+                            phone = fetchedContact.phone.orEmpty(),
+                            email = fetchedContact.email.orEmpty(),
+                            notes = fetchedContact.notes,
+                            photoUri = fetchedContact.photoUri,
+                            selectedTagIds = fetchedContact.tagIds.toSet(),
+                            availableTags = repository.tags.value,
+                            customProperties = fetchedContact.customProperties,
+                            cadenceDays = fetchedContact.cadenceDays,
+                            isCustomCadence = isCustom,
+                            customCadenceInput = if (isCustom) fetchedContact.cadenceDays.toString() else "",
+                            isModified = false,
+                            canSave = fetchedContact.name.isNotBlank()
+                        )
+                    }
                 }
-            } else {
-                _uiState.update { it.copy(availableTags = tags) }
             }
         }
     }

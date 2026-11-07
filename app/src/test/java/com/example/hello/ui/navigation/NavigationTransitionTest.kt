@@ -173,4 +173,42 @@ class NavigationTransitionTest {
         assertSame(MotionTokens.DETAIL_SLIDE_SPEC, MotionTokens.detailSlideSpec())
         assertSame(MotionTokens.DETAIL_FADE_SPEC, MotionTokens.detailFadeSpec())
     }
+
+    @Test
+    fun resolveActiveTransitionTabs_forAdjacentTabs_activatesOnlyOutgoingAndIncoming() {
+        // Home <-> People transition must only activate Home & People (Timeline stays inactive)
+        val homeToPeople = resolveActiveTransitionTabs(HomeNavTab.HOME, HomeNavTab.PEOPLE)
+        assertEquals(setOf(HomeNavTab.HOME, HomeNavTab.PEOPLE), homeToPeople)
+        assertFalse("Timeline must remain inactive during Home <-> People transition", homeToPeople.contains(HomeNavTab.TIMELINE))
+
+        val peopleToHome = resolveActiveTransitionTabs(HomeNavTab.PEOPLE, HomeNavTab.HOME)
+        assertEquals(setOf(HomeNavTab.HOME, HomeNavTab.PEOPLE), peopleToHome)
+        assertFalse("Timeline must remain inactive during People <-> Home transition", peopleToHome.contains(HomeNavTab.TIMELINE))
+
+        // People <-> Timeline transition must only activate People & Timeline (Home stays inactive)
+        val peopleToTimeline = resolveActiveTransitionTabs(HomeNavTab.PEOPLE, HomeNavTab.TIMELINE)
+        assertEquals(setOf(HomeNavTab.PEOPLE, HomeNavTab.TIMELINE), peopleToTimeline)
+        assertFalse("Home must remain inactive during People <-> Timeline transition", peopleToTimeline.contains(HomeNavTab.HOME))
+
+        val timelineToPeople = resolveActiveTransitionTabs(HomeNavTab.TIMELINE, HomeNavTab.PEOPLE)
+        assertEquals(setOf(HomeNavTab.PEOPLE, HomeNavTab.TIMELINE), timelineToPeople)
+        assertFalse("Home must remain inactive during Timeline <-> People transition", timelineToPeople.contains(HomeNavTab.HOME))
+    }
+
+    @Test
+    fun resolveActiveTransitionTabs_forNonAdjacentTabs_includesIntermediateTabToPreventFlicker() {
+        // When sliding all the way across from Home to Timeline, all 3 tabs are preserved across the slide
+        val homeToTimeline = resolveActiveTransitionTabs(HomeNavTab.HOME, HomeNavTab.TIMELINE)
+        assertEquals(setOf(HomeNavTab.HOME, HomeNavTab.PEOPLE, HomeNavTab.TIMELINE), homeToTimeline)
+
+        val timelineToHome = resolveActiveTransitionTabs(HomeNavTab.TIMELINE, HomeNavTab.HOME)
+        assertEquals(setOf(HomeNavTab.HOME, HomeNavTab.PEOPLE, HomeNavTab.TIMELINE), timelineToHome)
+    }
+
+    @Test
+    fun resolveActiveTransitionTabs_forSameTab_activatesOnlyTargetTab() {
+        assertEquals(setOf(HomeNavTab.HOME), resolveActiveTransitionTabs(HomeNavTab.HOME, HomeNavTab.HOME))
+        assertEquals(setOf(HomeNavTab.PEOPLE), resolveActiveTransitionTabs(HomeNavTab.PEOPLE, HomeNavTab.PEOPLE))
+        assertEquals(setOf(HomeNavTab.TIMELINE), resolveActiveTransitionTabs(HomeNavTab.TIMELINE, HomeNavTab.TIMELINE))
+    }
 }
