@@ -77,8 +77,12 @@ The primary navigation tab within the Floating Bottom Dock that opens the contac
 _Avoid_: People Tab, Contacts Tab, Navbar item
 
 **Contact Card**:
-The Material 3 Expressive connected surface representing a Contact across the Relationship Tab and Home Screen, featuring a 56dp circular avatar, prominent name, tonal recency badge, contextual notes preview, and relationship tags.
+The Material 3 Expressive connected surface representing a Contact across the Relationship Tab and Home Screen, featuring a 56dp Contact Avatar, prominent name, tonal recency badge, contextual notes preview, and relationship tags.
 _Avoid_: People Card, Person Card, Contact Row, Contact Tile
+
+**Contact Avatar**:
+The circular visual identity badge for a Contact across all surfaces, displaying their custom cropped portrait photo when set or falling back to a warm pastel monogram of their initials.
+_Avoid_: Profile Picture, User Icon, Thumbnail, Headshot
 
 **Upcoming Alert Card**:
 The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Subconscious Check-In) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Later" / "Update" for Subconscious Check-Ins).

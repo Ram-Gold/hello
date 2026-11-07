@@ -67,6 +67,7 @@ import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.domain.model.extractAlphanumericInitials
+import com.example.hello.platform.avatar.AvatarStorageManager
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.components.ScreenDepthWrapper
@@ -912,7 +913,11 @@ private fun MainAppNavHost(
                 ScreenDepthWrapper(isDepthVisible = false) {
                     val contactId = backStackEntry.arguments?.getString(PersonEditRoute.ARG_CONTACT_ID) ?: ""
                     val editViewModel = remember(contactId) {
-                        PersonEditViewModel(contactId = contactId, repository = quickActionViewModel.repository)
+                        PersonEditViewModel(
+                            contactId = contactId,
+                            repository = quickActionViewModel.repository,
+                            avatarStorage = AvatarStorageManager(context)
+                        )
                     }
                     val editUiState by editViewModel.uiState.collectAsState()
 

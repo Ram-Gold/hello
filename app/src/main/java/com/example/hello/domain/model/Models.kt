@@ -119,7 +119,8 @@ data class ContactSummary(
     val email: String? = null,
     val notes: String = "",
     val tags: List<Tag> = emptyList(),
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val photoUri: String? = null
 )
 
 data class MyCardData(

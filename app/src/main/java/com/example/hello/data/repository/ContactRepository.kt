@@ -346,9 +346,11 @@ class ContactRepository(
                 if (summary.id == updated.id) {
                     summary.copy(
                         name = updated.name,
+                        avatarInitials = extractAlphanumericInitials(updated.name),
                         phone = updated.phone,
                         email = updated.email,
-                        isArchived = updated.isArchived
+                        isArchived = updated.isArchived,
+                        photoUri = updated.photoUri
                     )
                 } else {
                     summary
@@ -361,9 +363,11 @@ class ContactRepository(
                 if (summary.id == updated.id) {
                     summary.copy(
                         name = updated.name,
+                        avatarInitials = extractAlphanumericInitials(updated.name),
                         phone = updated.phone,
                         email = updated.email,
-                        isArchived = updated.isArchived
+                        isArchived = updated.isArchived,
+                        photoUri = updated.photoUri
                     )
                 } else {
                     summary
@@ -420,6 +424,13 @@ class ContactRepository(
         contactFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
 
         val existing = _fullContacts.value[contactId]
+        existing?.photoUri?.let { uri ->
+            val file = com.example.hello.platform.avatar.AvatarStorageManager.resolveFile(uri)
+            if (file != null && file.exists() && (file.name.startsWith("contact_") || file.name.startsWith("staged_"))) {
+                file.delete()
+                com.example.hello.platform.avatar.AvatarBitmapCache.evict(uri)
+            }
+        }
         _fullContacts.update { it - contactId }
         _contacts.update { list -> list.filterNot { it.id == contactId } }
         _recentContacts.update { list -> list.filterNot { it.id == contactId } }
@@ -1001,7 +1012,8 @@ class ContactRepository(
                 email = email,
                 notes = notes,
                 tags = resolvedTags,
-                isArchived = isArchived
+                isArchived = isArchived,
+                photoUri = photoUri
             )
         }
 

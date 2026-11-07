@@ -269,4 +269,40 @@ class ContactRepositoryTest {
         val c1Summary = repository.contacts.value.first { it.id == "c-1" }
         assertFalse(c1Summary.tags.any { it.id == tagToDelete })
     }
+
+    @Test
+    fun updateContactPhotoUri_propagatesToContactSummariesAndTimelineNodes() {
+        val original = repository.getContact("c-1")!!
+        val customAvatarPath = "/data/user/0/com.example.hello/files/avatars/contact_c-1_1000.png"
+        val updated = original.copy(
+            photoUri = customAvatarPath,
+            birthday = java.time.LocalDate.now().plusDays(5)
+        )
+
+        repository.updateContact(updated)
+
+        // 1. ContactSummary on contacts and recentContacts reflects photoUri
+        val summaryInContacts = repository.contacts.value.first { it.id == "c-1" }
+        assertEquals(customAvatarPath, summaryInContacts.photoUri)
+
+        val summaryInRecents = repository.recentContacts.value.firstOrNull { it.id == "c-1" }
+        if (summaryInRecents != null) {
+            assertEquals(customAvatarPath, summaryInRecents.photoUri)
+        }
+
+        // 2. Timeline nodes reflect photoUri for both past encounters and future nodes
+        val (futureNodes, pastNodes) = com.example.hello.ui.timeline.TimelineViewModel.buildTimelineNodes(
+            contactsMap = repository.fullContacts.value,
+            encounters = repository.encounters.value,
+            placesMap = repository.places.value.associateBy { it.id },
+            followUps = repository.followUps.value
+        )
+        val c1PastNode = pastNodes.firstOrNull { it.contactId == "c-1" }
+        assertNotNull(c1PastNode)
+        assertEquals(customAvatarPath, c1PastNode?.photoUri)
+
+        val c1FutureNode = futureNodes.firstOrNull { it.contactId == "c-1" }
+        assertNotNull(c1FutureNode)
+        assertEquals(customAvatarPath, c1FutureNode?.photoUri)
+    }
 }

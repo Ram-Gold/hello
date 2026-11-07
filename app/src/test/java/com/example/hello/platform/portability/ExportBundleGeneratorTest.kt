@@ -215,4 +215,62 @@ class ExportBundleGeneratorTest {
         assertTrue(contactsCsv.contains("Babbage Engines Inc"))
         assertTrue(contactsCsv.contains("1815-12-10"))
     }
+
+    @Test
+    fun exportBundle_includesContactAvatarInJsonMarkdownAndZipArchive() {
+        val tempAvatarFile = java.io.File.createTempFile("contact_c-123_", ".png")
+        try {
+            val pngBytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+            tempAvatarFile.writeBytes(pngBytes)
+
+            val contactWithAvatar = sampleContact.copy(photoUri = tempAvatarFile.absolutePath)
+
+            // 1. JSON includes relative bundle path avatars/c-123.png
+            val jsonFiles = ExportBundleGenerator.generateJsonFiles(
+                contacts = listOf(contactWithAvatar),
+                encounters = emptyList(),
+                places = emptyList(),
+                tags = emptyList(),
+                followUps = emptyList()
+            )
+            val contactsJson = jsonFiles["contacts.json"]!!
+            assertTrue(contactsJson.contains("\"photoUri\": \"avatars/c-123.png\""))
+
+            // 2. Markdown frontmatter includes avatar: "avatars/c-123.png"
+            val mdFiles = ExportBundleGenerator.generateMarkdownNotes(
+                contacts = listOf(contactWithAvatar),
+                encounters = emptyList(),
+                places = emptyList(),
+                tags = emptyList()
+            )
+            val mdContent = mdFiles["contacts/Ada Lovelace.md"]!!
+            assertTrue(mdContent.contains("avatar: \"avatars/c-123.png\""))
+
+            // 3. ZIP bundle includes binary avatars/c-123.png entry
+            val out = ByteArrayOutputStream()
+            ExportBundleGenerator.buildZipBundle(
+                outputStream = out,
+                contacts = listOf(contactWithAvatar),
+                encounters = emptyList(),
+                places = emptyList(),
+                tags = emptyList(),
+                followUps = emptyList()
+            )
+
+            var foundAvatarBytes: ByteArray? = null
+            ZipInputStream(ByteArrayInputStream(out.toByteArray())).use { zis ->
+                var entry = zis.nextEntry
+                while (entry != null) {
+                    if (entry.name == "avatars/c-123.png") {
+                        foundAvatarBytes = zis.readBytes()
+                    }
+                    entry = zis.nextEntry
+                }
+            }
+            assertNotNull("ZIP archive should include avatars/c-123.png", foundAvatarBytes)
+            org.junit.Assert.assertArrayEquals(pngBytes, foundAvatarBytes)
+        } finally {
+            tempAvatarFile.delete()
+        }
+    }
 }

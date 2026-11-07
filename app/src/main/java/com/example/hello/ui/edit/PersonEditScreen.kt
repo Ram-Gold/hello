@@ -81,6 +81,7 @@ import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
+import com.example.hello.ui.edit.components.AvatarCropDialog
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.WarmTerracottaPrimary
@@ -456,6 +457,22 @@ fun PersonEditScreen(
             }
         )
     }
+
+    // Interactive 1:1 Circular Avatar Cropper
+    uiState.pendingCropUri?.let { cropSourceUri ->
+        AvatarCropDialog(
+            sourceUri = cropSourceUri,
+            onConfirmCrop = { croppedBytes ->
+                onEvent(PersonEditUiEvent.OnPhotoCropped(croppedBytes))
+            },
+            onCancel = {
+                onEvent(PersonEditUiEvent.OnCancelCrop)
+            },
+            onDecodeFailed = {
+                onEvent(PersonEditUiEvent.OnPhotoDecodeFailed)
+            }
+        )
+    }
 }
 
 @Composable
@@ -479,7 +496,8 @@ private fun PhotoPickerSection(
                 initials = initials,
                 bgIndex = 0,
                 size = 96.dp,
-                shape = CircleShape
+                shape = CircleShape,
+                photoUri = photoUri
             )
 
             // Camera Icon Overlay Badge

@@ -96,7 +96,8 @@ fun ContactCard(
                 initials = contact.avatarInitials,
                 bgIndex = contact.avatarBgIndex,
                 size = 56.dp,
-                shape = CircleShape
+                shape = CircleShape,
+                photoUri = contact.photoUri
             )
 
             // 2. Structured Information Column

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.Contact
+import com.example.hello.platform.avatar.AvatarStorageManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +14,8 @@ import kotlinx.coroutines.launch
 
 class PersonEditViewModel(
     val contactId: String,
-    val repository: ContactRepository
+    val repository: ContactRepository,
+    val avatarStorage: AvatarStorageManager? = null
 ) : ViewModel() {
 
     private var initialContact: Contact? = repository.getContact(contactId)
@@ -172,16 +174,43 @@ class PersonEditViewModel(
                 }
             }
             is PersonEditUiEvent.OnPhotoSelected -> {
+                if (!event.uri.isNullOrBlank()) {
+                    _uiState.update { current ->
+                        current.copy(pendingCropUri = event.uri)
+                    }
+                }
+            }
+            is PersonEditUiEvent.OnPhotoCropped -> {
                 _uiState.update { current ->
-                    val isMod = checkModified(current.copy(photoUri = event.uri))
+                    val stagedPath = avatarStorage?.writeStagedBytes(
+                        bytes = event.croppedBytes,
+                        previousStagedPath = current.photoUri
+                    ) ?: current.pendingCropUri
+                    val isMod = checkModified(current.copy(photoUri = stagedPath))
                     current.copy(
-                        photoUri = event.uri,
+                        photoUri = stagedPath,
+                        pendingCropUri = null,
                         isModified = isMod
+                    )
+                }
+            }
+            PersonEditUiEvent.OnCancelCrop -> {
+                _uiState.update { it.copy(pendingCropUri = null) }
+            }
+            PersonEditUiEvent.OnPhotoDecodeFailed -> {
+                _uiState.update {
+                    it.copy(
+                        pendingCropUri = null,
+                        userMessage = "Could not load selected image"
                     )
                 }
             }
             PersonEditUiEvent.OnRemovePhoto -> {
                 _uiState.update { current ->
+                    avatarStorage?.discardStagedAvatar(
+                        stagedPhotoUri = current.photoUri,
+                        originalPhotoUri = initialContact?.photoUri
+                    )
                     val isMod = checkModified(current.copy(photoUri = null))
                     current.copy(
                         photoUri = null,
@@ -249,6 +278,10 @@ class PersonEditViewModel(
                 }
             }
             PersonEditUiEvent.OnConfirmDiscard -> {
+                avatarStorage?.discardStagedAvatar(
+                    stagedPhotoUri = _uiState.value.photoUri,
+                    originalPhotoUri = initialContact?.photoUri
+                )
                 _uiState.update { it.copy(showDiscardDialog = false) }
             }
             PersonEditUiEvent.OnDismissDiscardDialog -> {
@@ -273,6 +306,11 @@ class PersonEditViewModel(
             }
             PersonEditUiEvent.OnConfirmDelete -> {
                 _uiState.update { it.copy(showDeleteDialog = false) }
+                avatarStorage?.discardStagedAvatar(
+                    stagedPhotoUri = _uiState.value.photoUri,
+                    originalPhotoUri = initialContact?.photoUri
+                )
+                avatarStorage?.deleteLocalAvatarFile(initialContact?.photoUri)
                 repository.deleteContact(contactId)
                 _uiState.update { it.copy(isDeletedCompleted = true, userMessage = "Contact deleted") }
             }
@@ -308,6 +346,15 @@ class PersonEditViewModel(
         if (cleanName.isBlank()) return
 
         val base = initialContact
+        val committedPhotoUri = if (avatarStorage != null) {
+            avatarStorage.commitStagedAvatar(
+                contactId = contactId,
+                currentPhotoUri = current.photoUri,
+                originalPhotoUri = base?.photoUri
+            )
+        } else {
+            current.photoUri
+        }
         val updated = Contact(
             id = contactId,
             name = cleanName,
@@ -319,7 +366,7 @@ class PersonEditViewModel(
             email = current.email.trim().ifEmpty { null },
             tagIds = current.selectedTagIds.toList(),
             notes = current.notes.trim(),
-            photoUri = current.photoUri,
+            photoUri = committedPhotoUri,
             firstMetAt = base?.firstMetAt,
             lastMetAt = base?.lastMetAt,
             meetCount = base?.meetCount ?: 0,
@@ -332,6 +379,7 @@ class PersonEditViewModel(
         initialContact = updated
         _uiState.update {
             it.copy(
+                photoUri = committedPhotoUri,
                 isModified = false,
                 isSaved = true,
                 userMessage = "Contact updated"

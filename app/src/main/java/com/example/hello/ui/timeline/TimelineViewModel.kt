@@ -156,7 +156,8 @@ class TimelineViewModel(
                         dateLabel = formatPastDateLabel(encounter.occurredAt, today, zoneId),
                         placeLabel = placeLabel,
                         notes = encounter.notes,
-                        badge = if (isFirstMet) PastEncounterBadge.FIRST_MET else PastEncounterBadge.MET_AGAIN
+                        badge = if (isFirstMet) PastEncounterBadge.FIRST_MET else PastEncounterBadge.MET_AGAIN,
+                        photoUri = contact.photoUri
                     )
                 }
 
@@ -179,7 +180,8 @@ class TimelineViewModel(
                         daysUntil = daysUntil,
                         dateLabel = formatFutureDaysLabel(daysUntil),
                         followUpId = followUp.id,
-                        note = followUp.note
+                        note = followUp.note,
+                        photoUri = contact.photoUri
                     )
                 }
 
@@ -207,7 +209,8 @@ class TimelineViewModel(
                         avatarBgIndex = avatarIndexByContactId[contact.id] ?: 0,
                         daysUntil = daysUntil,
                         dateLabel = dateLabel,
-                        turningAge = turningAge
+                        turningAge = turningAge,
+                        photoUri = contact.photoUri
                     )
                 }
             }

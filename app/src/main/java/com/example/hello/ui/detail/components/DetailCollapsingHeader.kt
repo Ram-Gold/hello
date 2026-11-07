@@ -52,7 +52,8 @@ fun DetailCollapsingHeader(
             initials = initials,
             bgIndex = bgIndex,
             size = 88.dp,
-            shape = CircleShape
+            shape = CircleShape,
+            photoUri = contact?.photoUri ?: summary?.photoUri
         )
 
         Spacer(modifier = Modifier.height(14.dp))

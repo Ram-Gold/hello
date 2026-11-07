@@ -5,6 +5,8 @@ import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
+import com.example.hello.platform.avatar.AvatarStorageManager
+import java.io.File
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
@@ -47,6 +49,8 @@ object ExportBundleGenerator {
                 append("    \"phone\": ${quoteJson(c.phone)},\n")
                 append("    \"email\": ${quoteJson(c.email)},\n")
                 append("    \"notes\": ${quoteJson(c.notes)},\n")
+                val exportedAvatarRelPath = resolveExportAvatarEntry(c)?.first ?: c.photoUri
+                append("    \"photoUri\": ${quoteJson(exportedAvatarRelPath)},\n")
                 append("    \"firstMetAt\": ${quoteJson(c.firstMetAt?.toString())},\n")
                 append("    \"lastMetAt\": ${quoteJson(c.lastMetAt?.toString())},\n")
                 append("    \"meetCount\": ${c.meetCount},\n")
@@ -172,6 +176,10 @@ object ExportBundleGenerator {
                 if (!contact.email.isNullOrBlank()) {
                     append("email: \"${contact.email}\"\n")
                 }
+                val exportedAvatarRelPath = resolveExportAvatarEntry(contact)?.first ?: contact.photoUri
+                if (!exportedAvatarRelPath.isNullOrBlank()) {
+                    append("avatar: \"$exportedAvatarRelPath\"\n")
+                }
                 contact.customProperties.forEach { (key, value) ->
                     if (value.isNotBlank()) {
                         append("$key: \"$value\"\n")
@@ -283,8 +291,25 @@ object ExportBundleGenerator {
                 zipOut.write(content.toByteArray(StandardCharsets.UTF_8))
                 zipOut.closeEntry()
             }
+            contacts.forEach { contact ->
+                val avatarEntry = resolveExportAvatarEntry(contact)
+                if (avatarEntry != null) {
+                    val (relPath, file) = avatarEntry
+                    val entry = ZipEntry(relPath)
+                    zipOut.putNextEntry(entry)
+                    zipOut.write(file.readBytes())
+                    zipOut.closeEntry()
+                }
+            }
             zipOut.finish()
         }
+    }
+
+    private fun resolveExportAvatarEntry(contact: Contact): Pair<String, File>? {
+        val file = AvatarStorageManager.resolveFile(contact.photoUri) ?: return null
+        if (!file.exists() || !file.isFile) return null
+        val sanitizedId = contact.id.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        return "avatars/$sanitizedId.png" to file
     }
 
     private fun quoteJson(value: String?): String {

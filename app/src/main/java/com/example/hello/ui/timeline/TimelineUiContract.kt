@@ -21,6 +21,7 @@ sealed interface FutureTimelineNode {
     val avatarBgIndex: Int
     val daysUntil: Long
     val dateLabel: String
+    val photoUri: String?
 
     data class FollowUpNode(
         override val id: String,
@@ -31,7 +32,8 @@ sealed interface FutureTimelineNode {
         override val daysUntil: Long,
         override val dateLabel: String,
         val followUpId: String,
-        val note: String
+        val note: String,
+        override val photoUri: String? = null
     ) : FutureTimelineNode
 
     data class BirthdayNode(
@@ -42,7 +44,8 @@ sealed interface FutureTimelineNode {
         override val avatarBgIndex: Int,
         override val daysUntil: Long,
         override val dateLabel: String,
-        val turningAge: Int? = null
+        val turningAge: Int? = null,
+        override val photoUri: String? = null
     ) : FutureTimelineNode
 }
 
@@ -56,7 +59,8 @@ data class PastTimelineNode(
     val dateLabel: String,
     val placeLabel: String?,
     val notes: String,
-    val badge: PastEncounterBadge
+    val badge: PastEncounterBadge,
+    val photoUri: String? = null
 )
 
 data class TimelineUiState(

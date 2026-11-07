@@ -2,6 +2,7 @@ package com.example.hello.ui.edit
 
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.Contact
+import com.example.hello.platform.avatar.AvatarStorageManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -15,18 +16,26 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PersonEditViewModelTest {
 
+    @get:Rule
+    val tempFolder = TemporaryFolder()
+
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: ContactRepository
+    private lateinit var avatarStorage: AvatarStorageManager
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = ContactRepository()
+        avatarStorage = AvatarStorageManager(File(tempFolder.root, "avatars"))
     }
 
     @After
@@ -133,5 +142,81 @@ class PersonEditViewModelTest {
         val contact = repository.getContact("c-1")
         assertNull(contact)
         assertTrue(viewModel.uiState.value.isDeletedCompleted)
+    }
+
+    @Test
+    fun photoPickAndCrop_stagesAvatarEnablesSaveAndPromotesToCanonicalOnSave() = runTest {
+        val viewModel = PersonEditViewModel(
+            contactId = "c-1",
+            repository = repository,
+            avatarStorage = avatarStorage
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 1. Picking a photo opens the cropper with pendingCropUri without modifying photoUri yet
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoSelected("content://media/picker/101"))
+        assertEquals("content://media/picker/101", viewModel.uiState.value.pendingCropUri)
+        assertNull(viewModel.uiState.value.photoUri)
+        assertFalse(viewModel.uiState.value.isModified)
+
+        // 2. Confirming crop stages the PNG file, clears pendingCropUri, and enables Save (isModified = true)
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoCropped(byteArrayOf(1, 2, 3, 4, 5)))
+        val stagedPath = viewModel.uiState.value.photoUri
+        assertNull(viewModel.uiState.value.pendingCropUri)
+        assertNotNull(stagedPath)
+        assertTrue(File(stagedPath!!).exists())
+        assertTrue(File(stagedPath).name.startsWith("staged_"))
+        assertTrue(viewModel.uiState.value.isModified)
+        assertTrue(viewModel.uiState.value.canSave)
+
+        // 3. Tapping Save promotes the staged file to canonical contact_c-1_<timestamp>.png
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val savedContact = repository.getContact("c-1")
+        assertNotNull(savedContact?.photoUri)
+        assertFalse("Staged file should be promoted", File(stagedPath).exists())
+        assertTrue("Canonical file should exist", File(savedContact!!.photoUri!!).exists())
+        assertTrue(File(savedContact.photoUri!!).name.startsWith("contact_c-1_"))
+    }
+
+    @Test
+    fun photoCropThenDiscard_deletesStagedFileAndPreservesOriginalAvatar() = runTest {
+        val viewModel = PersonEditViewModel(
+            contactId = "c-1",
+            repository = repository,
+            avatarStorage = avatarStorage
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoSelected("content://media/picker/202"))
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoCropped(byteArrayOf(9, 8, 7)))
+        val stagedPath = viewModel.uiState.value.photoUri!!
+        assertTrue(File(stagedPath).exists())
+
+        // User taps Back -> Confirm Discard
+        viewModel.onEvent(PersonEditUiEvent.OnBackClick)
+        assertTrue(viewModel.uiState.value.showDiscardDialog)
+        viewModel.onEvent(PersonEditUiEvent.OnConfirmDiscard)
+
+        assertFalse("Staged file must be deleted on discard", File(stagedPath).exists())
+        assertNull("Repository contact photoUri must remain null", repository.getContact("c-1")?.photoUri)
+    }
+
+    @Test
+    fun photoDecodeFailed_clearsPendingCropAndShowsFriendlySnackbar() = runTest {
+        val viewModel = PersonEditViewModel(
+            contactId = "c-1",
+            repository = repository,
+            avatarStorage = avatarStorage
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoSelected("content://media/corrupted/999"))
+        assertEquals("content://media/corrupted/999", viewModel.uiState.value.pendingCropUri)
+
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoDecodeFailed)
+        assertNull(viewModel.uiState.value.pendingCropUri)
+        assertEquals("Could not load selected image", viewModel.uiState.value.userMessage)
     }
 }
