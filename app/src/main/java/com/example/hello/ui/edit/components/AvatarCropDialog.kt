@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,13 +41,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +84,8 @@ fun AvatarCropDialog(
     var fitWholeImage by remember(sourceUri) { mutableStateOf(false) }
     var currentViewportPx by remember { mutableFloatStateOf(512f) }
 
+    val isResetActive = zoom > 1.01f || offsetX != 0f || offsetY != 0f || fitWholeImage
+
     LaunchedEffect(sourceUri) {
         isDecoding = true
         val decoded = withContext(Dispatchers.IO) {
@@ -103,21 +107,130 @@ fun AvatarCropDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF1A1817)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1A1817))
         ) {
-            Column(
+            // Center Interactive 1:1 Circular Crop Viewport (contained & clipped)
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(vertical = 16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .padding(top = 80.dp, bottom = 136.dp)
+                    .clipToBounds(),
+                contentAlignment = Alignment.Center
             ) {
-                // Top Action Header
+                val density = LocalDensity.current
+                val maxDimPx = with(density) {
+                    min(maxWidth.toPx(), maxHeight.toPx()) * 0.85f
+                }
+                currentViewportPx = maxDimPx.coerceAtLeast(200f)
+
+                val bmp = sourceBitmap
+                if (isDecoding || bmp == null) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                } else {
+                    val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
+                    val borderColor = MaterialTheme.colorScheme.primary
+
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(bmp, fitWholeImage, currentViewportPx) {
+                                detectTransformGestures { _, pan, gestureZoom, _ ->
+                                    val newZoom = (zoom * gestureZoom).coerceIn(
+                                        AvatarCropGeometry.MIN_ZOOM,
+                                        AvatarCropGeometry.MAX_ZOOM
+                                    )
+                                    val (clampedX, clampedY) = AvatarCropGeometry.clampPanOffset(
+                                        offsetX = offsetX + pan.x,
+                                        offsetY = offsetY + pan.y,
+                                        imageWidth = bmp.width.toFloat(),
+                                        imageHeight = bmp.height.toFloat(),
+                                        viewportSize = currentViewportPx,
+                                        zoom = newZoom,
+                                        fitWholeImage = fitWholeImage
+                                    )
+                                    zoom = newZoom
+                                    offsetX = clampedX
+                                    offsetY = clampedY
+                                }
+                            }
+                    ) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val radius = currentViewportPx / 2f
+
+                        val circlePath = Path().apply {
+                            addOval(
+                                Rect(
+                                    center.x - radius,
+                                    center.y - radius,
+                                    center.x + radius,
+                                    center.y + radius
+                                )
+                            )
+                        }
+
+                        // Strictly clip drawing to circular aperture so photo never renders outside circle
+                        clipPath(circlePath) {
+                            // 1. Draw solid Warm White (#FFFFFF) circular backing
+                            drawCircle(
+                                color = Color.White,
+                                radius = radius,
+                                center = center
+                            )
+
+                            // 2. Draw transformed source image
+                            val baseScale = AvatarCropGeometry.calculateBaseScale(
+                                imageWidth = bmp.width.toFloat(),
+                                imageHeight = bmp.height.toFloat(),
+                                viewportSize = currentViewportPx,
+                                fitWholeImage = fitWholeImage
+                            )
+                            val totalScale = baseScale * zoom
+
+                            withTransform({
+                                translate(
+                                    left = center.x + offsetX,
+                                    top = center.y + offsetY
+                                )
+                                scale(
+                                    scaleX = totalScale,
+                                    scaleY = totalScale,
+                                    pivot = Offset.Zero
+                                )
+                                translate(
+                                    left = -bmp.width / 2f,
+                                    top = -bmp.height / 2f
+                                )
+                            }) {
+                                drawImage(image = imageBitmap)
+                            }
+                        }
+
+                        // 3. Draw circular crop guide ring
+                        drawCircle(
+                            color = borderColor,
+                            radius = radius,
+                            center = center,
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    }
+                }
+            }
+
+            // Top Action Header (anchored at top with solid background above canvas)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
+                color = Color(0xFF1A1817)
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -177,122 +290,20 @@ fun AvatarCropDialog(
                         )
                     }
                 }
+            }
 
-                // Center Interactive 1:1 Circular Crop Viewport
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val density = LocalDensity.current
-                    val maxDimPx = with(density) {
-                        min(maxWidth.toPx(), maxHeight.toPx()) * 0.82f
-                    }
-                    currentViewportPx = maxDimPx.coerceAtLeast(200f)
-
-                    val bmp = sourceBitmap
-                    if (isDecoding || bmp == null) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
-                        val borderColor = MaterialTheme.colorScheme.primary
-
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(bmp, fitWholeImage, currentViewportPx) {
-                                    detectTransformGestures { _, pan, gestureZoom, _ ->
-                                        val newZoom = (zoom * gestureZoom).coerceIn(
-                                            AvatarCropGeometry.MIN_ZOOM,
-                                            AvatarCropGeometry.MAX_ZOOM
-                                        )
-                                        val (clampedX, clampedY) = AvatarCropGeometry.clampPanOffset(
-                                            offsetX = offsetX + pan.x,
-                                            offsetY = offsetY + pan.y,
-                                            imageWidth = bmp.width.toFloat(),
-                                            imageHeight = bmp.height.toFloat(),
-                                            viewportSize = currentViewportPx,
-                                            zoom = newZoom,
-                                            fitWholeImage = fitWholeImage
-                                        )
-                                        zoom = newZoom
-                                        offsetX = clampedX
-                                        offsetY = clampedY
-                                    }
-                                }
-                        ) {
-                            val center = Offset(size.width / 2f, size.height / 2f)
-                            val radius = currentViewportPx / 2f
-
-                            // 1. Draw Warm White (#FFFFFF) circle backing inside the crop aperture
-                            drawCircle(
-                                color = Color.White,
-                                radius = radius,
-                                center = center
-                            )
-
-                            // 2. Draw transformed source image
-                            val baseScale = AvatarCropGeometry.calculateBaseScale(
-                                imageWidth = bmp.width.toFloat(),
-                                imageHeight = bmp.height.toFloat(),
-                                viewportSize = currentViewportPx,
-                                fitWholeImage = fitWholeImage
-                            )
-                            val totalScale = baseScale * zoom
-
-                            withTransform({
-                                translate(
-                                    left = center.x + offsetX,
-                                    top = center.y + offsetY
-                                )
-                                scale(
-                                    scaleX = totalScale,
-                                    scaleY = totalScale,
-                                    pivot = Offset.Zero
-                                )
-                                translate(
-                                    left = -bmp.width / 2f,
-                                    top = -bmp.height / 2f
-                                )
-                            }) {
-                                drawImage(image = imageBitmap)
-                            }
-
-                            // 3. Draw darkened outer scrim with circular 1:1 cutout
-                            val scrimPath = Path().apply {
-                                fillType = PathFillType.EvenOdd
-                                addRect(Rect(0f, 0f, size.width, size.height))
-                                addOval(
-                                    Rect(
-                                        center.x - radius,
-                                        center.y - radius,
-                                        center.x + radius,
-                                        center.y + radius
-                                    )
-                                )
-                            }
-                            drawPath(
-                                path = scrimPath,
-                                color = Color(0xCC1A1817)
-                            )
-
-                            // 4. Draw crisp circular crop guide ring
-                            drawCircle(
-                                color = borderColor,
-                                radius = radius,
-                                center = center,
-                                style = Stroke(width = 2.dp.toPx())
-                            )
-                        }
-                    }
-                }
-
-                // Bottom Controls: Fit Whole Image Toggle & Reset Zoom
+            // Bottom Controls Bar (anchored at bottom with solid background above canvas)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
+                color = Color(0xFF1A1817)
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -302,9 +313,10 @@ fun AvatarCropDialog(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // "Fit whole image" pill toggle
                         Surface(
                             shape = CircleShape,
                             color = if (fitWholeImage) {
@@ -313,22 +325,10 @@ fun AvatarCropDialog(
                                 Color.White.copy(alpha = 0.14f)
                             },
                             modifier = Modifier.clickable {
-                                val nextFit = !fitWholeImage
-                                fitWholeImage = nextFit
-                                val bmp = sourceBitmap
-                                if (bmp != null) {
-                                    val (cx, cy) = AvatarCropGeometry.clampPanOffset(
-                                        offsetX = offsetX,
-                                        offsetY = offsetY,
-                                        imageWidth = bmp.width.toFloat(),
-                                        imageHeight = bmp.height.toFloat(),
-                                        viewportSize = currentViewportPx,
-                                        zoom = zoom,
-                                        fitWholeImage = nextFit
-                                    )
-                                    offsetX = cx
-                                    offsetY = cy
-                                }
+                                fitWholeImage = !fitWholeImage
+                                zoom = 1f
+                                offsetX = 0f
+                                offsetY = 0f
                             }
                         ) {
                             Text(
@@ -345,19 +345,37 @@ fun AvatarCropDialog(
                             )
                         }
 
-                        if (zoom > 1.01f || offsetX != 0f || offsetY != 0f) {
-                            TextButton(
-                                onClick = {
+                        // "Reset" pill button (permanent, active vs inactive states)
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isResetActive) {
+                                Color.White.copy(alpha = 0.18f)
+                            } else {
+                                Color.White.copy(alpha = 0.06f)
+                            },
+                            modifier = if (isResetActive) {
+                                Modifier.clickable {
                                     zoom = 1f
                                     offsetX = 0f
                                     offsetY = 0f
+                                    fitWholeImage = false
                                 }
-                            ) {
-                                Text(
-                                    text = "Reset",
-                                    color = Color.White.copy(alpha = 0.85f)
-                                )
+                            } else {
+                                Modifier
                             }
+                        ) {
+                            Text(
+                                text = "Reset",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = if (isResetActive) {
+                                    Color.White
+                                } else {
+                                    Color.White.copy(alpha = 0.35f)
+                                },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
                     }
                 }
@@ -365,4 +383,5 @@ fun AvatarCropDialog(
         }
     }
 }
+
 

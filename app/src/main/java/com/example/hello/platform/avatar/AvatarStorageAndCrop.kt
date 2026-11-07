@@ -51,7 +51,11 @@ object AvatarCropGeometry {
     ): Float {
         if (imageWidth <= 0f || imageHeight <= 0f || viewportSize <= 0f) return 1f
         return if (fitWholeImage) {
-            min(viewportSize / imageWidth, viewportSize / imageHeight)
+            // For circular aperture (diameter = viewportSize), inscribe the entire rectangular image
+            // within the circular boundary so none of the corners or edges are cropped out.
+            // diagonal = hypot(scaledWidth, scaledHeight) = scale * hypot(imageWidth, imageHeight) <= viewportSize
+            val diagonal = kotlin.math.hypot(imageWidth.toDouble(), imageHeight.toDouble()).toFloat()
+            if (diagonal > 0f) viewportSize / diagonal else 1f
         } else {
             max(viewportSize / imageWidth, viewportSize / imageHeight)
         }

@@ -42,7 +42,7 @@ class AvatarStorageAndCropTest {
     }
 
     @Test
-    fun `fit whole image mode scales longer side inside viewport for full PNG stickers`() {
+    fun `fit whole image mode inscribes entire image within circular aperture so all corners fit inside circle`() {
         // 1000x500 landscape sticker inside 500x500 circular viewport
         val baseScale = AvatarCropGeometry.calculateBaseScale(
             imageWidth = 1000f,
@@ -50,10 +50,17 @@ class AvatarStorageAndCropTest {
             viewportSize = 500f,
             fitWholeImage = true
         )
-        // Longer side (1000) fits inside 500 -> baseScale = 0.5f
-        assertEquals(0.5f, baseScale, 0.001f)
+        // Diagonal = sqrt(1000^2 + 500^2) = ~1118.034f. Base scale = 500 / 1118.034f ~= 0.4472136f
+        val expectedScale = 500f / kotlin.math.hypot(1000.0, 500.0).toFloat()
+        assertEquals(expectedScale, baseScale, 0.001f)
 
-        // At zoom = 1f, both scaled dimensions are <= 500, so pan is centered at (0, 0)
+        // Verify that the corner distance from center is exactly viewportSize / 2 (radius = 250)
+        val scaledWidth = 1000f * baseScale
+        val scaledHeight = 500f * baseScale
+        val cornerDistance = kotlin.math.hypot(scaledWidth.toDouble() / 2, scaledHeight.toDouble() / 2).toFloat()
+        assertEquals(250f, cornerDistance, 0.01f)
+
+        // At zoom = 1f, both scaled dimensions are <= 500, so pan is clamped to (0, 0)
         val (clampedX, clampedY) = AvatarCropGeometry.clampPanOffset(
             offsetX = 100f,
             offsetY = 100f,
@@ -65,6 +72,37 @@ class AvatarStorageAndCropTest {
         )
         assertEquals(0f, clampedX, 0.001f)
         assertEquals(0f, clampedY, 0.001f)
+    }
+
+    @Test
+    fun `fit whole image mode on square image inscribes square within circular aperture`() {
+        // 400x400 square inside 400x400 circular viewport
+        val baseScale = AvatarCropGeometry.calculateBaseScale(
+            imageWidth = 400f,
+            imageHeight = 400f,
+            viewportSize = 400f,
+            fitWholeImage = true
+        )
+        // Diagonal = 400 * sqrt(2). Base scale = 1 / sqrt(2) ~= 0.7071f
+        val expectedScale = 1f / kotlin.math.sqrt(2f)
+        assertEquals(expectedScale, baseScale, 0.001f)
+    }
+
+    @Test
+    fun `fit whole image mode on portrait image inscribes portrait within circular aperture`() {
+        // 900x1600 portrait image inside 600x600 circular viewport
+        val baseScale = AvatarCropGeometry.calculateBaseScale(
+            imageWidth = 900f,
+            imageHeight = 1600f,
+            viewportSize = 600f,
+            fitWholeImage = true
+        )
+        val expectedScale = 600f / kotlin.math.hypot(900.0, 1600.0).toFloat()
+        assertEquals(expectedScale, baseScale, 0.001f)
+
+        // Corner distance is exactly radius (300)
+        val cornerDist = kotlin.math.hypot((900f * baseScale).toDouble() / 2, (1600f * baseScale).toDouble() / 2).toFloat()
+        assertEquals(300f, cornerDist, 0.01f)
     }
 
     @Test
