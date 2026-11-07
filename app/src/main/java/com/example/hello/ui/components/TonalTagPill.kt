@@ -5,11 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -92,7 +89,8 @@ fun TonalTagPill(
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
     maxNameLength: Int? = null,
-    shape: Shape = RoundedCornerShape(8.dp)
+    shape: Shape = if (isSelected) RoundedCornerShape(8.dp) else CircleShape,
+    border: BorderStroke? = null
 ) {
     val cleanName = tag.name.trim().removePrefix("#")
     val displayName = if (maxNameLength != null && cleanName.length > maxNameLength) {
@@ -114,12 +112,6 @@ fun TonalTagPill(
         tagColor
     }
 
-    val border = if (isSelected) {
-        null
-    } else {
-        TagColorCache.getBorder(tagColor)
-    }
-
     val clickableModifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)
     } else {
@@ -133,22 +125,14 @@ fun TonalTagPill(
         modifier = modifier.then(clickableModifier)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(13.dp)
-                )
-            }
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

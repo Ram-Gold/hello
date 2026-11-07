@@ -168,14 +168,13 @@ fun ContactCard(
                         visibleTags.forEach { tag ->
                             TonalTagPill(
                                 tag = tag,
-                                maxNameLength = 10,
-                                shape = RoundedCornerShape(8.dp)
+                                maxNameLength = 10
                             )
                         }
 
                         if (extraTagsCount > 0) {
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
+                                shape = CircleShape,
                                 color = if (isSelected) {
                                     MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.12f)
                                 } else {
@@ -190,7 +189,7 @@ fun ContactCard(
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                 )
                             }
                         }

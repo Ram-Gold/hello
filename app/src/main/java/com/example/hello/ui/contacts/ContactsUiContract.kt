@@ -2,11 +2,14 @@ package com.example.hello.ui.contacts
 
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.Tag
 
 data class ContactsUiState(
     val searchQuery: String = "",
-    val selectedTag: String? = null,
+    val selectedTags: Set<String> = emptySet(),
+    val selectedTag: String? = selectedTags.firstOrNull(),
     val smartFilterTags: List<String> = DEFAULT_SMART_FILTER_TAGS,
+    val availableTags: List<Tag> = emptyList(),
     val sortMode: ContactSortMode = ContactSortMode.ALPHABETICAL,
     val contacts: List<ContactSummary> = emptyList(),
     val groupedContacts: Map<String, List<ContactSummary>> = emptyMap(),

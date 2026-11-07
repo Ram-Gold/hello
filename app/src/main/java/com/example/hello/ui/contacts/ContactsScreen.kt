@@ -146,15 +146,17 @@ fun ContactsScreen(
             }
 
             // 2. Smart #tag Filter Pills & Sort Toggle
-            val activeTagFilter = uiState.selectedTag
+            val activeTagFilters = uiState.selectedTags
+            val activeTagFilter = activeTagFilters.joinToString(", ").ifBlank { null }
             AnimatedVisibility(
                 visible = !uiState.isSelectionMode,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
                 ContactsFilterBar(
-                    selectedTag = activeTagFilter,
+                    selectedTags = activeTagFilters,
                     smartFilterTags = uiState.smartFilterTags,
+                    availableTags = uiState.availableTags,
                     onSelectTag = { onEvent(ContactsUiEvent.OnSelectTag(it)) },
                     sortMode = uiState.sortMode,
                     onToggleSort = { onEvent(ContactsUiEvent.OnToggleSortMode(it)) },
@@ -164,7 +166,7 @@ fun ContactsScreen(
 
             // 3. Contacts List View or Empty State
             if (uiState.contacts.isEmpty()) {
-                val isFilterActive = uiState.searchQuery.isNotBlank() || activeTagFilter != null
+                val isFilterActive = uiState.searchQuery.isNotBlank() || activeTagFilters.isNotEmpty()
                 ContactsEmptyState(
                     isFilterActive = isFilterActive,
                     query = uiState.searchQuery,
@@ -421,8 +423,9 @@ private fun ContactsSearchHeader(
 
 @Composable
 private fun ContactsFilterBar(
-    selectedTag: String?,
+    selectedTags: Set<String>,
     smartFilterTags: List<String>,
+    availableTags: List<Tag> = emptyList(),
     onSelectTag: (String?) -> Unit,
     sortMode: ContactSortMode,
     onToggleSort: (ContactSortMode) -> Unit,
@@ -442,17 +445,32 @@ private fun ContactsFilterBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             item {
-                FilterChip(
-                    selected = selectedTag == null,
-                    onClick = { onSelectTag(null) },
-                    label = { Text("All") },
-                    shape = RoundedCornerShape(14.dp),
-                    border = null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
+                val isAllSelected = selectedTags.isEmpty()
+                Surface(
+                    shape = if (isAllSelected) RoundedCornerShape(8.dp) else CircleShape,
+                    color = if (isAllSelected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                    modifier = Modifier.clickable { onSelectTag(null) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "All",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isAllSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
             }
 
             items(
@@ -460,9 +478,10 @@ private fun ContactsFilterBar(
                 key = { it }
             ) { tagName ->
                 val cleanTagName = tagName.removePrefix("#")
-                val isSelected = selectedTag.equals(cleanTagName, ignoreCase = true)
-                val tagColorHex = TagColorPalette.getDeterministicColorHex(cleanTagName)
-                val tag = Tag(
+                val isSelected = selectedTags.any { it.equals(cleanTagName, ignoreCase = true) }
+                val customTag = availableTags.firstOrNull { it.name.equals(cleanTagName, ignoreCase = true) }
+                val tagColorHex = customTag?.colorHex ?: TagColorPalette.getDeterministicColorHex(cleanTagName)
+                val tag = customTag?.copy(name = cleanTagName) ?: Tag(
                     id = "filter-$cleanTagName",
                     name = cleanTagName,
                     colorHex = tagColorHex
@@ -471,9 +490,8 @@ private fun ContactsFilterBar(
                     tag = tag,
                     isSelected = isSelected,
                     onClick = {
-                        onSelectTag(if (isSelected) null else cleanTagName)
-                    },
-                    shape = RoundedCornerShape(14.dp)
+                        onSelectTag(cleanTagName)
+                    }
                 )
             }
         }

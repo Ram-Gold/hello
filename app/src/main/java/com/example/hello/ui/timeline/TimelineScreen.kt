@@ -97,7 +97,7 @@ fun TimelineScreen(
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
-                    top = 8.dp,
+                    top = 0.dp,
                     bottom = 128.dp
                 )
             ) {
@@ -111,12 +111,6 @@ fun TimelineScreen(
                             )
                         }
                     } else if (uiState.futureNodes.isNotEmpty()) {
-                        item(key = "future-section-header") {
-                            TimelineSectionLabel(
-                                title = "FUTURE HORIZON",
-                                subtitle = "Upcoming birthdays, notes & cadence catch-ups"
-                            )
-                        }
                         itemsIndexed(
                             items = uiState.futureNodes,
                             key = { _, node -> node.id }

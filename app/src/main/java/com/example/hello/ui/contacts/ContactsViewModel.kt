@@ -8,6 +8,7 @@ import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.domain.model.Tag
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,13 +20,15 @@ class ContactsViewModel(
 ) : ViewModel() {
 
     private var allContacts: List<ContactSummary> = createSampleContacts()
+    private var availableTags: List<Tag> = MockDataProvider.tags
     private var searchJob: kotlinx.coroutines.Job? = null
 
     private val _uiState = MutableStateFlow(
         computeState(
             searchQuery = "",
             sortMode = ContactSortMode.ALPHABETICAL,
-            contacts = allContacts
+            contacts = allContacts,
+            availableTags = availableTags
         )
     )
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
@@ -37,6 +40,11 @@ class ContactsViewModel(
                     syncContacts(contacts)
                 }
             }
+            viewModelScope.launch {
+                repository.tags.collect { tags ->
+                    syncTags(tags)
+                }
+            }
         }
     }
 
@@ -45,11 +53,27 @@ class ContactsViewModel(
         _uiState.update { current ->
             computeState(
                 searchQuery = current.searchQuery,
-                selectedTag = current.selectedTag,
+                selectedTags = current.selectedTags,
                 sortMode = current.sortMode,
                 contacts = allContacts,
                 selectedContactIds = current.selectedContactIds,
-                isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                availableTags = availableTags
+            )
+        }
+    }
+
+    fun syncTags(tags: List<Tag>) {
+        availableTags = tags
+        _uiState.update { current ->
+            computeState(
+                searchQuery = current.searchQuery,
+                selectedTags = current.selectedTags,
+                sortMode = current.sortMode,
+                contacts = allContacts,
+                selectedContactIds = current.selectedContactIds,
+                isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                availableTags = availableTags
             )
         }
     }
@@ -61,11 +85,12 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = query,
-                        selectedTag = current.selectedTag,
+                        selectedTags = current.selectedTags,
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags
                     )
                 }
                 if (repository != null && query.isNotBlank()) {
@@ -76,11 +101,12 @@ class ContactsViewModel(
                             _uiState.update { current ->
                                 computeState(
                                     searchQuery = query,
-                                    selectedTag = current.selectedTag,
+                                    selectedTags = current.selectedTags,
                                     sortMode = current.sortMode,
                                     contacts = matchingSummaries,
                                     selectedContactIds = current.selectedContactIds,
-                                    isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                                    isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                                    availableTags = availableTags
                                 )
                             }
                         }
@@ -92,24 +118,33 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",
-                        selectedTag = current.selectedTag,
+                        selectedTags = current.selectedTags,
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags
                     )
                 }
             }
             is ContactsUiEvent.OnSelectTag -> {
                 val normalizedTag = event.tagName?.removePrefix("#")?.trim()?.lowercase()?.ifBlank { null }
                 _uiState.update { current ->
+                    val updatedTags = if (normalizedTag == null) {
+                        emptySet()
+                    } else if (normalizedTag in current.selectedTags) {
+                        current.selectedTags - normalizedTag
+                    } else {
+                        current.selectedTags + normalizedTag
+                    }
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedTag = normalizedTag,
+                        selectedTags = updatedTags,
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags
                     )
                 }
             }
@@ -117,11 +152,12 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedTag = current.selectedTag,
+                        selectedTags = current.selectedTags,
                         sortMode = event.mode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags
                     )
                 }
             }
@@ -173,11 +209,12 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = current.searchQuery,
-                        selectedTag = current.selectedTag,
+                        selectedTags = current.selectedTags,
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = emptySet(),
-                        isDeleteConfirmationVisible = false
+                        isDeleteConfirmationVisible = false,
+                        availableTags = availableTags
                     ).copy(userMessage = message)
                 }
             }
@@ -185,11 +222,12 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     computeState(
                         searchQuery = "",
-                        selectedTag = null,
+                        selectedTags = emptySet(),
                         sortMode = current.sortMode,
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
-                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags
                     )
                 }
             }
@@ -205,11 +243,15 @@ class ContactsViewModel(
             sortMode: ContactSortMode,
             contacts: List<ContactSummary>,
             selectedTag: String? = null,
+            selectedTags: Set<String> = if (selectedTag != null) setOf(selectedTag) else emptySet(),
             selectedContactIds: Set<String> = emptySet(),
-            isDeleteConfirmationVisible: Boolean = false
+            isDeleteConfirmationVisible: Boolean = false,
+            availableTags: List<Tag> = emptyList()
         ): ContactsUiState {
             val cleanQuery = searchQuery.trim()
-            val cleanTag = selectedTag?.removePrefix("#")?.trim()?.lowercase()?.ifBlank { null }
+            val cleanSelectedTags = selectedTags
+                .mapNotNull { it.removePrefix("#").trim().lowercase().ifBlank { null } }
+                .toSet()
 
             val filtered = contacts.filter { contact ->
                 val matchesQuery = if (cleanQuery.isBlank()) {
@@ -225,11 +267,13 @@ class ContactsViewModel(
                         contact.tags.any { it.name.contains(cleanQuery, ignoreCase = true) }
                 }
 
-                val matchesTag = if (cleanTag == null) {
+                val matchesTag = if (cleanSelectedTags.isEmpty()) {
                     true
                 } else {
-                    contact.tags.any { it.name.equals(cleanTag, ignoreCase = true) } ||
-                        contact.contextSubtitle.contains(cleanTag, ignoreCase = true)
+                    cleanSelectedTags.any { cleanTag ->
+                        contact.tags.any { it.name.equals(cleanTag, ignoreCase = true) } ||
+                            contact.contextSubtitle.contains(cleanTag, ignoreCase = true)
+                    }
                 }
 
                 matchesQuery && matchesTag
@@ -237,6 +281,10 @@ class ContactsViewModel(
 
             val dynamicTags = buildList<String> {
                 addAll(ContactsUiState.DEFAULT_SMART_FILTER_TAGS)
+                availableTags.forEach { tag ->
+                    val lower = tag.name.lowercase()
+                    if (lower !in this) add(lower)
+                }
                 contacts.flatMap { it.tags }.forEach { tag ->
                     val lower = tag.name.lowercase()
                     if (lower !in this) add(lower)
@@ -266,8 +314,10 @@ class ContactsViewModel(
 
             return ContactsUiState(
                 searchQuery = searchQuery,
-                selectedTag = cleanTag,
+                selectedTags = cleanSelectedTags,
+                selectedTag = cleanSelectedTags.firstOrNull(),
                 smartFilterTags = dynamicTags,
+                availableTags = availableTags,
                 sortMode = sortMode,
                 contacts = filtered,
                 groupedContacts = grouped,

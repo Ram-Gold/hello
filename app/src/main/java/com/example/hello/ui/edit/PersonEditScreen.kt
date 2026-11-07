@@ -656,8 +656,7 @@ private fun TagsManager(
                 TonalTagPill(
                     tag = tag,
                     isSelected = isSelected,
-                    onClick = { onToggleTag(tag.id) },
-                    shape = RoundedCornerShape(12.dp)
+                    onClick = { onToggleTag(tag.id) }
                 )
             }
         }

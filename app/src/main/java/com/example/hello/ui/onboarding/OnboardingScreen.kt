@@ -445,8 +445,7 @@ private fun OnboardingTerminologyStep(
                         RelationshipTerminology.coreSphereTags.forEach { sphere ->
                             val color = TagColorPalette.getDeterministicColorHex(sphere)
                             TonalTagPill(
-                                tag = Tag(id = "sphere-$sphere", name = sphere, colorHex = color),
-                                shape = RoundedCornerShape(10.dp)
+                                tag = Tag(id = "sphere-$sphere", name = sphere, colorHex = color)
                             )
                         }
                     }

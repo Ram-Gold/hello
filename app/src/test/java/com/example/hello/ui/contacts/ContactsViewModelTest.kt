@@ -340,4 +340,51 @@ class ContactsViewModelTest {
         assertEquals(setOf(target.id), state.selectedContactIds)
         assertEquals(ContactSortMode.RECENTLY_ENCOUNTERED, state.sortMode)
     }
+
+    @Test
+    fun syncTags_updatesAvailableTagsAndDynamicSmartFilters() {
+        val customTag = com.example.hello.domain.model.Tag(
+            id = "custom-tag-1",
+            name = "Ceramics",
+            colorHex = "#FF5722"
+        )
+        viewModel.syncTags(listOf(customTag))
+
+        val state = viewModel.uiState.value
+        assertTrue(state.availableTags.any { it.name == "Ceramics" && it.colorHex == "#FF5722" })
+        assertTrue(state.smartFilterTags.contains("ceramics"))
+    }
+
+    @Test
+    fun onSelectTag_supportsMultipleTagSelectionUnionAndToggleDeselect() {
+        // Select first tag: design (4 contacts)
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
+        val stateAfterFirst = viewModel.uiState.value
+        assertEquals(setOf("design"), stateAfterFirst.selectedTags)
+        assertEquals(4, stateAfterFirst.contacts.size)
+
+        // Select second tag: ai (adds to selectedTags and filters by union OR)
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("ai"))
+        val stateAfterSecond = viewModel.uiState.value
+        assertEquals(setOf("design", "ai"), stateAfterSecond.selectedTags)
+        assertTrue(stateAfterSecond.contacts.size > 4)
+        assertTrue(
+            stateAfterSecond.contacts.all { c ->
+                c.tags.any { it.name.equals("design", ignoreCase = true) || it.name.equals("ai", ignoreCase = true) }
+            }
+        )
+
+        // Tapping an already-selected tag ("design") deselects only that tag, leaving "ai" active
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("design"))
+        val stateAfterDeselectFirst = viewModel.uiState.value
+        assertEquals(setOf("ai"), stateAfterDeselectFirst.selectedTags)
+        assertEquals(2, stateAfterDeselectFirst.contacts.size)
+
+        // Tapping "All" (null) clears all selected tags
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag(null))
+        val stateAfterReset = viewModel.uiState.value
+        assertTrue(stateAfterReset.selectedTags.isEmpty())
+        assertNull(stateAfterReset.selectedTag)
+        assertEquals(10, stateAfterReset.totalCount)
+    }
 }

@@ -143,7 +143,7 @@ fun PropertiesPanel(
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             matchingTags.forEach { tag ->
-                                TonalTagPill(tag = tag, shape = RoundedCornerShape(12.dp))
+                                TonalTagPill(tag = tag)
                             }
                         }
                     }

@@ -478,6 +478,30 @@ class ContactRepository(
             currentTags.map { if (it.id == updatedTag.id) updatedTag else it }
         }
 
+        _contacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == updatedTag.id }) {
+                    contact.copy(
+                        tags = contact.tags.map { if (it.id == updatedTag.id) updatedTag else it }
+                    )
+                } else {
+                    contact
+                }
+            }
+        }
+
+        _recentContacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == updatedTag.id }) {
+                    contact.copy(
+                        tags = contact.tags.map { if (it.id == updatedTag.id) updatedTag else it }
+                    )
+                } else {
+                    contact
+                }
+            }
+        }
+
         val db = database
         if (db != null) {
             coroutineScope.launch {
@@ -502,19 +526,47 @@ class ContactRepository(
             }
         }
 
+        val updatedTargetTag = targetTag.copy(
+            useCount = targetTag.useCount + sourceTag.useCount,
+            lastUsedAt = Instant.now()
+        )
+
         _tags.update { currentTags ->
             currentTags
                 .filterNot { it.id == sourceTagId }
                 .map { tag ->
                     if (tag.id == targetTagId) {
-                        tag.copy(
-                            useCount = tag.useCount + sourceTag.useCount,
-                            lastUsedAt = Instant.now()
-                        )
+                        updatedTargetTag
                     } else {
                         tag
                     }
                 }
+        }
+
+        _contacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == sourceTagId || it.id == targetTagId }) {
+                    val newTags = contact.tags.map { tag ->
+                        if (tag.id == sourceTagId || tag.id == targetTagId) updatedTargetTag else tag
+                    }.distinctBy { it.id }
+                    contact.copy(tags = newTags)
+                } else {
+                    contact
+                }
+            }
+        }
+
+        _recentContacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == sourceTagId || it.id == targetTagId }) {
+                    val newTags = contact.tags.map { tag ->
+                        if (tag.id == sourceTagId || tag.id == targetTagId) updatedTargetTag else tag
+                    }.distinctBy { it.id }
+                    contact.copy(tags = newTags)
+                } else {
+                    contact
+                }
+            }
         }
 
         val db = database
@@ -549,6 +601,26 @@ class ContactRepository(
 
         _tags.update { currentTags ->
             currentTags.filterNot { it.id == tagId }
+        }
+
+        _contacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == tagId }) {
+                    contact.copy(tags = contact.tags.filterNot { it.id == tagId })
+                } else {
+                    contact
+                }
+            }
+        }
+
+        _recentContacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.tags.any { it.id == tagId }) {
+                    contact.copy(tags = contact.tags.filterNot { it.id == tagId })
+                } else {
+                    contact
+                }
+            }
         }
 
         val db = database

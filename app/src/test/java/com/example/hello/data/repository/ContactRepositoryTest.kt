@@ -200,6 +200,23 @@ class ContactRepositoryTest {
         val retrieved = repository.tags.value.first { it.id == initial.id }
         assertEquals("UpdatedTech", retrieved.name)
         assertEquals("#7DAA82", retrieved.colorHex)
+
+        // Verify contacts carrying this tag are reactively updated
+        val contactsWithTag = repository.contacts.value.filter { it.tags.any { t -> t.id == initial.id } }
+        assertTrue(contactsWithTag.isNotEmpty())
+        contactsWithTag.forEach { contact ->
+            val tag = contact.tags.first { it.id == initial.id }
+            assertEquals("UpdatedTech", tag.name)
+            assertEquals("#7DAA82", tag.colorHex)
+        }
+
+        // Verify recentContacts carrying this tag are reactively updated
+        val recentWithTag = repository.recentContacts.value.filter { it.tags.any { t -> t.id == initial.id } }
+        recentWithTag.forEach { contact ->
+            val tag = contact.tags.first { it.id == initial.id }
+            assertEquals("UpdatedTech", tag.name)
+            assertEquals("#7DAA82", tag.colorHex)
+        }
     }
 
     @Test
@@ -226,6 +243,11 @@ class ContactRepositoryTest {
         val c8 = repository.getContact("c-8")!!
         assertFalse(c8.tagIds.contains("tag-tech"))
         assertTrue(c8.tagIds.contains("tag-design"))
+
+        // 4. Reactive contacts and recentContacts summaries are updated
+        val c2Summary = repository.contacts.value.first { it.id == "c-2" }
+        assertFalse(c2Summary.tags.any { it.id == "tag-tech" })
+        assertTrue(c2Summary.tags.any { it.id == "tag-design" })
     }
 
     @Test
@@ -242,5 +264,9 @@ class ContactRepositoryTest {
         // Tag unlinked from contact
         val c1After = repository.getContact("c-1")!!
         assertFalse(c1After.tagIds.contains(tagToDelete))
+
+        // Tag unlinked from reactive contacts summary
+        val c1Summary = repository.contacts.value.first { it.id == "c-1" }
+        assertFalse(c1Summary.tags.any { it.id == tagToDelete })
     }
 }

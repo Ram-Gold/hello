@@ -309,8 +309,7 @@ fun FlowAAddContactCard(
                                     TonalTagPill(
                                         tag = tag,
                                         isSelected = isSelected,
-                                        onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) },
-                                        shape = RoundedCornerShape(12.dp)
+                                        onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
                                     )
                                 }
                             }
@@ -463,8 +462,7 @@ fun FlowAAddContactCard(
                         TonalTagPill(
                             tag = tag,
                             isSelected = isSelected,
-                            onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) },
-                            shape = RoundedCornerShape(12.dp)
+                            onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
                         )
                     }
                     MinimalSelectableChip(

@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `TimelineScreen.kt` wraps the `LazyColumn` and the 16.dp gradient scrim in a `Box(modifier = Modifier.weight(1f).fillMaxWidth())`.
-- [ ] The vertical gradient scrim (`background` -> `Transparent`) sits pinned at `Alignment.TopCenter` directly over the top of the scrollable content.
-- [ ] Timeline encounter cards, future nodes, and spine segments slide smoothly beneath the gradient fade as the user scrolls.
-- [ ] Zero static gap exists between `TimelineHeader` and the first timeline item when at scroll position 0.
-- [ ] All unit tests pass cleanly (`./gradlew testDebugUnitTest`).
+- [x] `TimelineScreen.kt` wraps the `LazyColumn` and the 16.dp gradient scrim in a `Box(modifier = Modifier.weight(1f).fillMaxWidth())`.
+- [x] The vertical gradient scrim (`background` -> `Transparent`) sits pinned at `Alignment.TopCenter` directly over the top of the scrollable content.
+- [x] Timeline encounter cards, future nodes, and spine segments slide smoothly beneath the gradient fade as the user scrolls.
+- [x] Zero static gap exists between `TimelineHeader` and the first timeline item when at scroll position 0.
+- [x] All unit tests pass cleanly (`./gradlew testDebugUnitTest`).
