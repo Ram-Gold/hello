@@ -86,6 +86,7 @@ import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.platform.portability.VCardShareHelper
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
+import com.example.hello.ui.components.TonalFilterPill
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
 import com.example.hello.ui.home.components.DoodleAvatar
@@ -444,33 +445,17 @@ private fun ContactsFilterBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
+            item(key = "filter-all") {
                 val isAllSelected = selectedTags.isEmpty()
-                Surface(
-                    shape = CircleShape,
-                    color = if (isAllSelected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-                    modifier = Modifier.clickable { onSelectTag(null) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "All",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isAllSelected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
-                    }
-                }
+                TonalFilterPill(
+                    label = "All",
+                    isSelected = isAllSelected,
+                    unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = { onSelectTag(null) }
+                )
             }
 
             items(
