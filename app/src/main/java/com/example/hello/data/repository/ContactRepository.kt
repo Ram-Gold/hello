@@ -15,6 +15,7 @@ import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.SubconsciousCheckInCalculator
 import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.domain.model.UpcomingAlert
 import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
@@ -85,6 +86,7 @@ class ContactRepository(
         if (database != null) {
             coroutineScope.launch {
                 seedDatabaseIfEmpty()
+                sanitizeLegacyHashtags()
                 observeDatabaseStreams()
             }
         }
@@ -120,6 +122,22 @@ class ContactRepository(
                 db.encounterDao().insertEncounters(_encounters.value.map { it.toEntity() })
                 db.followUpDao().insertFollowUps(_followUps.value.map { it.toEntity() })
             }
+        }
+    }
+
+    private suspend fun sanitizeLegacyHashtags() {
+        val db = database ?: return
+        try {
+            val allTags = db.tagDao().getAllTagsFlow().firstOrNull().orEmpty()
+            val tagsWithHash = allTags.filter { it.name.startsWith("#") }
+            tagsWithHash.forEach { entity ->
+                val clean = entity.name.removePrefix("#").trim()
+                if (clean.isNotBlank()) {
+                    db.tagDao().updateTag(entity.copy(name = clean))
+                }
+            }
+        } catch (_: Exception) {
+            // Non-critical startup cleanup
         }
     }
 
@@ -431,15 +449,16 @@ class ContactRepository(
         }
     }
 
-    fun addTag(name: String, colorHex: String = "#E06D3B"): Tag {
-        val cleanName = name.trim().removePrefix("#")
+    fun addTag(name: String, colorHex: String? = null): Tag {
+        val cleanName = name.trim().removePrefix("#").trim()
         val existing = _tags.value.firstOrNull { it.name.equals(cleanName, ignoreCase = true) }
         if (existing != null) return existing
 
+        val resolvedColor = colorHex ?: TagColorPalette.getDeterministicColorHex(cleanName)
         val newTag = Tag(
             id = "tag-${UUID.randomUUID()}",
             name = cleanName,
-            colorHex = colorHex,
+            colorHex = resolvedColor,
             useCount = 1,
             lastUsedAt = Instant.now()
         )
@@ -560,7 +579,7 @@ class ContactRepository(
 
         val selectedTagNames = _tags.value
             .filter { it.id in tagIds }
-            .map { "#${it.name.lowercase()}" }
+            .map { it.name.removePrefix("#") }
 
         val contextParts = mutableListOf<String>()
         val professionalSubtitle = listOfNotNull(role?.trim()?.ifEmpty { null }, company?.trim()?.ifEmpty { null }).joinToString(" at ")

@@ -66,12 +66,12 @@ enum class RelationshipTerminology(
     }
 
     fun searchPlaceholder(): String {
-        return "Search ${pluralTitle.lowercase()}, #tags, or notes..."
+        return "Search ${pluralTitle.lowercase()}, tags, or notes..."
     }
 
     fun emptyTagFilterMessage(tagName: String): String {
         val cleanTag = tagName.removePrefix("#").lowercase()
-        return "No ${pluralTitle.lowercase()} tagged #$cleanTag yet."
+        return "No ${pluralTitle.lowercase()} tagged \"$cleanTag\" yet."
     }
 
     companion object {

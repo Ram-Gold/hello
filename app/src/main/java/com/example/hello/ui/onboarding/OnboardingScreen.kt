@@ -58,8 +58,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
+import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
@@ -440,17 +443,11 @@ private fun OnboardingTerminologyStep(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         RelationshipTerminology.coreSphereTags.forEach { sphere ->
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest
-                            ) {
-                                Text(
-                                    text = "#$sphere",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                                )
-                            }
+                            val color = TagColorPalette.getDeterministicColorHex(sphere)
+                            TonalTagPill(
+                                tag = Tag(id = "sphere-$sphere", name = sphere, colorHex = color),
+                                shape = RoundedCornerShape(10.dp)
+                            )
                         }
                     }
                 }

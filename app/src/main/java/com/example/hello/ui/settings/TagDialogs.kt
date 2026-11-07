@@ -42,16 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.Tag
 
 object TagColorPalette {
-    val PALETTE_HEX = listOf(
-        "#E06D3B", // Terracotta
-        "#F3A261", // Amber
-        "#7DAA82", // Sage
-        "#D87D7D", // Dusty Rose
-        "#6B8BA4", // Slate
-        "#D4A373", // Ochre
-        "#8A9A5B", // Olive
-        "#B07D62"  // Clay
-    )
+    val PALETTE_HEX = com.example.hello.domain.model.TagColorPalette.PALETTE_HEX
 
     fun parseColor(hex: String, fallback: Color = Color(0xFFE06D3B)): Color {
         return try {
@@ -71,7 +62,8 @@ fun AddTagDialog(
     onConfirm: (name: String, colorHex: String) -> Unit
 ) {
     var tagName by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf(TagColorPalette.PALETTE_HEX.first()) }
+    var userSelectedColor by remember { mutableStateOf<String?>(null) }
+    val effectiveColor = userSelectedColor ?: com.example.hello.domain.model.TagColorPalette.getDeterministicColorHex(tagName)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -103,7 +95,7 @@ fun AddTagDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TagColorPalette.PALETTE_HEX.forEach { hex ->
-                        val isSelected = selectedColor == hex
+                        val isSelected = effectiveColor.equals(hex, ignoreCase = true)
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
@@ -114,7 +106,7 @@ fun AddTagDialog(
                                     color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
                                     shape = CircleShape
                                 )
-                                .clickable { selectedColor = hex },
+                                .clickable { userSelectedColor = hex },
                             contentAlignment = Alignment.Center
                         ) {
                             if (isSelected) {
@@ -132,7 +124,7 @@ fun AddTagDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(tagName, selectedColor) },
+                onClick = { onConfirm(tagName.trim().removePrefix("#"), effectiveColor) },
                 enabled = tagName.isNotBlank(),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -162,7 +154,7 @@ fun EditTagDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Edit #${tag.name}",
+                text = "Edit ${tag.name}",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
         },
@@ -254,14 +246,14 @@ fun MergeTagDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Merge #${sourceTag.name}",
+                text = "Merge ${sourceTag.name}",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Merge #${sourceTag.name} (${sourceTag.useCount} contacts) into another tag. All contacts with #${sourceTag.name} will be migrated, and #${sourceTag.name} will be deleted.",
+                    text = "Merge ${sourceTag.name} (${sourceTag.useCount} contacts) into another tag. All contacts with ${sourceTag.name} will be migrated, and ${sourceTag.name} will be deleted.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -296,7 +288,7 @@ fun MergeTagDialog(
                                             .background(TagColorPalette.parseColor(target.colorHex))
                                     )
                                     Text(
-                                        text = "#${target.name}",
+                                        text = target.name,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )

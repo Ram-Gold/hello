@@ -99,7 +99,7 @@ object ExportBundleGenerator {
             tags.forEachIndexed { i, t ->
                 append("  {\n")
                 append("    \"id\": ${quoteJson(t.id)},\n")
-                append("    \"name\": ${quoteJson(t.name)},\n")
+                append("    \"name\": ${quoteJson(t.name.trim().removePrefix("#"))},\n")
                 append("    \"colorHex\": ${quoteJson(t.colorHex)},\n")
                 append("    \"useCount\": ${t.useCount},\n")
                 append("    \"lastUsedAt\": ${quoteJson(t.lastUsedAt?.toString())}\n")
@@ -136,7 +136,7 @@ object ExportBundleGenerator {
         places: List<Place>,
         tags: List<Tag>
     ): Map<String, String> {
-        val tagMap = tags.associate { it.id to it.name }
+        val tagMap = tags.associate { it.id to it.name.trim().removePrefix("#") }
         val placeMap = places.associate { it.id to it.label }
         val notesMap = mutableMapOf<String, String>()
 

@@ -44,6 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+private val SINGLE_ITEM_SHAPE = RoundedCornerShape(24.dp)
+private val FIRST_ITEM_SHAPE = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
+private val LAST_ITEM_SHAPE = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
+private val MIDDLE_ITEM_SHAPE = RoundedCornerShape(4.dp)
+
 /**
  * Returns Material 3 Expressive connected corner shapes matching Google's Settings and PixelPlayer:
  * - Single item in group: 24.dp rounded squircle.
@@ -52,10 +57,10 @@ import androidx.compose.ui.unit.dp
  * - Last item: 4.dp top corners, 24.dp bottom corners.
  */
 fun shapeFor(index: Int, totalItems: Int): Shape = when {
-    totalItems <= 1 -> RoundedCornerShape(24.dp)
-    index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-    index == totalItems - 1 -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-    else -> RoundedCornerShape(4.dp)
+    totalItems <= 1 -> SINGLE_ITEM_SHAPE
+    index == 0 -> FIRST_ITEM_SHAPE
+    index == totalItems - 1 -> LAST_ITEM_SHAPE
+    else -> MIDDLE_ITEM_SHAPE
 }
 
 /**

@@ -79,10 +79,10 @@ class ContactCardDensityTest {
     }
 
     @Test
-    fun tagPill_formatsCleanHashtagWithoutDotSwatch() {
+    fun tagPill_formatsCleanNameWithoutHashPrefix() {
         val tag = Tag("t-1", "Design", "#F3A261")
-        val formattedTag = "#${tag.name}"
-        assertEquals("#Design", formattedTag)
+        val cleanName = tag.name.trim().removePrefix("#")
+        assertEquals("Design", cleanName)
     }
 
     @Test

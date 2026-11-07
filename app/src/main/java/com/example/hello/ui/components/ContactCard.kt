@@ -155,16 +155,9 @@ fun ContactCard(
                     )
                 }
 
-                // Tier 3: Unified #tag Pills (Context Tags, single-row guarantee)
-                val unifiedTagLabels = buildList<String> {
-                    contact.tags.forEach { tag ->
-                        if (none { it.equals(tag.name, ignoreCase = true) }) {
-                            add(tag.name)
-                        }
-                    }
-                }
-                val visibleTags = unifiedTagLabels.take(2)
-                val extraTagsCount = (unifiedTagLabels.size - visibleTags.size).coerceAtLeast(0)
+                // Tier 3: Unified Tonal Tag Pills (single-row guarantee)
+                val visibleTags = contact.tags.take(2)
+                val extraTagsCount = (contact.tags.size - visibleTags.size).coerceAtLeast(0)
 
                 if (visibleTags.isNotEmpty()) {
                     Row(
@@ -172,19 +165,11 @@ fun ContactCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
-                        visibleTags.forEach { label ->
-                            ContactTagPill(
-                                tag = Tag(id = "pill-$label", name = label, colorHex = "#E06D3B"),
-                                containerColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.12f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                },
-                                contentColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.onErrorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
+                        visibleTags.forEach { tag ->
+                            TonalTagPill(
+                                tag = tag,
+                                maxNameLength = 10,
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
 
@@ -217,7 +202,7 @@ fun ContactCard(
 }
 
 /**
- * Compact minimalist hashtag pill displaying tag name without circular color dot.
+ * Compact minimalist tonal pill displaying clean tag name.
  */
 @Composable
 fun ContactTagPill(
@@ -226,23 +211,9 @@ fun ContactTagPill(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    val displayName = if (tag.name.length > 10) {
-        tag.name.take(9) + "…"
-    } else {
-        tag.name
-    }
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = containerColor,
-        modifier = modifier
-    ) {
-        Text(
-            text = "#$displayName",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Normal,
-            color = contentColor,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
-    }
+    TonalTagPill(
+        tag = tag,
+        modifier = modifier,
+        maxNameLength = 10
+    )
 }

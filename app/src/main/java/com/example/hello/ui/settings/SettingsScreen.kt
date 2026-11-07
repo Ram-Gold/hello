@@ -47,6 +47,23 @@ import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.ui.theme.HelloTheme
 
+private val PROFILE_COLORS_DARK = Color(0xFF3E2D1A) to Color(0xFFFFCC99)
+private val PROFILE_COLORS_LIGHT = Color(0xFFFBE4D5) to Color(0xFFC05E28)
+private val TERM_COLORS_DARK = Color(0xFF5E1700) to Color(0xFFFFB59B)
+private val TERM_COLORS_LIGHT = Color(0xFFFFDBCF) to Color(0xFFB84A1A)
+private val FLOW_COLORS_DARK = Color(0xFF4A2800) to Color(0xFFFFC07F)
+private val FLOW_COLORS_LIGHT = Color(0xFFFFECD6) to Color(0xFF9E5400)
+private val TAG_COLORS_DARK = Color(0xFF2B4426) to Color(0xFFB5CBAE)
+private val TAG_COLORS_LIGHT = Color(0xFFE2EEDF) to Color(0xFF436B3D)
+private val DATA_COLORS_DARK = Color(0xFF1E3852) to Color(0xFFB8D4EE)
+private val DATA_COLORS_LIGHT = Color(0xFFDBE7F3) to Color(0xFF265077)
+private val APP_COLORS_DARK = Color(0xFF4C182C) to Color(0xFFFFAFD0)
+private val APP_COLORS_LIGHT = Color(0xFFFFD8E4) to Color(0xFF7D2B4A)
+private val PREF_COLORS_DARK = Color(0xFF522E00) to Color(0xFFFFB77C)
+private val PREF_COLORS_LIGHT = Color(0xFFFFE0C2) to Color(0xFF8C4C00)
+private val ABOUT_COLORS_DARK = Color(0xFF383431) to Color(0xFFD6CEC7)
+private val ABOUT_COLORS_LIGHT = Color(0xFFEBE5DF) to Color(0xFF4B4642)
+
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
@@ -101,11 +118,7 @@ fun SettingsScreen(
                 val totalItems = 8
                 ExpressiveSettingsGroup {
                     // 0. Profile / Name
-                    val profileColors = if (isDark) {
-                        Color(0xFF3E2D1A) to Color(0xFFFFCC99)
-                    } else {
-                        Color(0xFFFBE4D5) to Color(0xFFC05E28)
-                    }
+                    val profileColors = if (isDark) PROFILE_COLORS_DARK else PROFILE_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Your Name",
                         subtitle = "${uiState.userName} • Tap to edit profile greeting name",
@@ -116,11 +129,7 @@ fun SettingsScreen(
                     )
 
                     // 1. Terminology
-                    val termColors = if (isDark) {
-                        Color(0xFF5E1700) to Color(0xFFFFB59B)
-                    } else {
-                        Color(0xFFFFDBCF) to Color(0xFFB84A1A)
-                    }
+                    val termColors = if (isDark) TERM_COLORS_DARK else TERM_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Display Terminology",
                         subtitle = "${uiState.terminology.pluralTitle} • Layer 1 directory vocabulary",
@@ -131,11 +140,7 @@ fun SettingsScreen(
                     )
 
                     // 2. Capture Flows (ADR-0012)
-                    val flowColors = if (isDark) {
-                        Color(0xFF4A2800) to Color(0xFFFFC07F)
-                    } else {
-                        Color(0xFFFFECD6) to Color(0xFF9E5400)
-                    }
+                    val flowColors = if (isDark) FLOW_COLORS_DARK else FLOW_COLORS_LIGHT
                     val activePresetName = uiState.flowPresets.firstOrNull { it.id == uiState.activeFlowPresetId }?.name ?: "Default"
                     ExpressiveNavigationItem(
                         title = "Capture Flows",
@@ -147,11 +152,7 @@ fun SettingsScreen(
                     )
 
                     // 3. Tag Taxonomy
-                    val tagColors = if (isDark) {
-                        Color(0xFF2B4426) to Color(0xFFB5CBAE)
-                    } else {
-                        Color(0xFFE2EEDF) to Color(0xFF436B3D)
-                    }
+                    val tagColors = if (isDark) TAG_COLORS_DARK else TAG_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Tag Taxonomy",
                         subtitle = "${uiState.tags.size} active #tags • Layer 2 groups & topics",
@@ -175,11 +176,7 @@ fun SettingsScreen(
                     )
 
                     // 4. Data & Sovereign Storage
-                    val dataColors = if (isDark) {
-                        Color(0xFF1E3852) to Color(0xFFB8D4EE)
-                    } else {
-                        Color(0xFFDBE7F3) to Color(0xFF265077)
-                    }
+                    val dataColors = if (isDark) DATA_COLORS_DARK else DATA_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Data & Sovereign Storage",
                         subtitle = "SQLite canonical truth, export bundles, and backups",
@@ -190,11 +187,7 @@ fun SettingsScreen(
                     )
 
                     // 5. Appearance
-                    val appColors = if (isDark) {
-                        Color(0xFF4C182C) to Color(0xFFFFAFD0)
-                    } else {
-                        Color(0xFFFFD8E4) to Color(0xFF7D2B4A)
-                    }
+                    val appColors = if (isDark) APP_COLORS_DARK else APP_COLORS_LIGHT
                     val motionSubtitle = if (uiState.reduceAnimations) "Reduced motion (0ms)" else "Standard motion"
                     ExpressiveNavigationItem(
                         title = "Appearance",
@@ -206,11 +199,7 @@ fun SettingsScreen(
                     )
 
                     // 6. Preferences
-                    val prefColors = if (isDark) {
-                        Color(0xFF522E00) to Color(0xFFFFB77C)
-                    } else {
-                        Color(0xFFFFE0C2) to Color(0xFF8C4C00)
-                    }
+                    val prefColors = if (isDark) PREF_COLORS_DARK else PREF_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Preferences",
                         subtitle = "Notif: ${uiState.notificationHour}:00 • Location",
@@ -221,11 +210,7 @@ fun SettingsScreen(
                     )
 
                     // 7. About Hello
-                    val aboutColors = if (isDark) {
-                        Color(0xFF383431) to Color(0xFFD6CEC7)
-                    } else {
-                        Color(0xFFEBE5DF) to Color(0xFF4B4642)
-                    }
+                    val aboutColors = if (isDark) ABOUT_COLORS_DARK else ABOUT_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "About Hello",
                         subtitle = "v1.0.0-alpha • 100% Local-First & Zero Backend",

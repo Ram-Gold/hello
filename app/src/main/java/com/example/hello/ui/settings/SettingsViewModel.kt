@@ -130,7 +130,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         isAddTagDialogOpen = false,
-                        userMessage = "Tag #${created.name} created"
+                        userMessage = "Tag \"${created.name}\" created"
                     )
                 }
             }
@@ -144,7 +144,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         editingTag = null,
-                        userMessage = "Tag #${event.tag.name} updated"
+                        userMessage = "Tag \"${event.tag.name}\" updated"
                     )
                 }
             }
@@ -160,7 +160,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         mergingSourceTag = null,
-                        userMessage = "Merged #${source?.name ?: "source"} into #${target?.name ?: "target"}"
+                        userMessage = "Merged \"${source?.name ?: "source"}\" into \"${target?.name ?: "target"}\""
                     )
                 }
             }
@@ -171,7 +171,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         editingTag = null,
-                        userMessage = "Deleted tag #${tag?.name ?: "tag"}"
+                        userMessage = "Deleted tag \"${tag?.name ?: "tag"}\""
                     )
                 }
             }

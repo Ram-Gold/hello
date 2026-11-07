@@ -229,7 +229,7 @@ class ContactsViewModel(
                     true
                 } else {
                     contact.tags.any { it.name.equals(cleanTag, ignoreCase = true) } ||
-                        contact.contextSubtitle.contains("#$cleanTag", ignoreCase = true)
+                        contact.contextSubtitle.contains(cleanTag, ignoreCase = true)
                 }
 
                 matchesQuery && matchesTag

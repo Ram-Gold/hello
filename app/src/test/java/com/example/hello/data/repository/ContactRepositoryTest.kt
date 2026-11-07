@@ -184,6 +184,14 @@ class ContactRepositoryTest {
     }
 
     @Test
+    fun addTag_stripsHashAndAssignsDeterministicColorWhenOmitted() {
+        val tagWithHash = repository.addTag("#hiking")
+        assertEquals("hiking", tagWithHash.name)
+        assertTrue(com.example.hello.domain.model.TagColorPalette.PALETTE_HEX.contains(tagWithHash.colorHex))
+        assertEquals(com.example.hello.domain.model.TagColorPalette.getDeterministicColorHex("hiking"), tagWithHash.colorHex)
+    }
+
+    @Test
     fun updateTag_modifiesNameAndColor() {
         val initial = repository.tags.value.first()
         val updated = initial.copy(name = "UpdatedTech", colorHex = "#7DAA82")

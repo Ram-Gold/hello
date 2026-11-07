@@ -68,9 +68,7 @@ fun ScreenDepthWrapper(
 ) {
     if (!isDepthVisible) {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+            modifier = modifier.fillMaxSize()
         ) {
             content()
         }
@@ -91,7 +89,6 @@ fun ScreenDepthWrapper(
                 clip = false
                 alpha = animatedAlphaState.value
             }
-            .background(MaterialTheme.colorScheme.background)
     ) {
         content()
     }
@@ -111,9 +108,7 @@ fun ScreenDepthWrapper(
     val alpha = (1.0f - (ScreenDepthTokens.MAX_PAGER_ALPHA_FADE * easedProgress)).coerceIn(0f, 1f)
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = modifier.fillMaxSize()
     ) {
         Box(
             modifier = Modifier

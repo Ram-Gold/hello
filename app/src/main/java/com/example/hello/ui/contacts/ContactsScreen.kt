@@ -81,9 +81,12 @@ import com.example.hello.domain.model.ContactSortMode
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.platform.portability.VCardShareHelper
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
+import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.settings.shapeFor
@@ -456,19 +459,21 @@ private fun ContactsFilterBar(
                 items = smartFilterTags,
                 key = { it }
             ) { tagName ->
-                val isSelected = selectedTag.equals(tagName, ignoreCase = true)
-                FilterChip(
-                    selected = isSelected,
+                val cleanTagName = tagName.removePrefix("#")
+                val isSelected = selectedTag.equals(cleanTagName, ignoreCase = true)
+                val tagColorHex = TagColorPalette.getDeterministicColorHex(cleanTagName)
+                val tag = Tag(
+                    id = "filter-$cleanTagName",
+                    name = cleanTagName,
+                    colorHex = tagColorHex
+                )
+                TonalTagPill(
+                    tag = tag,
+                    isSelected = isSelected,
                     onClick = {
-                        onSelectTag(if (isSelected) null else tagName)
+                        onSelectTag(if (isSelected) null else cleanTagName)
                     },
-                    label = { Text("#${tagName.lowercase()}") },
-                    shape = RoundedCornerShape(14.dp),
-                    border = null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    shape = RoundedCornerShape(14.dp)
                 )
             }
         }
@@ -666,7 +671,7 @@ fun ContactsEmptyState(
                             "No ${terminology.pluralTitle.lowercase()} match your active filter."
                     }
                 } else {
-                    "Your directory is ready! Start adding ${terminology.pluralTitle.lowercase()}, tagging life spheres (#friends, #work), and logging encounters."
+                    "Your directory is ready! Start adding ${terminology.pluralTitle.lowercase()}, tagging life spheres (friends, work), and logging encounters."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -162,6 +162,20 @@ def run_suite_home_person_detail(iterations=10, interval=0.55):
     metrics = parse_gfxinfo(raw)
     return metrics, raw
 
+def run_suite_home_settings(iterations=10, interval=0.55):
+    print(f"\n--- Running Suite 5: Home <-> Settings ({iterations} round-trips, {interval}s interval) ---")
+    tap(X_HOME_SAFE, Y_COORD, delay=0.5)
+    reset_gfxinfo()
+    
+    for i in range(iterations):
+        tap(636, 152, delay=interval)  # Enter Settings
+        tap(76, 180, delay=interval)   # Back to Home
+        
+    time.sleep(0.5)
+    raw = get_gfxinfo()
+    metrics = parse_gfxinfo(raw)
+    return metrics, raw
+
 def main():
     print("=" * 60)
     print("Hello Android Tab & Screen Switching Performance Benchmark")
@@ -188,6 +202,10 @@ def main():
     s4_metrics, s4_raw = run_suite_home_person_detail(iterations=10, interval=0.55)
     results["home_person_detail"] = s4_metrics
     print(f"Home <-> Person Detail: Total Frames={s4_metrics['total_frames']}, Janky={s4_metrics['janky_frames']} ({s4_metrics['janky_pct']}%), p50={s4_metrics['p50_ms']}ms, p90={s4_metrics['p90_ms']}ms, p95={s4_metrics['p95_ms']}ms, p99={s4_metrics['p99_ms']}ms, Missed Deadlines={s4_metrics['frame_deadline_missed']}")
+    
+    s5_metrics, s5_raw = run_suite_home_settings(iterations=10, interval=0.55)
+    results["home_settings"] = s5_metrics
+    print(f"Home <-> Settings: Total Frames={s5_metrics['total_frames']}, Janky={s5_metrics['janky_frames']} ({s5_metrics['janky_pct']}%), p50={s5_metrics['p50_ms']}ms, p90={s5_metrics['p90_ms']}ms, p95={s5_metrics['p95_ms']}ms, p99={s5_metrics['p99_ms']}ms, Missed Deadlines={s5_metrics['frame_deadline_missed']}")
     
     os.makedirs("build/benchmark-results", exist_ok=True)
     with open("build/benchmark-results/tab_switching_baseline.json", "w") as f:

@@ -47,6 +47,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -213,12 +215,14 @@ fun MainAppShell(
     }
     val activeTab = selectedRootTab
 
-    val contactsUiState by contactsViewModel.uiState.collectAsState()
+    val isSelectionMode by remember(contactsViewModel) {
+        contactsViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
+    }.collectAsState(initial = false)
 
     // Hide floating dock on non-root destinations or selection mode using pure GPU translation (matches PixelPlayer)
-    val shouldHideDock by remember(currentRoute, contactsUiState.isSelectionMode) {
+    val shouldHideDock by remember(currentRoute, isSelectionMode) {
         derivedStateOf {
-            shouldHideFloatingDock(currentRoute) || contactsUiState.isSelectionMode
+            shouldHideFloatingDock(currentRoute) || isSelectionMode
         }
     }
     val dockVisibilityProgressState = animateFloatAsState(
@@ -274,7 +278,6 @@ fun MainAppShell(
     )
 
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
-    val homeUiState by homeViewModel.uiState.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -595,7 +598,6 @@ private fun MainAppNavHost(
         val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
         SettingsViewModel(preferencesRepository, quickActionViewModel.repository, wm)
     }
-    val settingsUiState by settingsViewModel.uiState.collectAsState()
 
     val navGraph = remember(navController, startDestination, isReducedMotion) {
         navController.createGraph(startDestination = startDestination) {
@@ -728,6 +730,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsScreen(
                         uiState = settingsUiState,
@@ -751,6 +754,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsFlowsScreen(
                         uiState = settingsUiState,
@@ -767,6 +771,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsTerminologyScreen(
                         uiState = settingsUiState,
@@ -783,6 +788,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsTagsScreen(
                         uiState = settingsUiState,
@@ -799,6 +805,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsDataScreen(
                         uiState = settingsUiState,
@@ -815,6 +822,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsAppearanceScreen(
                         uiState = settingsUiState,
@@ -831,6 +839,7 @@ private fun MainAppNavHost(
                 popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
                 popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
             ) {
+                val settingsUiState by settingsViewModel.uiState.collectAsState()
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsPreferencesScreen(
                         uiState = settingsUiState,

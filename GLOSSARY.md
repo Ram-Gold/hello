@@ -13,8 +13,12 @@ The user's chosen display nomenclature (People, Friends, Connections, or Contact
 _Avoid_: User Role, Category Type, Custom Entity
 
 **Tag**:
-A lightweight freeform label attached to Contacts to support flexible categorization and ad-hoc filtering. Serves as the single categorization primitive across the entire application.
-_Avoid_: Circle, Group, Sphere, Category, Label, Folder
+A clean, lightweight freeform label (strictly without `#` prefix) attached to Contacts to support flexible categorization and ad-hoc filtering. Tags are automatically pre-colored using deterministic palette mapping and displayed across all surfaces as Tonal Tag Pills. Serves as the single categorization primitive across the entire application.
+_Avoid_: Circle, Group, Sphere, Category, Label, Folder, Hashtag
+
+**Tonal Tag Pill**:
+A Material 3 Expressive visual component displaying a Tag's name using a soft tinted background (~14%–18% alpha of the tag's palette color), matching saturated colored text, and subtle tonal border, replacing legacy hashtag text.
+_Avoid_: Hashtag chip, Plain badge, Category box
 
 **Encounter**:
 A recorded interaction or meeting between the user and a Contact, preserving context, notes, and recency.

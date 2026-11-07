@@ -232,7 +232,7 @@ class QuickActionViewModel(
             is QuickActionUiEvent.OnAddCustomTag -> {
                 val tagText = _uiState.value.customTagInput.trim().removePrefix("#")
                 if (tagText.isNotBlank()) {
-                    val addedTag = repository.addTag(name = tagText, colorHex = "#7A746E")
+                    val addedTag = repository.addTag(name = tagText)
                     _uiState.update { state ->
                         state.copy(
                             selectedTagIds = state.selectedTagIds + addedTag.id,

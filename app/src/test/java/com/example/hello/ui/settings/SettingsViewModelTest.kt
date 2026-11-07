@@ -132,7 +132,7 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.uiState.value.isAddTagDialogOpen)
         assertTrue(contactRepository.tags.value.any { it.name == "Photography" })
-        assertTrue(viewModel.uiState.value.userMessage?.contains("#Photography") == true)
+        assertTrue(viewModel.uiState.value.userMessage?.contains("Photography") == true)
     }
 
     @Test

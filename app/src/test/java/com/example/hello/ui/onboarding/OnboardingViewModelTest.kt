@@ -103,7 +103,7 @@ class OnboardingViewModelTest {
             RelationshipTerminology.coreSphereTags
         )
         assertEquals(
-            "No people tagged #friends yet.",
+            "No people tagged \"friends\" yet.",
             RelationshipTerminology.PEOPLE.emptyTagFilterMessage("#friends")
         )
     }

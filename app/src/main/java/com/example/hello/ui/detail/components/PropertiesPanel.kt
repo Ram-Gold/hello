@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Contact
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.Tag
+import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.detail.CadenceHealth
@@ -142,7 +143,7 @@ fun PropertiesPanel(
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             matchingTags.forEach { tag ->
-                                TagPillChip(tag = tag)
+                                TonalTagPill(tag = tag, shape = RoundedCornerShape(12.dp))
                             }
                         }
                     }
@@ -254,26 +255,6 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
     }
 }
 
-@Composable
-private fun TagPillChip(tag: Tag) {
-    val parsedColor = try {
-        Color(android.graphics.Color.parseColor(tag.colorHex))
-    } catch (_: Exception) {
-        WarmTerracottaPrimary
-    }
-
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = parsedColor.copy(alpha = 0.14f)
-    ) {
-        Text(
-            text = "#${tag.name}",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = parsedColor,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-        )
-    }
-}
 
 @Composable
 private fun PropertyChip(iconKey: HelloIconKey, label: String) {

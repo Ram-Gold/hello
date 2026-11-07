@@ -58,6 +58,7 @@ import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
@@ -292,7 +293,7 @@ fun FlowAAddContactCard(
                             MinimalFilledTextField(
                                 value = uiState.customTagInput,
                                 onValueChange = { onEvent(QuickActionUiEvent.OnCustomTagInputChange(it)) },
-                                placeholder = "Type a #tag...",
+                                placeholder = "Type a tag...",
                                 focusRequester = focusRequester,
                                 imeAction = ImeAction.Done,
                                 capitalization = KeyboardCapitalization.Words,
@@ -305,10 +306,11 @@ fun FlowAAddContactCard(
                             ) {
                                 uiState.suggestedTags.forEach { tag ->
                                     val isSelected = tag.id in uiState.selectedTagIds
-                                    MinimalSelectableChip(
-                                        label = "#${tag.name.lowercase()}",
-                                        selected = isSelected,
-                                        onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
+                                    TonalTagPill(
+                                        tag = tag,
+                                        isSelected = isSelected,
+                                        onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) },
+                                        shape = RoundedCornerShape(12.dp)
                                     )
                                 }
                             }
@@ -458,10 +460,11 @@ fun FlowAAddContactCard(
                 ) {
                     uiState.suggestedTags.forEach { tag ->
                         val isSelected = tag.id in uiState.selectedTagIds
-                        MinimalSelectableChip(
-                            label = "#${tag.name.lowercase()}",
-                            selected = isSelected,
-                            onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) }
+                        TonalTagPill(
+                            tag = tag,
+                            isSelected = isSelected,
+                            onClick = { onEvent(QuickActionUiEvent.OnToggleTag(tag.id)) },
+                            shape = RoundedCornerShape(12.dp)
                         )
                     }
                     MinimalSelectableChip(
@@ -475,7 +478,7 @@ fun FlowAAddContactCard(
                     MinimalFilledTextField(
                         value = uiState.customTagInput,
                         onValueChange = { onEvent(QuickActionUiEvent.OnCustomTagInputChange(it)) },
-                        placeholder = "Add custom #tag...",
+                        placeholder = "Add custom tag...",
                         imeAction = ImeAction.Done,
                         capitalization = KeyboardCapitalization.None,
                         onImeAction = { onEvent(QuickActionUiEvent.OnAddCustomTag) }

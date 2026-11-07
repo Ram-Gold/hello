@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.Tag
+import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.domain.model.extractAlphanumericInitials
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
@@ -438,8 +439,9 @@ fun PersonEditScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newTagName.isNotBlank()) {
-                            onEvent(PersonEditUiEvent.OnCreateTag(newTagName.trim()))
+                        val clean = newTagName.trim().removePrefix("#")
+                        if (clean.isNotBlank()) {
+                            onEvent(PersonEditUiEvent.OnCreateTag(clean))
                         }
                     },
                     enabled = newTagName.isNotBlank()
@@ -651,15 +653,11 @@ private fun TagsManager(
         ) {
             availableTags.forEach { tag ->
                 val isSelected = tag.id in selectedTagIds
-                FilterChip(
-                    selected = isSelected,
+                TonalTagPill(
+                    tag = tag,
+                    isSelected = isSelected,
                     onClick = { onToggleTag(tag.id) },
-                    label = { Text("#${tag.name}") },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
         }
