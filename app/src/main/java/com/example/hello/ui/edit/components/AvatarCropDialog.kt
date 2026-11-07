@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +52,11 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -63,6 +66,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
+
+private val DialogDarkSurface = Color(0xFF1A1817)
 
 @Composable
 fun AvatarCropDialog(
@@ -86,6 +91,13 @@ fun AvatarCropDialog(
 
     val isResetActive = zoom > 1.01f || offsetX != 0f || offsetY != 0f || fitWholeImage
 
+    fun resetTransform() {
+        zoom = 1f
+        offsetX = 0f
+        offsetY = 0f
+        fitWholeImage = false
+    }
+
     LaunchedEffect(sourceUri) {
         isDecoding = true
         val decoded = withContext(Dispatchers.IO) {
@@ -107,16 +119,87 @@ fun AvatarCropDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF1A1817))
+                .background(DialogDarkSurface)
         ) {
-            // Center Interactive 1:1 Circular Crop Viewport (contained & clipped)
+            // 1. Top Action Header (anchored at top with solid background above canvas)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = DialogDarkSurface
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onCancel,
+                        enabled = !isProcessingCrop
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Cancel crop",
+                            tint = Color.White
+                        )
+                    }
+
+                    Text(
+                        text = "Crop Photo",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+
+                    Button(
+                        onClick = {
+                            val bmp = sourceBitmap ?: return@Button
+                            if (isProcessingCrop) return@Button
+                            isProcessingCrop = true
+                            scope.launch {
+                                val pngBytes = withContext(Dispatchers.Default) {
+                                    AvatarCropGeometry.renderCroppedAvatarPng(
+                                        source = bmp,
+                                        viewportSizePx = currentViewportPx,
+                                        zoom = zoom,
+                                        offsetX = offsetX,
+                                        offsetY = offsetY,
+                                        fitWholeImage = fitWholeImage
+                                    )
+                                }
+                                isProcessingCrop = false
+                                onConfirmCrop(pngBytes)
+                            }
+                        },
+                        enabled = sourceBitmap != null && !isProcessingCrop,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(
+                            text = "Confirm",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // 2. Center Interactive 1:1 Circular Crop Viewport (contained & clipped)
             BoxWithConstraints(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 80.dp, bottom = 136.dp)
+                    .weight(1f)
+                    .fillMaxWidth()
                     .clipToBounds(),
                 contentAlignment = Alignment.Center
             ) {
@@ -219,85 +302,10 @@ fun AvatarCropDialog(
                 }
             }
 
-            // Top Action Header (anchored at top with solid background above canvas)
+            // 3. Bottom Controls Bar (anchored at bottom with solid background above canvas)
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
-                color = Color(0xFF1A1817)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onCancel,
-                        enabled = !isProcessingCrop
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = "Cancel crop",
-                            tint = Color.White
-                        )
-                    }
-
-                    Text(
-                        text = "Crop Photo",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
-                    )
-
-                    Button(
-                        onClick = {
-                            val bmp = sourceBitmap ?: return@Button
-                            if (isProcessingCrop) return@Button
-                            isProcessingCrop = true
-                            scope.launch {
-                                val pngBytes = withContext(Dispatchers.Default) {
-                                    AvatarCropGeometry.renderCroppedAvatarPng(
-                                        source = bmp,
-                                        viewportSizePx = currentViewportPx,
-                                        zoom = zoom,
-                                        offsetX = offsetX,
-                                        offsetY = offsetY,
-                                        fitWholeImage = fitWholeImage
-                                    )
-                                }
-                                isProcessingCrop = false
-                                onConfirmCrop(pngBytes)
-                            }
-                        },
-                        enabled = sourceBitmap != null && !isProcessingCrop,
-                        shape = RoundedCornerShape(20.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text(
-                            text = "Confirm",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            // Bottom Controls Bar (anchored at bottom with solid background above canvas)
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter),
-                color = Color(0xFF1A1817)
+                modifier = Modifier.fillMaxWidth(),
+                color = DialogDarkSurface
             ) {
                 Column(
                     modifier = Modifier
@@ -317,70 +325,76 @@ fun AvatarCropDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // "Fit whole image" pill toggle
-                        Surface(
-                            shape = CircleShape,
-                            color = if (fitWholeImage) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                Color.White.copy(alpha = 0.14f)
-                            },
-                            modifier = Modifier.clickable {
+                        CropPillButton(
+                            text = "Fit whole image",
+                            active = fitWholeImage,
+                            enabled = true,
+                            onClick = {
                                 fitWholeImage = !fitWholeImage
                                 zoom = 1f
                                 offsetX = 0f
                                 offsetY = 0f
                             }
-                        ) {
-                            Text(
-                                text = "Fit whole image",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = if (fitWholeImage) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    Color.White
-                                },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
+                        )
 
                         // "Reset" pill button (permanent, active vs inactive states)
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isResetActive) {
-                                Color.White.copy(alpha = 0.18f)
-                            } else {
-                                Color.White.copy(alpha = 0.06f)
-                            },
-                            modifier = if (isResetActive) {
-                                Modifier.clickable {
-                                    zoom = 1f
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                    fitWholeImage = false
-                                }
-                            } else {
-                                Modifier
-                            }
-                        ) {
-                            Text(
-                                text = "Reset",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = if (isResetActive) {
-                                    Color.White
-                                } else {
-                                    Color.White.copy(alpha = 0.35f)
-                                },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
+                        CropPillButton(
+                            text = "Reset",
+                            active = false,
+                            enabled = isResetActive,
+                            onClick = { resetTransform() }
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CropPillButton(
+    text: String,
+    active: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = when {
+        active -> MaterialTheme.colorScheme.primary
+        enabled -> Color.White.copy(alpha = 0.18f)
+        else -> Color.White.copy(alpha = 0.06f)
+    }
+    val contentColor = when {
+        active -> MaterialTheme.colorScheme.onPrimary
+        enabled -> Color.White
+        else -> Color.White.copy(alpha = 0.35f)
+    }
+
+    Surface(
+        shape = CircleShape,
+        color = containerColor,
+        modifier = modifier
+            .semantics { role = Role.Button }
+            .clickable(enabled = enabled, onClick = onClick)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1A1817)
+@Composable
+private fun CropPillButtonPreview() {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        CropPillButton(text = "Fit whole image", active = true, enabled = true, onClick = {})
+        CropPillButton(text = "Reset", active = false, enabled = true, onClick = {})
+        CropPillButton(text = "Reset", active = false, enabled = false, onClick = {})
     }
 }
 
