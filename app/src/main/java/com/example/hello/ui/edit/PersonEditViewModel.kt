@@ -106,9 +106,9 @@ class PersonEditViewModel(
             }
             is PersonEditUiEvent.OnAddAlias -> {
                 val clean = event.alias.trim()
-                if (clean.isNotEmpty() && clean !in _uiState.value.aliases) {
+                if (clean.isNotEmpty()) {
                     _uiState.update { current ->
-                        val updatedAliases = current.aliases + clean
+                        val updatedAliases = if (clean !in current.aliases) current.aliases + clean else current.aliases
                         val isMod = checkModified(current.copy(aliases = updatedAliases))
                         current.copy(
                             aliases = updatedAliases,

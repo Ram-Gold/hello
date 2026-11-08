@@ -33,12 +33,14 @@ data class PersonDetailUiState(
     val isLoading: Boolean = false,
     val userMessage: String? = null,
     val selectedEncounterIds: Set<String> = emptySet(),
-    val isDeleteConfirmationVisible: Boolean = false
+    val isDeleteConfirmationVisible: Boolean = false,
+    val isFavorite: Boolean = false
 ) {
     val isSelectionMode: Boolean get() = selectedEncounterIds.isNotEmpty()
 }
 
 sealed interface PersonDetailUiEvent {
+    data object OnToggleFavorite : PersonDetailUiEvent
     data object OnPhoneClick : PersonDetailUiEvent
     data object OnMessageClick : PersonDetailUiEvent
     data object OnEmailClick : PersonDetailUiEvent

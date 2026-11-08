@@ -685,7 +685,7 @@ private fun AliasesChipManager(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "NICKNAMES & ALIASES",
+            text = "NICKNAMES",
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -730,44 +730,27 @@ private fun AliasesChipManager(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = aliasInput,
-                onValueChange = onInputChange,
-                placeholder = { Text("Add a nickname (e.g. S-Lin)") },
-                trailingIcon = {
-                    ClearTextTrailingIcon(
-                        value = aliasInput,
-                        onClear = { onInputChange("") },
-                        contentDescription = "Clear nickname input"
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (aliasInput.isNotBlank()) onAddAlias(aliasInput)
-                    }
-                ),
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { onAddAlias(aliasInput) },
-                enabled = aliasInput.isNotBlank(),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        OutlinedTextField(
+            value = aliasInput,
+            onValueChange = onInputChange,
+            placeholder = { Text("Add a nickname (e.g. S-Lin)") },
+            trailingIcon = {
+                ClearTextTrailingIcon(
+                    value = aliasInput,
+                    onClear = { onInputChange("") },
+                    contentDescription = "Clear nickname input"
                 )
-            ) {
-                Text("Add")
-            }
-        }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (aliasInput.isNotBlank()) onAddAlias(aliasInput)
+                }
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -921,7 +904,7 @@ private fun LifecycleActionsCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "RELATIONSHIP LIFECYCLE",
+                text = "MANAGE CONTACT",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp

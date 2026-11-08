@@ -35,6 +35,11 @@ class HomeViewModel(
                 }
             }
             viewModelScope.launch {
+                repository.favoriteContacts.collect { favorites ->
+                    _uiState.update { it.copy(favoriteContacts = favorites) }
+                }
+            }
+            viewModelScope.launch {
                 repository.upcomingAlerts.collect { alerts ->
                     _uiState.update { it.copy(upcomingAlerts = alerts) }
                 }

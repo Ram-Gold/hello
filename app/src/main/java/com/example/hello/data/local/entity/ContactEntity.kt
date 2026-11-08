@@ -29,6 +29,8 @@ data class ContactEntity(
     val meetCount: Int = 0,
     val cadenceDays: Int? = null,
     val isArchived: Boolean = false,
+    val isFavorite: Boolean = false,
+    val updatedAt: Instant? = null,
     val customProperties: Map<String, String> = emptyMap()
 )
 
@@ -49,6 +51,8 @@ fun Contact.toEntity(): ContactEntity = ContactEntity(
     meetCount = meetCount,
     cadenceDays = cadenceDays,
     isArchived = isArchived,
+    isFavorite = isFavorite,
+    updatedAt = updatedAt,
     customProperties = customProperties
 )
 
@@ -69,5 +73,7 @@ fun ContactEntity.toDomain(): Contact = Contact(
     meetCount = meetCount,
     cadenceDays = cadenceDays,
     isArchived = isArchived,
+    isFavorite = isFavorite,
+    updatedAt = updatedAt,
     customProperties = customProperties
 )

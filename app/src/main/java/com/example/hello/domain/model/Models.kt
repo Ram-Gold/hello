@@ -1,5 +1,7 @@
 package com.example.hello.domain.model
 
+import java.time.Instant
+
 enum class HelloIconKey(val label: String) {
     GLOBE("All Groups"),
     BRIEFCASE("Work"),
@@ -121,6 +123,8 @@ data class ContactSummary(
     val notes: String = "",
     val tags: List<Tag> = emptyList(),
     val isArchived: Boolean = false,
+    val isFavorite: Boolean = false,
+    val updatedAt: Instant? = null,
     val photoUri: String? = null
 )
 

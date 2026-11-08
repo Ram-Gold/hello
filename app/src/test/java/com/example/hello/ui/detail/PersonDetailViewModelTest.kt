@@ -99,6 +99,26 @@ class PersonDetailViewModelTest {
     }
 
     @Test
+    fun onToggleFavorite_togglesFavoriteStatus() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isFavorite)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnToggleFavorite)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.isFavorite)
+        assertTrue(repository.getContact("c-1")?.isFavorite == true)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnToggleFavorite)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isFavorite)
+        assertTrue(repository.getContact("c-1")?.isFavorite == false)
+    }
+
+    @Test
     fun cadenceCalculation_whenNoCadence_marksNoCadence() = runTest {
         val contact = Contact(
             id = "test-nocadence",

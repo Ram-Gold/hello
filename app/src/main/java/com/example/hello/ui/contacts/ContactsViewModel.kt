@@ -21,6 +21,7 @@ class ContactsViewModel(
 
     private var allContacts: List<ContactSummary> = createSampleContacts()
     private var availableTags: List<Tag> = MockDataProvider.tags
+    private var favoriteContacts: List<ContactSummary> = emptyList()
     private var searchJob: kotlinx.coroutines.Job? = null
 
     private val _uiState = MutableStateFlow(
@@ -28,7 +29,8 @@ class ContactsViewModel(
             searchQuery = "",
             sortMode = ContactSortMode.ALPHABETICAL,
             contacts = allContacts,
-            availableTags = availableTags
+            availableTags = availableTags,
+            favoriteContacts = favoriteContacts
         )
     )
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
@@ -45,6 +47,18 @@ class ContactsViewModel(
                     syncTags(tags)
                 }
             }
+            viewModelScope.launch {
+                repository.favoriteContacts.collect { favorites ->
+                    syncFavorites(favorites)
+                }
+            }
+        }
+    }
+
+    fun syncFavorites(favorites: List<ContactSummary>) {
+        this.favoriteContacts = favorites
+        _uiState.update { current ->
+            current.copy(favoriteContacts = favorites)
         }
     }
 
@@ -58,7 +72,8 @@ class ContactsViewModel(
                 contacts = allContacts,
                 selectedContactIds = current.selectedContactIds,
                 isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                availableTags = availableTags
+                availableTags = availableTags,
+                favoriteContacts = favoriteContacts
             )
         }
     }
@@ -73,7 +88,8 @@ class ContactsViewModel(
                 contacts = allContacts,
                 selectedContactIds = current.selectedContactIds,
                 isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                availableTags = availableTags
+                availableTags = availableTags,
+                favoriteContacts = favoriteContacts
             )
         }
     }
@@ -90,7 +106,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     )
                 }
                 if (repository != null && query.isNotBlank()) {
@@ -106,7 +123,8 @@ class ContactsViewModel(
                                     contacts = matchingSummaries,
                                     selectedContactIds = current.selectedContactIds,
                                     isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                                    availableTags = availableTags
+                                    availableTags = availableTags,
+                                    favoriteContacts = favoriteContacts
                                 )
                             }
                         }
@@ -123,7 +141,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     )
                 }
             }
@@ -144,7 +163,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     )
                 }
             }
@@ -157,7 +177,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     )
                 }
             }
@@ -214,7 +235,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = emptySet(),
                         isDeleteConfirmationVisible = false,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     ).copy(userMessage = message)
                 }
             }
@@ -227,7 +249,8 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
-                        availableTags = availableTags
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
                     )
                 }
             }
@@ -246,7 +269,8 @@ class ContactsViewModel(
             selectedTags: Set<String> = if (selectedTag != null) setOf(selectedTag) else emptySet(),
             selectedContactIds: Set<String> = emptySet(),
             isDeleteConfirmationVisible: Boolean = false,
-            availableTags: List<Tag> = emptyList()
+            availableTags: List<Tag> = emptyList(),
+            favoriteContacts: List<ContactSummary> = emptyList()
         ): ContactsUiState {
             val cleanQuery = searchQuery.trim()
             val cleanSelectedTags = selectedTags
@@ -323,7 +347,8 @@ class ContactsViewModel(
                 groupedContacts = grouped,
                 totalCount = filtered.size,
                 selectedContactIds = prunedSelectedIds,
-                isDeleteConfirmationVisible = isDeleteConfirmationVisible
+                isDeleteConfirmationVisible = isDeleteConfirmationVisible,
+                favoriteContacts = favoriteContacts
             )
         }
 

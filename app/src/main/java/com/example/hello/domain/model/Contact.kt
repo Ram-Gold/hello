@@ -25,5 +25,7 @@ data class Contact(
     val meetCount: Int = 0,
     val cadenceDays: Int? = null,
     val isArchived: Boolean = false,
+    val isFavorite: Boolean = false,
+    val updatedAt: Instant? = null,
     val customProperties: Map<String, String> = emptyMap()
 )

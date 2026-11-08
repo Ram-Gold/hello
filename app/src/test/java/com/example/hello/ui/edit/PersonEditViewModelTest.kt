@@ -85,6 +85,23 @@ class PersonEditViewModelTest {
     }
 
     @Test
+    fun addNickname_viaOnAddAlias_clearsInputAndTrims() = runTest {
+        val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(PersonEditUiEvent.OnAliasInputChange("  S-Lin  "))
+        viewModel.onEvent(PersonEditUiEvent.OnAddAlias("  S-Lin  "))
+
+        assertTrue(viewModel.uiState.value.aliases.contains("S-Lin"))
+        assertEquals("", viewModel.uiState.value.aliasInput)
+
+        // Duplicate entry via Enter/Done should also clear input
+        viewModel.onEvent(PersonEditUiEvent.OnAliasInputChange("S-Lin"))
+        viewModel.onEvent(PersonEditUiEvent.OnAddAlias("S-Lin"))
+        assertEquals("", viewModel.uiState.value.aliasInput)
+    }
+
+    @Test
     fun cadenceIntervalSelection_updatesCadenceDays() = runTest {
         val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
         testDispatcher.scheduler.advanceUntilIdle()

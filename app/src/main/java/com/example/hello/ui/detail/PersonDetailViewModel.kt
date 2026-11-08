@@ -33,6 +33,7 @@ class PersonDetailViewModel(
             .sortedByDescending { it.occurredAt }
         val initialCadence = calculateCadenceStatus(initialContact, initialEncounters)
         val initialLoading = initialContact == null && initialSummary == null
+        val initialFavorite = initialContact?.isFavorite ?: (initialSummary?.isFavorite ?: false)
 
         _uiState = MutableStateFlow(
             PersonDetailUiState(
@@ -43,7 +44,8 @@ class PersonDetailViewModel(
                 placesMap = initialPlaces,
                 tagsList = initialTags,
                 cadenceStatus = initialCadence,
-                isLoading = initialLoading
+                isLoading = initialLoading,
+                isFavorite = initialFavorite
             )
         )
         uiState = _uiState.asStateFlow()
@@ -57,6 +59,7 @@ class PersonDetailViewModel(
             val placesMap = places.associateBy { it.id }
             val cadenceStatus = calculateCadenceStatus(contact, encounters)
             val summary = repository.contacts.value.firstOrNull { it.id == contactId }
+            val isFavorite = contact?.isFavorite ?: (summary?.isFavorite ?: false)
 
             _uiState.update { current ->
                 val allEncounterIds = encounters.map { it.id }.toSet()
@@ -69,7 +72,8 @@ class PersonDetailViewModel(
                     tagsList = tags,
                     cadenceStatus = cadenceStatus,
                     selectedEncounterIds = prunedSelected,
-                    isLoading = false
+                    isLoading = false,
+                    isFavorite = isFavorite
                 )
             }
         }.launchIn(viewModelScope)
@@ -77,6 +81,9 @@ class PersonDetailViewModel(
 
     fun onEvent(event: PersonDetailUiEvent) {
         when (event) {
+            PersonDetailUiEvent.OnToggleFavorite -> {
+                repository.toggleFavorite(contactId)
+            }
             PersonDetailUiEvent.OnPhoneClick -> {
                 val phone = _uiState.value.contact?.phone
                 if (phone.isNullOrBlank()) {

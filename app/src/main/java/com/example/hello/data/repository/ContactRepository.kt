@@ -67,6 +67,9 @@ class ContactRepository(
     private val _recentContacts = MutableStateFlow(HomeViewModel.createInitialState().recentContacts)
     val recentContacts: StateFlow<List<ContactSummary>> = _recentContacts.asStateFlow()
 
+    private val _favoriteContacts = MutableStateFlow<List<ContactSummary>>(emptyList())
+    val favoriteContacts: StateFlow<List<ContactSummary>> = _favoriteContacts.asStateFlow()
+
     private val _places = MutableStateFlow(MockDataProvider.places)
     val places: StateFlow<List<Place>> = _places.asStateFlow()
 
@@ -83,6 +86,7 @@ class ContactRepository(
     val upcomingAlerts: StateFlow<List<UpcomingAlert>> = _upcomingAlerts.asStateFlow()
 
     init {
+        refreshFavorites()
         if (database != null) {
             coroutineScope.launch {
                 seedDatabaseIfEmpty()
@@ -155,6 +159,7 @@ class ContactRepository(
                     .take(4)
                     .map { it.toSummary() }
                 refreshBirthdayAlerts(domainMap.values)
+                refreshFavorites()
             }
         }
 
@@ -336,6 +341,31 @@ class ContactRepository(
         }
     }
 
+    fun refreshFavorites() {
+        val fullMap = _fullContacts.value
+        val favs = _contacts.value
+            .filter { it.isFavorite && !it.isArchived }
+            .sortedByDescending { summary ->
+                val full = fullMap[summary.id]
+                maxOf(
+                    summary.updatedAt ?: Instant.EPOCH,
+                    full?.updatedAt ?: Instant.EPOCH,
+                    full?.lastMetAt ?: Instant.EPOCH,
+                    full?.firstMetAt ?: Instant.EPOCH
+                )
+            }
+        _favoriteContacts.value = favs
+    }
+
+    fun toggleFavorite(contactId: String) {
+        val current = _fullContacts.value[contactId] ?: return
+        val updated = current.copy(
+            isFavorite = !current.isFavorite,
+            updatedAt = Instant.now()
+        )
+        updateContact(updated)
+    }
+
     fun updateContact(updated: Contact) {
         _fullContacts.update { it + (updated.id to updated) }
 
@@ -346,6 +376,8 @@ class ContactRepository(
                     phone = updated.phone,
                     email = updated.email,
                     isArchived = updated.isArchived,
+                    isFavorite = updated.isFavorite,
+                    updatedAt = updated.updatedAt,
                     photoUri = updated.photoUri
                 )
             } else {
@@ -354,6 +386,7 @@ class ContactRepository(
         }
         _contacts.update { list -> list.map(applySummaryUpdate) }
         _recentContacts.update { list -> list.map(applySummaryUpdate) }
+        refreshFavorites()
 
         val db = database
         if (db != null) {
@@ -410,6 +443,7 @@ class ContactRepository(
         _recentContacts.update { list -> list.filterNot { it.id == contactId } }
         _encounters.update { list -> list.filterNot { it.contactId == contactId } }
         _followUps.update { list -> list.filterNot { it.contactId == contactId } }
+        refreshFavorites()
 
         if (existing != null) {
             val firstName = existing.name.split(" ").firstOrNull() ?: existing.name
@@ -766,6 +800,7 @@ class ContactRepository(
         val placeLabel = resolvedPlaceId?.let { id -> _places.value.firstOrNull { it.id == id }?.label }
         val occurredAt = date.atStartOfDay(ZoneOffset.UTC).toInstant()
 
+        val now = Instant.now()
         val encounter = Encounter(
             id = "enc-${UUID.randomUUID()}",
             contactId = contactId,
@@ -781,7 +816,8 @@ class ContactRepository(
             if (contact != null) {
                 val updatedContact = contact.copy(
                     lastMetAt = occurredAt,
-                    meetCount = contact.meetCount + 1
+                    meetCount = contact.meetCount + 1,
+                    updatedAt = now
                 )
                 map + (contactId to updatedContact)
             } else {
@@ -805,7 +841,8 @@ class ContactRepository(
                 if (c.id == contactId) {
                     c.copy(
                         contextSubtitle = updatedSubtitle,
-                        lastEncounterText = dateText
+                        lastEncounterText = dateText,
+                        updatedAt = now
                     )
                 } else {
                     c
@@ -818,13 +855,15 @@ class ContactRepository(
             if (existing != null) {
                 val updated = existing.copy(
                     contextSubtitle = updatedSubtitle,
-                    lastEncounterText = dateText
+                    lastEncounterText = dateText,
+                    updatedAt = now
                 )
                 listOf(updated) + list.filterNot { it.id == contactId }
             } else {
                 list
             }
         }
+        refreshFavorites()
 
         // Reset relationship cadence: clear any overdue CadenceAlert for this contact
         if (targetContact != null) {
@@ -1090,6 +1129,8 @@ class ContactRepository(
                 notes = notes,
                 tags = resolvedTags,
                 isArchived = isArchived,
+                isFavorite = isFavorite,
+                updatedAt = updatedAt,
                 photoUri = photoUri
             )
         }

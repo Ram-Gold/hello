@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.home.components.HomeFavoritesSection
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.home.components.HomeTopBar
 import com.example.hello.ui.home.components.RecentEncountersSection
@@ -98,6 +99,14 @@ fun HomeScreen(
                     onReminderDone = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderDone(it)) } },
                     onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } }
                 )
+
+                // 2.5 Favorites Area
+                if (uiState.favoriteContacts.isNotEmpty()) {
+                    HomeFavoritesSection(
+                        favorites = uiState.favoriteContacts,
+                        onContactClick = onContactClick
+                    )
+                }
 
                 // 3. Recent Encounters List
                 RecentEncountersSection(

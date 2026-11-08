@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -145,6 +147,13 @@ fun PersonDetailScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { onEvent(PersonDetailUiEvent.OnToggleFavorite) }) {
+                            Icon(
+                                imageVector = if (uiState.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                                contentDescription = if (uiState.isFavorite) "Remove from favorites" else "Add to favorites",
+                                tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         IconButton(onClick = onEditClick) {
                             Icon(
                                 imageVector = Icons.Rounded.Edit,

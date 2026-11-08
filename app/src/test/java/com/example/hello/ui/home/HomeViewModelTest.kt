@@ -201,4 +201,19 @@ class HomeViewModelTest {
         val addedPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 35, hasMultipleEncounters = false)
         assertEquals("Added 5 weeks ago — anything new to update?", addedPrompt)
     }
+
+    @Test
+    fun favoriteContacts_collectedFromRepository() = runTest {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val vm = HomeViewModel(repository = repo)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.favoriteContacts.isEmpty())
+
+        repo.toggleFavorite("c-1")
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.favoriteContacts.size)
+        assertEquals("c-1", vm.uiState.value.favoriteContacts.first().id)
+    }
 }

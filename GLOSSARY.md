@@ -8,6 +8,14 @@ Local-first personal CRM and relationship keeper for Android, helping users cult
 An individual with whom the user maintains a personal or professional relationship.
 _Avoid_: Person, Connection, Client, Account
 
+**Nickname**:
+An informal, alternative, or familiar name attached to a Contact to aid natural search and recognition.
+_Avoid_: Alias, Handle, Username
+
+**Favorite Contact**:
+A starred Contact surfaced in dedicated quick-access Favorites sections on both the Home Tab (as a vertical connected list of compact `<Contact Avatar> | <Name>` cards positioned between Upcoming reminders and Recent Encounters) and the Relationship Tab (as a horizontal scrolling strip of `<Contact Avatar>` stacked above `<Name>` positioned beneath the tag filter bar and above alphabetical group headers), ordered by most recently met, edited, or updated.
+_Avoid_: Pinned Contact, VIP, Bookmarked Person, Starred Account
+
 **Relationship Terminology**:
 The user's chosen display nomenclature (People, Friends, Connections, or Contacts) applied across the presentation layer to describe Contacts according to personal mental models.
 _Avoid_: User Role, Category Type, Custom Entity

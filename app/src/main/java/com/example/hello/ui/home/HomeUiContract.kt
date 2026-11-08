@@ -13,6 +13,7 @@ data class HomeUiState(
     val myCards: Map<CardType, MyCardData> = emptyMap(),
     val isQrExpanded: Boolean = false,
     val upcomingAlerts: List<UpcomingAlert> = emptyList(),
+    val favoriteContacts: List<ContactSummary> = emptyList(),
     val recentContacts: List<ContactSummary> = emptyList(),
     val isSpeedDialOpen: Boolean = false,
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,

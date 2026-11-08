@@ -84,6 +84,7 @@ import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.platform.portability.VCardShareHelper
+import com.example.hello.ui.contacts.components.PeopleFavoritesSection
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.components.TonalFilterPill
@@ -185,6 +186,19 @@ fun ContactsScreen(
                     contentPadding = PaddingValues(bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    if (!uiState.isSelectionMode && uiState.searchQuery.isBlank() && activeTagFilters.isEmpty() && uiState.favoriteContacts.isNotEmpty()) {
+                        item(
+                            key = "people_favorites_strip",
+                            contentType = "favorites_strip"
+                        ) {
+                            PeopleFavoritesSection(
+                                favorites = uiState.favoriteContacts,
+                                onContactClick = onContactClick,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+                        }
+                    }
+
                     uiState.groupedContacts.forEach { (header, contactsInGroup) ->
                         stickyHeader(
                             key = "header-$header",

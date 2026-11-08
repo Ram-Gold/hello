@@ -426,4 +426,47 @@ class ContactRepositoryTest {
         val farAlert = alerts.firstOrNull { it.contactId == contactFar.id }
         assertNull(farAlert)
     }
+
+    @Test
+    fun toggleFavorite_togglesStatusAndUpdatesFavoritesStream() {
+        val contact = repository.contacts.value.first()
+        val initialFull = repository.getContact(contact.id)!!
+        assertFalse(initialFull.isFavorite)
+
+        repository.toggleFavorite(contact.id)
+        val favorited = repository.getContact(contact.id)!!
+        assertTrue(favorited.isFavorite)
+        assertNotNull(favorited.updatedAt)
+        assertTrue(repository.favoriteContacts.value.any { it.id == contact.id })
+
+        repository.toggleFavorite(contact.id)
+        val unfavorited = repository.getContact(contact.id)!!
+        assertFalse(unfavorited.isFavorite)
+        assertFalse(repository.favoriteContacts.value.any { it.id == contact.id })
+    }
+
+    @Test
+    fun favoriteContacts_sortedByMostRecentlyMetOrUpdated() {
+        val contact1 = repository.contacts.value[0]
+        val contact2 = repository.contacts.value[1]
+
+        repository.toggleFavorite(contact1.id)
+        repository.toggleFavorite(contact2.id)
+
+        // Log encounter for contact1, which updates its updatedAt / lastMetAt
+        repository.logEncounterForContact(contact1.id, note = "Coffee chat")
+
+        val favorites = repository.favoriteContacts.value
+        assertEquals(contact1.id, favorites.first().id)
+    }
+
+    @Test
+    fun deleteContact_removesFromFavorites() {
+        val contact = repository.contacts.value.first()
+        repository.toggleFavorite(contact.id)
+        assertTrue(repository.favoriteContacts.value.any { it.id == contact.id })
+
+        repository.deleteContact(contact.id)
+        assertFalse(repository.favoriteContacts.value.any { it.id == contact.id })
+    }
 }

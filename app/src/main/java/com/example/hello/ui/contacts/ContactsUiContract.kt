@@ -11,6 +11,7 @@ data class ContactsUiState(
     val smartFilterTags: List<String> = DEFAULT_SMART_FILTER_TAGS,
     val availableTags: List<Tag> = emptyList(),
     val sortMode: ContactSortMode = ContactSortMode.ALPHABETICAL,
+    val favoriteContacts: List<ContactSummary> = emptyList(),
     val contacts: List<ContactSummary> = emptyList(),
     val groupedContacts: Map<String, List<ContactSummary>> = emptyMap(),
     val totalCount: Int = 0,

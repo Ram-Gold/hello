@@ -387,4 +387,18 @@ class ContactsViewModelTest {
         assertNull(stateAfterReset.selectedTag)
         assertEquals(10, stateAfterReset.totalCount)
     }
+
+    @Test
+    fun favoriteContacts_collectedFromRepository() = kotlinx.coroutines.test.runTest {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val vm = ContactsViewModel(repository = repo)
+
+        assertTrue(vm.uiState.value.favoriteContacts.isEmpty())
+
+        repo.toggleFavorite("c-1")
+        vm.syncFavorites(repo.favoriteContacts.value)
+
+        assertEquals(1, vm.uiState.value.favoriteContacts.size)
+        assertEquals("c-1", vm.uiState.value.favoriteContacts.first().id)
+    }
 }
