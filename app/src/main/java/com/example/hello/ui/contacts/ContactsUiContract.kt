@@ -50,6 +50,7 @@ sealed interface ContactsUiEvent {
     data object OnConfirmDeleteSelected : ContactsUiEvent
     data object OnDismissDeleteDialog : ContactsUiEvent
     data object OnClearSelection : ContactsUiEvent
+    data object OnTabDeparture : ContactsUiEvent
     data object OnClearFilters : ContactsUiEvent
     data object OnDismissUserMessage : ContactsUiEvent
     data object OnOpenArchivedSheet : ContactsUiEvent

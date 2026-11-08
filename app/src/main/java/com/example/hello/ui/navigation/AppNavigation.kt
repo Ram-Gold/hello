@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavOptionsBuilder
+import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.theme.MotionTokens
 
 data object HomeRoute {
@@ -100,13 +101,29 @@ fun mainRootRouteIndex(route: String?): Int? = when (route) {
 }
 
 /**
- * Determines whether the floating bottom navigation dock should be hidden for [currentRoute].
- * Visible on [HomeRoute] and [PeopleRoute] (and while route is null during initial composition);
- * hidden on deeper or supporting screens ([SettingsRoute], [PersonDetailRoute], [PersonEditRoute], [OnboardingRoute]).
+ * Determines whether the floating bottom navigation dock should be hidden for [currentRoute]
+ * and the active selection state.
+ *
+ * Selection mode on one root tab does not suppress the dock on a different root tab.
+ * Visible on [HomeRoute], [PeopleRoute], and [TimelineRoute] (and while route is null during initial composition);
+ * hidden on deeper or supporting screens ([SettingsRoute], [PersonDetailRoute], [PersonEditRoute], [OnboardingRoute]),
+ * or when the active root tab is in selection mode.
  */
-fun shouldHideFloatingDock(currentRoute: String?): Boolean {
+fun shouldHideFloatingDock(
+    currentRoute: String?,
+    isContactsSelectionMode: Boolean = false,
+    isTimelineSelectionMode: Boolean = false,
+    activeTab: HomeNavTab? = null
+): Boolean {
     if (currentRoute == null) return false
-    return !isMainRootRoute(currentRoute)
+    if (!isMainRootRoute(currentRoute)) return true
+
+    val isScopedSelectionMode = when {
+        currentRoute == PeopleRoute.ROUTE_NAME || activeTab == HomeNavTab.PEOPLE -> isContactsSelectionMode
+        currentRoute == TimelineRoute.ROUTE_NAME || activeTab == HomeNavTab.TIMELINE -> isTimelineSelectionMode
+        else -> false
+    }
+    return isScopedSelectionMode
 }
 
 /**

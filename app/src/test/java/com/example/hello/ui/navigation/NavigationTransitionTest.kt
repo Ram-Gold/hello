@@ -163,6 +163,61 @@ class NavigationTransitionTest {
     }
 
     @Test
+    fun shouldHideFloatingDock_scopesSelectionModeToActiveRootTab() {
+        // Contacts selection mode MUST only hide the dock when on People tab
+        assertTrue(
+            "Dock must be hidden on People tab when contacts selection mode is active",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = true)
+        )
+        assertFalse(
+            "Dock must remain visible on People tab when contacts selection mode is inactive",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = false)
+        )
+        assertFalse(
+            "Dock must remain visible on Home tab even if contacts selection mode is active",
+            shouldHideFloatingDock(HomeRoute.ROUTE_NAME, isContactsSelectionMode = true)
+        )
+        assertFalse(
+            "Dock must remain visible on Timeline tab even if contacts selection mode is active",
+            shouldHideFloatingDock(TimelineRoute.ROUTE_NAME, isContactsSelectionMode = true)
+        )
+
+        // Timeline selection mode MUST only hide the dock when on Timeline tab
+        assertTrue(
+            "Dock must be hidden on Timeline tab when timeline selection mode is active",
+            shouldHideFloatingDock(TimelineRoute.ROUTE_NAME, isTimelineSelectionMode = true)
+        )
+        assertFalse(
+            "Dock must remain visible on Home tab even if timeline selection mode is active",
+            shouldHideFloatingDock(HomeRoute.ROUTE_NAME, isTimelineSelectionMode = true)
+        )
+        assertFalse(
+            "Dock must remain visible on People tab even if timeline selection mode is active",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isTimelineSelectionMode = true)
+        )
+
+        // Non-root routes must ALWAYS hide the dock regardless of selection mode
+        assertTrue(
+            "Non-root routes must always hide dock",
+            shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isContactsSelectionMode = false)
+        )
+        assertTrue(
+            "Non-root routes must always hide dock even if selection mode is true",
+            shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isContactsSelectionMode = true)
+        )
+
+        // Active tab parameter support
+        assertTrue(
+            "Active tab People with contacts selection mode hides dock",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = true, activeTab = HomeNavTab.PEOPLE)
+        )
+        assertFalse(
+            "Active tab Home with contacts selection mode does not hide dock",
+            shouldHideFloatingDock(HomeRoute.ROUTE_NAME, isContactsSelectionMode = true, activeTab = HomeNavTab.HOME)
+        )
+    }
+
+    @Test
     fun personDetailTransitions_areLayeredAboveWithFullWidthSlide() {
         assertEquals(
             "PersonDetailScreen must be layered above main page with zIndex = 1f",

@@ -224,6 +224,51 @@ class ContactsViewModelTest {
     }
 
     @Test
+    fun onTabDeparture_clearsSelectionModeAndSelectedContactIds() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        val secondId = viewModel.uiState.value.contacts[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+        viewModel.onEvent(ContactsUiEvent.OnRequestDeleteSelected)
+        assertEquals(2, viewModel.uiState.value.selectedContactIds.size)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        // Route/tab departure resets selection and pending confirmation dialogs
+        viewModel.onEvent(ContactsUiEvent.OnTabDeparture)
+
+        val state = viewModel.uiState.value
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertFalse(state.isSelectionMode)
+        assertFalse(state.isDeleteConfirmationVisible)
+    }
+
+    @Test
+    fun onTabDeparture_helperMethod_resetsSelectionState() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.onTabDeparture()
+
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedContactIds.isEmpty())
+    }
+
+    @Test
+    fun clearSelection_helperMethod_resetsSelectionState() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        viewModel.clearSelection()
+
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedContactIds.isEmpty())
+    }
+
+    @Test
     fun searchOrFilterChange_prunesSelectedContactIds() {
         val alex = viewModel.uiState.value.contacts.first { it.name == "Alex Rivera" } // WORK
         val elena = viewModel.uiState.value.contacts.first { it.name == "Elena Rostova" } // FRIENDS, FAMILY

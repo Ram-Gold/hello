@@ -223,9 +223,32 @@ fun MainAppShell(
     var selectedRootTab by rememberSaveable { mutableStateOf(HomeNavTab.HOME) }
     LaunchedEffect(currentRoute) {
         when (currentRoute) {
-            HomeRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.HOME
-            PeopleRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.PEOPLE
-            TimelineRoute.ROUTE_NAME -> selectedRootTab = HomeNavTab.TIMELINE
+            HomeRoute.ROUTE_NAME -> {
+                selectedRootTab = HomeNavTab.HOME
+                if (contactsViewModel.uiState.value.isSelectionMode) {
+                    contactsViewModel.onTabDeparture()
+                }
+            }
+            PeopleRoute.ROUTE_NAME -> {
+                selectedRootTab = HomeNavTab.PEOPLE
+                if (timelineViewModel.uiState.value.isSelectionMode) {
+                    timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
+                }
+            }
+            TimelineRoute.ROUTE_NAME -> {
+                selectedRootTab = HomeNavTab.TIMELINE
+                if (contactsViewModel.uiState.value.isSelectionMode) {
+                    contactsViewModel.onTabDeparture()
+                }
+            }
+            else -> {
+                if (contactsViewModel.uiState.value.isSelectionMode) {
+                    contactsViewModel.onTabDeparture()
+                }
+                if (timelineViewModel.uiState.value.isSelectionMode) {
+                    timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
+                }
+            }
         }
     }
     val activeTab = selectedRootTab
@@ -238,12 +261,16 @@ fun MainAppShell(
         timelineViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
     }.collectAsState(initial = false)
 
-    val isSelectionMode = isContactsSelectionMode || isTimelineSelectionMode
-
-    // Hide floating dock on non-root destinations or selection mode using pure GPU translation (matches PixelPlayer)
-    val shouldHideDock by remember(currentRoute, isSelectionMode) {
+    // Hide floating dock on non-root destinations or when the currently active root tab is in selection mode.
+    // Selection state on an inactive root tab never suppresses the dock on another tab.
+    val shouldHideDock by remember(currentRoute, activeTab, isContactsSelectionMode, isTimelineSelectionMode) {
         derivedStateOf {
-            shouldHideFloatingDock(currentRoute) || isSelectionMode
+            shouldHideFloatingDock(
+                currentRoute = currentRoute,
+                isContactsSelectionMode = isContactsSelectionMode,
+                isTimelineSelectionMode = isTimelineSelectionMode,
+                activeTab = activeTab
+            )
         }
     }
     val dockVisibilityProgressState = animateFloatAsState(
@@ -450,20 +477,29 @@ private fun WarmRootTabsHost(
             Unit
         }
     }
-    val onNavigateToHome = remember(navController) {
+    val onNavigateToHome = remember(navController, contactsViewModel) {
         {
+            if (contactsViewModel.uiState.value.isSelectionMode) {
+                contactsViewModel.onTabDeparture()
+            }
             navController.navigateToTopLevelSafely(HomeRoute.ROUTE_NAME)
             Unit
         }
     }
-    val onNavigateToArchivedContacts = remember(navController) {
+    val onNavigateToArchivedContacts = remember(navController, contactsViewModel) {
         {
+            if (contactsViewModel.uiState.value.isSelectionMode) {
+                contactsViewModel.onTabDeparture()
+            }
             navController.navigateSafely(ArchivedContactsRoute.ROUTE_NAME)
             Unit
         }
     }
-    val onContactClick = remember(navController) {
+    val onContactClick = remember(navController, contactsViewModel) {
         { contactId: String ->
+            if (contactsViewModel.uiState.value.isSelectionMode) {
+                contactsViewModel.onTabDeparture()
+            }
             navController.navigateSafely(PersonDetailRoute.createRoute(contactId))
             Unit
         }

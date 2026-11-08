@@ -5,10 +5,10 @@ Scope selection mode visibility logic in `MainAppShell` so multi-selection on th
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Shell dock visibility derivation (`shouldHideDock`) checks whether `currentRoute` is the Relationship Tab before letting `isSelectionMode` hide the dock.
-- [ ] Navigating between root tabs (Home, Timeline, Relationship) cleanses or ignores inactive tab selection states.
-- [ ] Switching away from the Relationship Tab while contacts are selected automatically resets/prunes selection mode in `ContactsViewModel`.
-- [ ] Unit tests in `ContactsViewModelTest` verify selection state cleanup upon route/tab departure.
-- [ ] Automated tests in navigation contract verify dock remains visible on Home and Timeline even if contact selection was active.
+- [x] Shell dock visibility derivation (`shouldHideDock`) checks whether `currentRoute` is the Relationship Tab before letting `isSelectionMode` hide the dock.
+- [x] Navigating between root tabs (Home, Timeline, Relationship) cleanses or ignores inactive tab selection states.
+- [x] Switching away from the Relationship Tab while contacts are selected automatically resets/prunes selection mode in `ContactsViewModel`.
+- [x] Unit tests in `ContactsViewModelTest` verify selection state cleanup upon route/tab departure.
+- [x] Automated tests in navigation contract verify dock remains visible on Home and Timeline even if contact selection was active.
