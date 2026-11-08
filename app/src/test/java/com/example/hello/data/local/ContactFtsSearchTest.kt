@@ -12,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -35,7 +36,7 @@ import java.nio.file.Files
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactFtsSearchTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher(TestCoroutineScheduler())
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
 

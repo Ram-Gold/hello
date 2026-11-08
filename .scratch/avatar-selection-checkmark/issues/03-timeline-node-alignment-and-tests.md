@@ -5,10 +5,9 @@ Refactor encounter nodes in `TimelineScreen` to remove the inline checkmark besi
 
 **Blocked by:** 02 (ContactCard Name Row Refactor & Avatar Checkmark Integration)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Remove inline checkmark icons from `TimelineScreen.kt` encounter headers.
-- [ ] Wrap timeline avatars in `SelectableAvatarBadge` connected to `isSelected`.
-- [ ] Add unit tests verifying `ContactCard` and timeline selection contracts.
-- [ ] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.
-
+- [x] Remove inline checkmark icons from `TimelineScreen.kt` encounter headers.
+- [x] Wrap timeline avatars in `SelectableAvatarBadge` connected to `isSelected`.
+- [x] Add unit tests verifying `ContactCard` and timeline selection contracts.
+- [x] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.

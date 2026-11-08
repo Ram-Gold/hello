@@ -72,7 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hello.ui.home.components.DoodleAvatar
+import com.example.hello.ui.components.SelectableAvatarBadge
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
@@ -704,7 +704,8 @@ private fun FutureTimelineNodeRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        DoodleAvatar(
+                        SelectableAvatarBadge(
+                            isSelected = isSelected,
                             initials = node.avatarInitials,
                             bgIndex = node.avatarBgIndex,
                             size = 36.dp,
@@ -712,26 +713,13 @@ private fun FutureTimelineNodeRow(
                             photoUri = node.photoUri
                         )
                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Check,
-                                        contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                                Text(
-                                    text = node.contactName,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = contentColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Text(
+                                text = node.contactName,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = contentColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             Text(
                                 text = node.dateLabel,
                                 style = MaterialTheme.typography.labelSmall,
@@ -994,7 +982,8 @@ private fun PastTimelineNodeRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        DoodleAvatar(
+                        SelectableAvatarBadge(
+                            isSelected = isSelected,
                             initials = node.avatarInitials,
                             bgIndex = node.avatarBgIndex,
                             size = 36.dp,
@@ -1002,26 +991,13 @@ private fun PastTimelineNodeRow(
                             photoUri = node.photoUri
                         )
                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Check,
-                                        contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                                Text(
-                                    text = node.contactName,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = contentColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Text(
+                                text = node.contactName,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = contentColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             Text(
                                 text = node.dateLabel,
                                 style = MaterialTheme.typography.labelSmall,
