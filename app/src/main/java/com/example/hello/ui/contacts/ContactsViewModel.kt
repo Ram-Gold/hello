@@ -257,6 +257,31 @@ class ContactsViewModel(
             is ContactsUiEvent.OnDismissUserMessage -> {
                 _uiState.update { it.copy(userMessage = null) }
             }
+            is ContactsUiEvent.OnOpenArchivedSheet -> {
+                _uiState.update { it.copy(isArchivedSheetOpen = true) }
+            }
+            is ContactsUiEvent.OnDismissArchivedSheet -> {
+                _uiState.update { it.copy(isArchivedSheetOpen = false) }
+            }
+            is ContactsUiEvent.OnRestoreContact -> {
+                repository?.archiveContact(event.contactId, archived = false)
+                allContacts = allContacts.map { c ->
+                    if (c.id == event.contactId) c.copy(isArchived = false) else c
+                }
+                _uiState.update { current ->
+                    computeState(
+                        searchQuery = current.searchQuery,
+                        selectedTags = current.selectedTags,
+                        sortMode = current.sortMode,
+                        contacts = allContacts,
+                        selectedContactIds = current.selectedContactIds,
+                        isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen
+                    ).copy(userMessage = "Contact restored")
+                }
+            }
         }
     }
 
@@ -270,14 +295,17 @@ class ContactsViewModel(
             selectedContactIds: Set<String> = emptySet(),
             isDeleteConfirmationVisible: Boolean = false,
             availableTags: List<Tag> = emptyList(),
-            favoriteContacts: List<ContactSummary> = emptyList()
+            favoriteContacts: List<ContactSummary> = emptyList(),
+            isArchivedSheetOpen: Boolean = false
         ): ContactsUiState {
             val cleanQuery = searchQuery.trim()
             val cleanSelectedTags = selectedTags
                 .mapNotNull { it.removePrefix("#").trim().lowercase().ifBlank { null } }
                 .toSet()
 
-            val filtered = contacts.filter { contact ->
+            val (archivedList, activeList) = contacts.partition { it.isArchived }
+
+            val filtered = activeList.filter { contact ->
                 val matchesQuery = if (cleanQuery.isBlank()) {
                     true
                 } else if (cleanQuery.startsWith("#")) {
@@ -302,6 +330,16 @@ class ContactsViewModel(
 
                 matchesQuery && matchesTag
             }
+
+            val filteredArchived = if (cleanQuery.isBlank()) {
+                archivedList
+            } else {
+                archivedList.filter { contact ->
+                    contact.name.contains(cleanQuery, ignoreCase = true) ||
+                        contact.contextSubtitle.contains(cleanQuery, ignoreCase = true) ||
+                        contact.notes.contains(cleanQuery, ignoreCase = true)
+                }
+            }.sortedBy { it.name }
 
             val dynamicTags = buildList<String> {
                 addAll(ContactsUiState.DEFAULT_SMART_FILTER_TAGS)
@@ -348,7 +386,9 @@ class ContactsViewModel(
                 totalCount = filtered.size,
                 selectedContactIds = prunedSelectedIds,
                 isDeleteConfirmationVisible = isDeleteConfirmationVisible,
-                favoriteContacts = favoriteContacts
+                favoriteContacts = favoriteContacts,
+                archivedContacts = filteredArchived,
+                isArchivedSheetOpen = isArchivedSheetOpen
             )
         }
 

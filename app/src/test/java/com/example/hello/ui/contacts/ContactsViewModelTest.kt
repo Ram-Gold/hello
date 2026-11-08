@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -400,5 +401,54 @@ class ContactsViewModelTest {
 
         assertEquals(1, vm.uiState.value.favoriteContacts.size)
         assertEquals("c-1", vm.uiState.value.favoriteContacts.first().id)
+    }
+
+    @Test
+    fun computeState_excludesArchivedContactsFromActiveListAndPopulatesArchived() {
+        val sample = ContactsViewModel.createSampleContacts()
+        val archivedContact = sample.first().copy(id = "c-archived-1", name = "Zoe Archived", isArchived = true)
+        val fullList = sample + archivedContact
+
+        val state = ContactsViewModel.computeState(
+            searchQuery = "",
+            sortMode = ContactSortMode.ALPHABETICAL,
+            contacts = fullList
+        )
+
+        // Main list should strictly exclude archived contact
+        assertFalse(state.contacts.any { it.id == "c-archived-1" })
+        assertEquals(sample.size, state.totalCount)
+
+        // Archived contacts list contains the archived contact
+        assertEquals(1, state.archivedContacts.size)
+        assertEquals("c-archived-1", state.archivedContacts.first().id)
+    }
+
+    @Test
+    fun archivedSheet_openAndDismissEvents_updateUiState() {
+        assertFalse(viewModel.uiState.value.isArchivedSheetOpen)
+
+        viewModel.onEvent(ContactsUiEvent.OnOpenArchivedSheet)
+        assertTrue(viewModel.uiState.value.isArchivedSheetOpen)
+
+        viewModel.onEvent(ContactsUiEvent.OnDismissArchivedSheet)
+        assertFalse(viewModel.uiState.value.isArchivedSheetOpen)
+    }
+
+    @Test
+    fun restoreContact_unarchivesContactAndMovesToActiveList() {
+        val sample = ContactsViewModel.createSampleContacts()
+        val archived = sample.first().copy(id = "c-archived-2", name = "Liam Restored", isArchived = true)
+        viewModel.syncContacts(sample + archived)
+
+        assertTrue(viewModel.uiState.value.archivedContacts.any { it.id == "c-archived-2" })
+        assertFalse(viewModel.uiState.value.contacts.any { it.id == "c-archived-2" })
+
+        viewModel.onEvent(ContactsUiEvent.OnRestoreContact("c-archived-2"))
+
+        val state = viewModel.uiState.value
+        assertFalse(state.archivedContacts.any { it.id == "c-archived-2" })
+        assertTrue(state.contacts.any { it.id == "c-archived-2" })
+        assertEquals("Contact restored", state.userMessage)
     }
 }
