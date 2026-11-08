@@ -5,10 +5,9 @@ Create a reusable `SelectableAvatarBadge` component that wraps `DoodleAvatar` wi
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Create `SelectableAvatarBadge` composable container wrapping `DoodleAvatar`.
-- [ ] Implement ease-out enter animation (`scaleIn` from $0.45\times$ + `fadeIn` over $180\text{ms}$ with `FastOutSlowInEasing`).
-- [ ] Implement exit animation (`scaleOut` to $0.45\times$ + `fadeOut` over $140\text{ms}$).
-- [ ] Add unit tests verifying motion spec parameters and ease-out curves.
-
+- [x] Create `SelectableAvatarBadge` composable container wrapping `DoodleAvatar`.
+- [x] Implement ease-out enter animation (`scaleIn` from $0.45\times$ + `fadeIn` over $180\text{ms}$ with `FastOutSlowInEasing`).
+- [x] Implement exit animation (`scaleOut` to $0.45\times$ + `fadeOut` over $140\text{ms}$).
+- [x] Add unit tests verifying motion spec parameters and ease-out curves.
