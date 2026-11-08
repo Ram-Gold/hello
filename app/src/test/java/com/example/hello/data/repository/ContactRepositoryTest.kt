@@ -369,4 +369,61 @@ class ContactRepositoryTest {
         assertFalse(repository.followUps.value.any { it.id == followUp.id })
         assertFalse(repository.upcomingAlerts.value.any { it.id == followUp.id })
     }
+
+    @Test
+    fun birthdayAlerts_enforces14DayHorizonAndTodayCelebration() {
+        val today = java.time.LocalDate.now()
+
+        // 1. Contact with birthday today (0 days)
+        val contactToday = repository.addContactWithInitialEncounter(
+            name = "Bday Today",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met today",
+            followUpDays = null
+        )
+        val fullToday = repository.getContact(contactToday.id)!!
+        repository.updateContact(fullToday.copy(birthday = today))
+
+        // 2. Contact with birthday in 7 days (within 14 days)
+        val contactSoon = repository.addContactWithInitialEncounter(
+            name = "Bday In 7 Days",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met recently",
+            followUpDays = null
+        )
+        val fullSoon = repository.getContact(contactSoon.id)!!
+        repository.updateContact(fullSoon.copy(birthday = today.plusDays(7)))
+
+        // 3. Contact with birthday in 25 days (beyond 14 days)
+        val contactFar = repository.addContactWithInitialEncounter(
+            name = "Bday In 25 Days",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met weeks ago",
+            followUpDays = null
+        )
+        val fullFar = repository.getContact(contactFar.id)!!
+        repository.updateContact(fullFar.copy(birthday = today.plusDays(25)))
+
+        val alerts = repository.upcomingAlerts.value.filterIsInstance<com.example.hello.domain.model.UpcomingAlert.BirthdayAlert>()
+
+        // Contact Today must be present with dateText = "Today!"
+        val todayAlert = alerts.firstOrNull { it.contactId == contactToday.id }
+        assertNotNull(todayAlert)
+        assertEquals("Today!", todayAlert?.dateText)
+
+        // Contact Soon (7 days) must be present
+        val soonAlert = alerts.firstOrNull { it.contactId == contactSoon.id }
+        assertNotNull(soonAlert)
+        assertEquals("In 7 days", soonAlert?.dateText)
+
+        // Contact Far (25 days) must NOT be in 14-day upcoming alerts
+        val farAlert = alerts.firstOrNull { it.contactId == contactFar.id }
+        assertNull(farAlert)
+    }
 }

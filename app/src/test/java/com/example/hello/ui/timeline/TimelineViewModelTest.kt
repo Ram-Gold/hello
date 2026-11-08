@@ -184,6 +184,35 @@ class TimelineViewModelTest {
     }
 
     @Test
+    fun buildTimelineNodes_birthdayToday_anchorsAsTodayMilestone() {
+        val today = LocalDate.of(2026, 11, 8)
+        val now = today.atStartOfDay(ZoneOffset.UTC).toInstant()
+
+        val birthdayFriend = Contact(
+            id = "c-today",
+            name = "Jordan Lee",
+            birthday = LocalDate.of(1996, 11, 8),
+            firstMetAt = now.minus(100, ChronoUnit.DAYS),
+            lastMetAt = now.minus(20, ChronoUnit.DAYS)
+        )
+
+        val (futureNodes, _) = TimelineViewModel.buildTimelineNodes(
+            contactsMap = mapOf(birthdayFriend.id to birthdayFriend),
+            encounters = emptyList(),
+            placesMap = emptyMap(),
+            followUps = emptyList(),
+            today = today,
+            zoneId = ZoneOffset.UTC
+        )
+
+        assertEquals(1, futureNodes.size)
+        val bdayNode = futureNodes.first() as FutureTimelineNode.BirthdayNode
+        assertEquals(0L, bdayNode.daysUntil)
+        assertEquals("Today!", bdayNode.dateLabel)
+        assertEquals(30, bdayNode.turningAge)
+    }
+
+    @Test
     fun onSelectFilter_and_inlineFollowUpActions_updateTimelineState() {
         val viewModel = TimelineViewModel()
 

@@ -50,6 +50,28 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun todayBirthdays_filtersOnlyAlertsForToday() {
+        val state = viewModel.uiState.value.copy(
+            upcomingAlerts = listOf(
+                com.example.hello.domain.model.UpcomingAlert.BirthdayAlert(
+                    id = "bday-1",
+                    contactId = "c-1",
+                    contactName = "Sarah",
+                    dateText = "Today!"
+                ),
+                com.example.hello.domain.model.UpcomingAlert.BirthdayAlert(
+                    id = "bday-2",
+                    contactId = "c-2",
+                    contactName = "Leo",
+                    dateText = "Tomorrow"
+                )
+            )
+        )
+        assertEquals(1, state.todayBirthdays.size)
+        assertEquals("Sarah", state.todayBirthdays.first().contactName)
+    }
+
+    @Test
     fun onReminderDone_removesAlertAndSetsFeedback() {
         val alertId = viewModel.uiState.value.upcomingAlerts.first().id
         val initialCount = viewModel.uiState.value.upcomingAlerts.size

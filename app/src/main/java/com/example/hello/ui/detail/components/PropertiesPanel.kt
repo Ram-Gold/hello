@@ -100,7 +100,8 @@ fun PropertiesPanel(
                             PropertyChip(iconKey = HelloIconKey.BRIEFCASE, label = roleCompany)
                         }
                         if (contact?.birthday != null) {
-                            PropertyChip(iconKey = HelloIconKey.CAKE, label = "${contact.birthday}")
+                            val displayBday = com.example.hello.ui.components.BirthdayInputUtils.formatDisplayBirthday(contact.birthday)
+                            PropertyChip(iconKey = HelloIconKey.CAKE, label = displayBday)
                         }
                         if (!contact?.phone.isNullOrBlank()) {
                             PropertyChip(iconKey = HelloIconKey.PHONE, label = "${contact.phone}")

@@ -88,6 +88,10 @@ _Avoid_: Profile Picture, User Icon, Thumbnail, Headshot
 The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Subconscious Check-In) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Later" / "Update" for Subconscious Check-Ins).
 _Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
 
+**Birthday Celebration Card**:
+An ambient, high-visibility celebration card surfaced in Home Recent Encounters and the Living Timeline when today matches a Contact's birthday. It highlights the milestone with celebratory styling without generating synthetic fake records in SQLite, providing a one-tap shortcut to pre-fill an encounter note ("Celebrated [Name]'s Birthday 🎉").
+_Avoid_: Birthday Alert Banner, Auto-Encounter, Birthday Notification
+
 **Contact Selection Mode**:
 The contextual interaction phase entered via long-press on a Contact Card within the Relationship Tab, enabling multi-contact batch actions (Share via vCard, Delete with confirmation, Select All). During this mode, selected Contact Cards visually decouple from connected groupings into independent fully-rounded surfaces with theme-aware red tinting and an inline name checkmark, while a floating vertical action tray docks on the right edge and the Floating Bottom Dock recedes off-screen.
 _Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen

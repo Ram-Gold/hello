@@ -410,10 +410,10 @@ private fun WarmRootTabsHost(
         { quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter) }
     }
     val onLogEncounterForContact = remember(quickActionViewModel) {
-        { contactId: String ->
+        { contactId: String, initialNote: String? ->
             val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
             if (summary != null) {
-                quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
+                quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary, initialNote))
             } else {
                 quickActionViewModel.onEvent(QuickActionUiEvent.OnSelectLogEncounter)
             }
@@ -463,6 +463,7 @@ private fun WarmRootTabsHost(
                 onContactClick = onContactClick,
                 onSettingsClick = onSettingsClick,
                 onLogEncounterClick = onLogEncounterClick,
+                onLogEncounterForContact = onLogEncounterForContact,
                 onAddContactClick = onAddContactClick,
                 terminology = terminologyState.value
             )
@@ -525,7 +526,7 @@ private fun WarmRootTabsHost(
 private fun TimelineTabDestination(
     timelineViewModel: TimelineViewModel,
     onContactClick: (String) -> Unit,
-    onLogEncounterForContact: (String) -> Unit,
+    onLogEncounterForContact: (String, String?) -> Unit,
     onLogEncounterClick: () -> Unit
 ) {
     val timelineUiState by timelineViewModel.uiState.collectAsState()
@@ -547,6 +548,7 @@ private fun HomeTabDestination(
     onContactClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onLogEncounterClick: () -> Unit,
+    onLogEncounterForContact: (String, String?) -> Unit,
     onAddContactClick: () -> Unit,
     terminology: RelationshipTerminology
 ) {
@@ -560,6 +562,7 @@ private fun HomeTabDestination(
             onContactClick = onContactClick,
             onSettingsClick = onSettingsClick,
             onLogEncounterClick = onLogEncounterClick,
+            onLogEncounterForContact = onLogEncounterForContact,
             onAddContactClick = onAddContactClick,
             terminology = terminology
         )

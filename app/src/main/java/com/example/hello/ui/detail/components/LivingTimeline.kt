@@ -159,12 +159,9 @@ private fun BirthdayMilestoneNodeItem(
     hasEncountersBelow: Boolean
 ) {
     val today = LocalDate.now()
-    var nextBday = birthday.withYear(today.year)
-    if (nextBday.isBefore(today)) {
-        nextBday = birthday.withYear(today.year + 1)
-    }
+    val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(birthday, today)
     val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
-    val monthDayLabel = birthday.format(DateTimeFormatter.ofPattern("MMMM d"))
+    val monthDayLabel = nextBday.format(DateTimeFormatter.ofPattern("MMMM d"))
     val countdownLabel = when (daysUntil) {
         0L -> "Today!"
         1L -> "Tomorrow"

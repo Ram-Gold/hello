@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.domain.model.UpcomingAlert
+import com.example.hello.ui.components.BirthdayCelebrationCard
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
 import com.example.hello.ui.settings.shapeFor
@@ -61,6 +63,8 @@ fun RecentEncountersSection(
     hasContacts: Boolean = true,
     onLogEncounterClick: () -> Unit = {},
     onAddContactClick: () -> Unit = {},
+    todayBirthdays: List<UpcomingAlert.BirthdayAlert> = emptyList(),
+    onLogBirthdayEncounter: (contactId: String, contactName: String) -> Unit = { _, _ -> },
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     modifier: Modifier = Modifier
 ) {
@@ -112,6 +116,25 @@ fun RecentEncountersSection(
                     contentDescription = "View all ${terminology.pluralTitle.lowercase()}",
                     modifier = Modifier.size(24.dp)
                 )
+            }
+        }
+
+        // Ambient Day-of-Birthday Celebration Cards
+        if (todayBirthdays.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                todayBirthdays.forEach { bday ->
+                    BirthdayCelebrationCard(
+                        contactName = bday.contactName,
+                        contactId = bday.contactId,
+                        onLogEncounter = onLogBirthdayEncounter,
+                        onClickContact = onContactClick
+                    )
+                }
             }
         }
 

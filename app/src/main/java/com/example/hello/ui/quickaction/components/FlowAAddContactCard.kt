@@ -32,16 +32,31 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import com.example.hello.ui.components.BirthdayInputUtils
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +79,7 @@ import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FlowAAddContactCard(
     uiState: QuickActionUiState,
@@ -77,10 +92,55 @@ fun FlowAAddContactCard(
     val currentComp = activeComponents.getOrNull(currentStep)
     val isLastStep = currentStep >= activeComponents.size - 1
 
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val initialMillis = uiState.birthday
+            ?.atStartOfDay(ZoneOffset.UTC)
+            ?.toInstant()
+            ?.toEpochMilli()
+            ?: System.currentTimeMillis()
+        val selectableDates = remember {
+            object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis <= System.currentTimeMillis()
+                }
+                override fun isSelectableYear(year: Int): Boolean {
+                    return year <= LocalDate.now().year
+                }
+            }
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            selectableDates = selectableDates
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val picked = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onEvent(QuickActionUiEvent.OnBirthdayChange(picked))
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     // Sequence focus request after the frame settles to avoid IME flicker
     LaunchedEffect(currentStep, currentComp?.type) {
         val type = currentComp?.type
-        if (type != CaptureComponentType.CADENCE) {
+        if (type != CaptureComponentType.CADENCE && type != CaptureComponentType.BIRTHDAY) {
             withFrameNanos { }
             if (type == CaptureComponentType.NAME) {
                 delay(45)
@@ -340,20 +400,70 @@ fun FlowAAddContactCard(
                         }
 
                         CaptureComponentType.BIRTHDAY -> {
+                            val displayDate = BirthdayInputUtils.formatHumanReadable(uiState.birthday)
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                MinimalFilledTextField(
-                                    value = uiState.birthday?.toString().orEmpty(),
-                                    onValueChange = { input ->
-                                        val parsed = try { LocalDate.parse(input.trim()) } catch (_: Exception) { null }
-                                        onEvent(QuickActionUiEvent.OnBirthdayChange(parsed))
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (uiState.birthday != null) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
                                     },
-                                    placeholder = "YYYY-MM-DD",
-                                    focusRequester = focusRequester,
-                                    imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
-                                    onImeAction = onAdvanceOrSave
-                                )
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable { showDatePicker = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Cake,
+                                                contentDescription = null,
+                                                tint = if (uiState.birthday != null) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.primary
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Text(
+                                                text = if (displayDate.isNotBlank()) displayDate else "Select Birthday from Calendar",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = if (displayDate.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal
+                                                ),
+                                                color = if (uiState.birthday != null) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                        }
+                                        if (uiState.birthday != null) {
+                                            IconButton(
+                                                onClick = { onEvent(QuickActionUiEvent.OnBirthdayChange(null)) },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Close,
+                                                    contentDescription = "Clear birthday",
+                                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                                 Text(
-                                    text = "Format: YYYY-MM-DD (e.g. 1995-04-12)",
+                                    text = "Tap to choose a birth date from calendar",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

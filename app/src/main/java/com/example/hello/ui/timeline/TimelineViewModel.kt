@@ -286,10 +286,7 @@ class TimelineViewModel(
             // 2b. Set-in-Stone Upcoming Birthdays (365-day year-round horizon)
             activeContacts.forEach { contact ->
                 val bday = contact.birthday ?: return@forEach
-                var nextBday = bday.withYear(today.year)
-                if (nextBday.isBefore(today)) {
-                    nextBday = bday.withYear(today.year + 1)
-                }
+                val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(bday, today)
                 val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
                 if (daysUntil in 0..365) {
                     val turningAge = (nextBday.year - bday.year).takeIf { it in 1..130 }

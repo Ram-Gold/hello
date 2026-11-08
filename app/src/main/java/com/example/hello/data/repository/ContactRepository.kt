@@ -268,12 +268,9 @@ class ContactRepository(
         val today = LocalDate.now()
         return contacts.filterNot { it.isArchived }.mapNotNull { contact ->
             val bday = contact.birthday ?: return@mapNotNull null
-            var nextBday = bday.withYear(today.year)
-            if (nextBday.isBefore(today)) {
-                nextBday = bday.withYear(today.year + 1)
-            }
+            val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(bday, today)
             val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
-            if (daysUntil in 0..30) {
+            if (daysUntil in 0..14) {
                 val dateText = when (daysUntil) {
                     0L -> "Today!"
                     1L -> "Tomorrow"
@@ -281,6 +278,7 @@ class ContactRepository(
                 }
                 UpcomingAlert.BirthdayAlert(
                     id = "bday-${contact.id}",
+                    contactId = contact.id,
                     contactName = contact.name,
                     dateText = dateText
                 )

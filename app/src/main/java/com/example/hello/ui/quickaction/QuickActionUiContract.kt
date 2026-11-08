@@ -79,7 +79,10 @@ sealed interface QuickActionUiEvent {
     data object OnDismiss : QuickActionUiEvent
     data object OnSelectAddContact : QuickActionUiEvent
     data object OnSelectLogEncounter : QuickActionUiEvent
-    data class OnOpenLogEncounterForContact(val contact: ContactSummary) : QuickActionUiEvent
+    data class OnOpenLogEncounterForContact(
+        val contact: ContactSummary,
+        val initialNote: String? = null
+    ) : QuickActionUiEvent
     data object OnBackToChoice : QuickActionUiEvent
 
     // Flow A Events

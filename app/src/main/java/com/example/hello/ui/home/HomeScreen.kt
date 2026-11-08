@@ -52,6 +52,7 @@ fun HomeScreen(
     onContactClick: (String) -> Unit = { onEvent(HomeUiEvent.OnContactClick(it)) },
     onSettingsClick: () -> Unit = { onEvent(HomeUiEvent.OnSettingsClick) },
     onLogEncounterClick: () -> Unit = {},
+    onLogEncounterForContact: (String, String?) -> Unit = { _, _ -> },
     onAddContactClick: () -> Unit = {},
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT
 ) {
@@ -106,6 +107,10 @@ fun HomeScreen(
                     hasContacts = uiState.recentContacts.isNotEmpty(),
                     onLogEncounterClick = onLogEncounterClick,
                     onAddContactClick = onAddContactClick,
+                    todayBirthdays = uiState.todayBirthdays,
+                    onLogBirthdayEncounter = { contactId, contactName ->
+                        onLogEncounterForContact(contactId, "Celebrated $contactName's Birthday")
+                    },
                     terminology = terminology
                 )
 

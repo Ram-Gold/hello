@@ -89,7 +89,8 @@ sealed interface UpcomingAlert {
     data class BirthdayAlert(
         override val id: String,
         override val contactName: String,
-        val dateText: String
+        val dateText: String,
+        val contactId: String = ""
     ) : UpcomingAlert
 
     data class FollowUpReminder(

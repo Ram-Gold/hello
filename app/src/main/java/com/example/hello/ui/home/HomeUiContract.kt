@@ -17,7 +17,10 @@ data class HomeUiState(
     val isSpeedDialOpen: Boolean = false,
     val selectedNavTab: HomeNavTab = HomeNavTab.HOME,
     val userMessage: String? = null
-)
+) {
+    val todayBirthdays: List<UpcomingAlert.BirthdayAlert>
+        get() = upcomingAlerts.filterIsInstance<UpcomingAlert.BirthdayAlert>().filter { it.dateText == "Today!" }
+}
 
 sealed interface HomeUiEvent {
     data class OnCardTypeSelect(val cardType: CardType) : HomeUiEvent

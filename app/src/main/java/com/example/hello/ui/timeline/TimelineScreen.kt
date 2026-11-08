@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Schedule
@@ -81,7 +82,7 @@ fun TimelineScreen(
     uiState: TimelineUiState,
     onEvent: (TimelineUiEvent) -> Unit,
     onContactClick: (String) -> Unit,
-    onLogEncounterForContact: (String) -> Unit,
+    onLogEncounterForContact: (String, String?) -> Unit,
     onLogEncounterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -182,7 +183,10 @@ fun TimelineScreen(
                                         onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
                                     },
                                     onLogMet = {
-                                        onLogEncounterForContact(node.contactId)
+                                        val note = if (node is FutureTimelineNode.BirthdayNode) {
+                                            "Celebrated ${node.contactName}'s Birthday"
+                                        } else null
+                                        onLogEncounterForContact(node.contactId, note)
                                     }
                                 )
                             }
@@ -791,10 +795,12 @@ private fun FutureTimelineNodeRow(
                         }
                     }
                     is FutureTimelineNode.BirthdayNode -> {
-                        val bdayDescription = if (node.turningAge != null) {
-                            "Turning ${node.turningAge} · Send a warm birthday note"
-                        } else {
-                            "Upcoming birthday · Send a warm birthday note"
+                        val isToday = node.daysUntil == 0L
+                        val bdayDescription = when {
+                            isToday && node.turningAge != null -> "Turning ${node.turningAge} today! Send warm wishes and celebrate"
+                            isToday -> "Today is ${node.contactName}'s birthday! Celebrate together"
+                            node.turningAge != null -> "Turning ${node.turningAge} · Send a warm birthday note"
+                            else -> "Upcoming birthday · Send a warm birthday note"
                         }
                         Text(
                             text = bdayDescription,
@@ -802,6 +808,29 @@ private fun FutureTimelineNodeRow(
                             color = secondaryContentColor,
                             lineHeight = 20.sp
                         )
+                        if (isToday) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            FilledTonalButton(
+                                onClick = onLogMet,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.EditNote,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Log Encounter",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1125,7 +1154,7 @@ private fun TimelineScreenLightPreview() {
             uiState = TimelineViewModel.createInitialState(),
             onEvent = {},
             onContactClick = {},
-            onLogEncounterForContact = {},
+            onLogEncounterForContact = { _, _ -> },
             onLogEncounterClick = {}
         )
     }
@@ -1139,7 +1168,7 @@ private fun TimelineScreenDarkPreview() {
             uiState = TimelineViewModel.createInitialState(),
             onEvent = {},
             onContactClick = {},
-            onLogEncounterForContact = {},
+            onLogEncounterForContact = { _, _ -> },
             onLogEncounterClick = {}
         )
     }

@@ -7,6 +7,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +46,13 @@ import java.time.LocalDate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
+import com.example.hello.ui.components.BirthdayInputUtils
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +61,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -283,31 +293,99 @@ fun PersonEditScreen(
             )
 
             // Birthday
-            OutlinedTextField(
-                value = uiState.birthday?.toString().orEmpty(),
-                onValueChange = { input ->
-                    val parsed = try { LocalDate.parse(input.trim()) } catch (_: Exception) { null }
-                    onEvent(PersonEditUiEvent.OnBirthdayChange(parsed))
-                },
-                label = { Text("Birthday (YYYY-MM-DD)") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Cake,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingIcon = {
-                    ClearTextTrailingIcon(
-                        value = uiState.birthday?.toString().orEmpty(),
-                        onClear = { onEvent(PersonEditUiEvent.OnBirthdayChange(null)) },
-                        contentDescription = "Clear birthday"
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
+            var showDatePicker by remember { mutableStateOf(false) }
+
+            if (showDatePicker) {
+                val initialMillis = uiState.birthday
+                    ?.atStartOfDay(ZoneOffset.UTC)
+                    ?.toInstant()
+                    ?.toEpochMilli()
+                    ?: System.currentTimeMillis()
+                val selectableDates = remember {
+                    object : SelectableDates {
+                        override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                            return utcTimeMillis <= System.currentTimeMillis()
+                        }
+                        override fun isSelectableYear(year: Int): Boolean {
+                            return year <= LocalDate.now().year
+                        }
+                    }
+                }
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = initialMillis,
+                    selectableDates = selectableDates
+                )
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let { millis ->
+                                    val picked = Instant.ofEpochMilli(millis)
+                                        .atZone(ZoneOffset.UTC)
+                                        .toLocalDate()
+                                    onEvent(PersonEditUiEvent.OnBirthdayChange(picked))
+                                }
+                                showDatePicker = false
+                            }
+                        ) {
+                            Text("Confirm")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+
+            val displayBirthday = BirthdayInputUtils.formatHumanReadable(uiState.birthday)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true }
+            ) {
+                OutlinedTextField(
+                    value = displayBirthday,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = true,
+                    label = { Text("Birthday") },
+                    placeholder = { Text("Select birthday from calendar...") },
+                    leadingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Cake,
+                                contentDescription = "Select birthday from date picker",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    trailingIcon = {
+                        ClearTextTrailingIcon(
+                            value = displayBirthday,
+                            onClear = { onEvent(PersonEditUiEvent.OnBirthdayChange(null)) },
+                            contentDescription = "Clear birthday"
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    interactionSource = remember { MutableInteractionSource() }
+                        .also { interactionSource ->
+                            LaunchedEffect(interactionSource) {
+                                interactionSource.interactions.collect { interaction ->
+                                    if (interaction is PressInteraction.Release) {
+                                        showDatePicker = true
+                                    }
+                                }
+                            }
+                        }
+                )
+            }
 
             // Phone Number
             OutlinedTextField(

@@ -142,6 +142,7 @@ class QuickActionViewModel(
                         isOpen = true,
                         currentMode = QuickActionMode.FLOW_B_LOG_ENCOUNTER,
                         selectedContact = event.contact,
+                        encounterNote = event.initialNote.orEmpty(),
                         searchQuery = ""
                     )
                 }

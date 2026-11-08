@@ -254,4 +254,17 @@ class PersonEditViewModelTest {
         assertNull(viewModel.uiState.value.birthday)
         assertTrue(viewModel.uiState.value.isModified)
     }
+
+    @Test
+    fun onBirthdayChange_updatesBirthdayAndMarksModified() = runTest {
+        val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val parsedDate = com.example.hello.ui.components.BirthdayInputUtils.parseBirthdayInput("11-06-1996")
+        viewModel.onEvent(PersonEditUiEvent.OnBirthdayChange(parsedDate))
+
+        assertEquals(java.time.LocalDate.of(1996, 11, 6), viewModel.uiState.value.birthday)
+        assertTrue(viewModel.uiState.value.isModified)
+        assertTrue(viewModel.uiState.value.canSave)
+    }
 }
