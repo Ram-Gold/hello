@@ -36,12 +36,21 @@ import java.nio.file.Files
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactFtsSearchTest {
 
-    private val testDispatcher = StandardTestDispatcher(TestCoroutineScheduler())
+    companion object {
+        @org.junit.AfterClass
+        @JvmStatic
+        fun tearDownClass() {
+            Dispatchers.resetMain()
+        }
+    }
+
+    private lateinit var testDispatcher: kotlinx.coroutines.test.TestDispatcher
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
 
     @Before
     fun setUp() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
@@ -52,7 +61,6 @@ class ContactFtsSearchTest {
         if (database.isOpen) {
             database.close()
         }
-        Dispatchers.resetMain()
     }
 
     @Test

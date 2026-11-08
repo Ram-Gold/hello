@@ -1,9 +1,17 @@
 package com.example.hello.ui.components
 
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -165,6 +173,184 @@ class HelloToastHostTest {
         assertFalse(shouldShowToastCountdown("Custom message", null, durationMs = 3500L))
         assertFalse(shouldShowToastCountdown("Custom message", null, durationMs = 2000L))
         assertTrue(shouldShowToastCountdown("Custom message", actionLabel = "Undo", durationMs = 2000L))
+    }
+
+    @Test
+    fun helloToastVisuals_defaultsAndCustomProperties() {
+        val actionableVisuals = HelloToastVisuals("Contact deleted", "Undo")
+        assertEquals("Contact deleted", actionableVisuals.message)
+        assertEquals("Undo", actionableVisuals.actionLabel)
+        assertEquals(false, actionableVisuals.withDismissAction)
+        assertEquals(TOAST_DURATION_ACTIONABLE_MS, actionableVisuals.durationMs)
+        assertEquals(SnackbarDuration.Indefinite, actionableVisuals.duration)
+
+        val infoVisuals = HelloToastVisuals("Contact updated")
+        assertEquals("Contact updated", infoVisuals.message)
+        assertNull(infoVisuals.actionLabel)
+        assertEquals(false, infoVisuals.withDismissAction)
+        assertEquals(TOAST_DURATION_INFORMATIONAL_MS, infoVisuals.durationMs)
+        assertEquals(SnackbarDuration.Indefinite, infoVisuals.duration)
+
+        val customVisuals = HelloToastVisuals(
+            message = "Custom alert",
+            actionLabel = "Retry",
+            withDismissAction = true,
+            durationMs = 9000L,
+            duration = SnackbarDuration.Long
+        )
+        assertEquals("Custom alert", customVisuals.message)
+        assertEquals("Retry", customVisuals.actionLabel)
+        assertEquals(true, customVisuals.withDismissAction)
+        assertEquals(9000L, customVisuals.durationMs)
+        assertEquals(SnackbarDuration.Long, customVisuals.duration)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun showHelloToast_actionableToastTimesOutAfterFullDuration() = runTest {
+        val hostState = SnackbarHostState()
+        var result: SnackbarResult? = null
+
+        val job = launch {
+            result = hostState.showHelloToast(
+                message = "Contact deleted",
+                actionLabel = "Undo",
+                durationMs = TOAST_DURATION_ACTIONABLE_MS
+            )
+        }
+
+        // Advance 6000ms: toast remains visible and active
+        advanceTimeBy(6000L)
+        assertTrue(job.isActive)
+        assertNull(result)
+        assertEquals("Contact deleted", hostState.currentSnackbarData?.visuals?.message)
+        assertEquals("Undo", hostState.currentSnackbarData?.visuals?.actionLabel)
+        val visuals = hostState.currentSnackbarData?.visuals as? HelloToastVisuals
+        assertEquals(7000L, visuals?.durationMs)
+
+        // Advance another 1001ms (total 7001ms): timeout occurs, dismisses toast
+        advanceTimeBy(1001L)
+        assertFalse(job.isActive)
+        assertEquals(SnackbarResult.Dismissed, result)
+        assertNull(hostState.currentSnackbarData)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun showHelloToast_actionPerformedResolvesImmediately() = runTest {
+        val hostState = SnackbarHostState()
+        var result: SnackbarResult? = null
+
+        val job = launch {
+            result = hostState.showHelloToast(
+                message = "Contact deleted",
+                actionLabel = "Undo",
+                durationMs = TOAST_DURATION_ACTIONABLE_MS
+            )
+        }
+
+        advanceTimeBy(3000L)
+        assertTrue(job.isActive)
+
+        // User taps Undo
+        hostState.currentSnackbarData?.performAction()
+
+        advanceTimeBy(100L)
+        assertEquals(SnackbarResult.ActionPerformed, result)
+        assertFalse(job.isActive)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun showHelloToast_subsequentRestorationToastHasBriefDurationAndNoCountdown() = runTest {
+        val hostState = SnackbarHostState()
+        var result: SnackbarResult? = null
+
+        val job = launch {
+            result = hostState.showHelloToast(
+                message = "Contact restored",
+                durationMs = TOAST_DURATION_INFORMATIONAL_MS
+            )
+        }
+
+        advanceTimeBy(1000L)
+        assertTrue(job.isActive)
+        val currentVisuals = hostState.currentSnackbarData?.visuals as? HelloToastVisuals
+        assertEquals(TOAST_DURATION_INFORMATIONAL_MS, currentVisuals?.durationMs)
+        assertNull(currentVisuals?.actionLabel)
+
+        // Confirmation toast does NOT show countdown bar
+        assertFalse(
+            shouldShowToastCountdown(
+                message = "Contact restored",
+                actionLabel = null,
+                durationMs = TOAST_DURATION_INFORMATIONAL_MS
+            )
+        )
+
+        // Completes after 3500ms
+        advanceTimeBy(2600L)
+        assertEquals(SnackbarResult.Dismissed, result)
+        assertFalse(job.isActive)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun showHelloToast_undoRestoresEntityInRepositoryWithin7Seconds() = runTest {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val initialContact = repo.contacts.value.first()
+        val contactId = initialContact.id
+
+        // Delete contact
+        repo.deleteContact(contactId)
+        assertFalse(repo.contacts.value.any { it.id == contactId })
+
+        val hostState = SnackbarHostState()
+        var actionResult: SnackbarResult? = null
+
+        val toastJob = launch {
+            actionResult = hostState.showHelloToast(
+                message = "Contact deleted",
+                actionLabel = "Undo",
+                durationMs = TOAST_DURATION_ACTIONABLE_MS
+            )
+        }
+
+        // Advance 5500ms (5.5s into the 7-second window)
+        advanceTimeBy(5500L)
+        assertTrue(toastJob.isActive)
+        val activeVisuals = hostState.currentSnackbarData?.visuals as? HelloToastVisuals
+        assertEquals(7000L, activeVisuals?.durationMs)
+        assertTrue(shouldShowToastCountdown("Contact deleted", "Undo", 7000L))
+
+        // User taps Undo
+        hostState.currentSnackbarData?.performAction()
+        advanceTimeBy(50L)
+        assertEquals(SnackbarResult.ActionPerformed, actionResult)
+
+        // Undo in repository
+        val restored = repo.undoLastDeleteContact()
+        assertTrue("Repository rollback must succeed at 5.5s within the 7s window", restored)
+        assertTrue(repo.contacts.value.any { it.id == contactId })
+
+        // Surface subsequent restoration notice
+        var restoreResult: SnackbarResult? = null
+        val restoreToastJob = launch {
+            restoreResult = hostState.showHelloToast(
+                message = "Contact restored",
+                durationMs = TOAST_DURATION_INFORMATIONAL_MS
+            )
+        }
+
+        advanceTimeBy(1000L)
+        assertTrue(restoreToastJob.isActive)
+        // Verify subsequent notice does NOT have countdown bar
+        assertFalse(shouldShowToastCountdown("Contact restored", null, TOAST_DURATION_INFORMATIONAL_MS))
+
+        // Finishes at 3500ms
+        advanceTimeBy(2600L)
+        assertEquals(SnackbarResult.Dismissed, restoreResult)
+        assertFalse(restoreToastJob.isActive)
     }
 }
 

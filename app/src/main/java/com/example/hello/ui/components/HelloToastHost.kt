@@ -25,8 +25,11 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Standard display duration constants for Toast Pills (ADR-0027 & countdown timer spec).
@@ -160,6 +164,43 @@ const val TOAST_PILL_TEST_TAG = "HelloToastPill"
 const val TOAST_COUNTDOWN_BAR_TEST_TAG = "HelloToastCountdownBar"
 
 /**
+ * Custom [SnackbarVisuals] carrying the explicit countdown display duration.
+ */
+class HelloToastVisuals(
+    override val message: String,
+    override val actionLabel: String? = null,
+    override val withDismissAction: Boolean = false,
+    val durationMs: Long = resolveToastDurationMs(message, actionLabel),
+    override val duration: SnackbarDuration = SnackbarDuration.Indefinite
+) : SnackbarVisuals
+
+/**
+ * Displays a Toast Pill with an intentional display duration matching the countdown progress bar.
+ * Uses [withTimeoutOrNull] around [SnackbarHostState.showSnackbar] so that actionable messages
+ * stay visible for the full [durationMs] (e.g. 7000ms), and cancels cleanly when timeout elapses
+ * if no user action was performed.
+ */
+suspend fun SnackbarHostState.showHelloToast(
+    message: String,
+    actionLabel: String? = null,
+    durationMs: Long = resolveToastDurationMs(message, actionLabel)
+): SnackbarResult {
+    val visuals = HelloToastVisuals(
+        message = message,
+        actionLabel = actionLabel,
+        durationMs = durationMs,
+        duration = SnackbarDuration.Indefinite
+    )
+    val result = withTimeoutOrNull(durationMs) {
+        showSnackbar(visuals)
+    }
+    return result ?: run {
+        currentSnackbarData?.dismiss()
+        SnackbarResult.Dismissed
+    }
+}
+
+/**
  * Reusable HelloToastHost component implementing the Toast Pill canonical design (ADR-0026):
  * - Elevated tactile pill capsule (RoundedCornerShape(24.dp))
  * - Warm earthy border and subtle shadow for physical depth
@@ -177,10 +218,12 @@ fun HelloToastHost(
     ) { snackbarData ->
         val message = snackbarData.visuals.message
         val actionLabel = snackbarData.visuals.actionLabel
+        val durationMs = (snackbarData.visuals as? HelloToastVisuals)?.durationMs
+            ?: resolveToastDurationMs(message, actionLabel)
         HelloToastPill(
             message = message,
             actionLabel = actionLabel,
-            durationMs = resolveToastDurationMs(message, actionLabel),
+            durationMs = durationMs,
             onAction = { snackbarData.performAction() },
             onDismiss = { snackbarData.dismiss() }
         )

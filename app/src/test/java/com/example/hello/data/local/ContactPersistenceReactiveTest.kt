@@ -46,6 +46,14 @@ class ContactPersistenceReactiveTest {
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
 
+    companion object {
+        @org.junit.AfterClass
+        @JvmStatic
+        fun tearDownClass() {
+            Dispatchers.resetMain()
+        }
+    }
+
     @Before
     fun setUp() {
         testDispatcher = StandardTestDispatcher()
@@ -59,8 +67,6 @@ class ContactPersistenceReactiveTest {
         if (database.isOpen) {
             database.close()
         }
-        Thread.sleep(50)
-        Dispatchers.resetMain()
     }
 
     @Test
