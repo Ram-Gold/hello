@@ -1,13 +1,15 @@
-# 03: Sub-Screen Return Invariant & End-to-End Navigation Test Suite
+# 03: Sub-Screen Return Invariants, Dock Height Preservation, and Regression Suite
 
-**What to build:** Enforce that returning to `PeopleRoute` from sub-screens (`PersonEditScreen`, `PersonDetailScreen`, or `ArchivedContactsScreen`) reliably restores the Floating Bottom Dock with correct layout height preservation (`dockHeightPx`) and bottom clearance. Add automated regression tests verifying dock visibility across all edit exit paths.
+**What to build:**
+Guarantee that returning from deeper screens (`PersonEditScreen`, `PersonDetailScreen`) back to the Relationship Tab reliably re-evaluates the active route as a root destination with inactive selection mode, restoring the Floating Bottom Dock without flicker. Preserve `dockHeightPx` throughout animations to prevent layout jumps or zero-height gaps, and run the comprehensive regression test suite verifying 100% pass rate.
 
-**Blocked by:** 02: Back Navigation Interception and Edit State Exit Restoration
+**Blocked by:** 02 (Back Navigation Interception and In-Place Selection Exit)
 
 **Status:** ready-for-agent
 
-- [ ] Returning to `PeopleRoute` from `PersonEditScreen` (via cancel, save, or back gesture) guarantees the Floating Bottom Dock is visible and interactive.
-- [ ] Returning to `PeopleRoute` from `ArchivedContactsScreen` or `PersonDetailScreen` guarantees the dock is visible.
-- [ ] Deleting or archiving from `PersonEditScreen` and returning to `PeopleRoute` restores the dock while positioning the confirmation Toast Pill comfortably above it.
-- [ ] Dock height in pixels (`dockHeightPx`) is preserved across transitions without zero-height flicker.
-- [ ] Automated regression tests in `NavigationTransitionTest` and `AppNavigationTest` verify dock visibility across all edit exit transitions with 100% pass rate.
+- [ ] Navigating back from `PersonEditScreen` (saving changes, canceling, deleting, or archiving) restores the Floating Bottom Dock on the Relationship Tab.
+- [ ] Navigating back from `PersonDetailScreen` restores the Floating Bottom Dock on the Relationship Tab.
+- [ ] Measured `dockHeightPx` is preserved during hide/restore transitions to avoid layout jumps or zero-offset miscalculations.
+- [ ] Adaptive spacing for Toast Pills correctly accounts for the restored Floating Bottom Dock height without overlap.
+- [ ] Reduced-motion mode snaps dock visibility instantly upon returning without lag or dropped frames.
+- [ ] Full navigation transition and ViewModel regression test suite runs and passes 100% (`./gradlew testDebugUnitTest`).

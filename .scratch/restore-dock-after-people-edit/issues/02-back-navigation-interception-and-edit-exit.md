@@ -1,13 +1,15 @@
-# 02: Back Navigation Interception and Edit State Exit Restoration
+# 02: Back Navigation Interception and In-Place Selection Exit
 
-**What to build:** Guarantee that back gestures, back button invocations, and header close ("X") taps on `ContactsScreen` always intercept and consume back navigation while in selection mode, clearing all selected contacts and immediately restoring the Floating Bottom Dock before allowing any route pops. Ensure that deselecting the final contact cleanly triggers dock restoration.
+**What to build:**
+Ensure that invoking back navigation (system back gesture, device back button, top bar back icon, or selection header dismiss button) while in selection edit mode on the Relationship Tab intercepts the back event to clear selected contacts and exit selection mode in place, without popping to the Home Tab. Exiting selection mode immediately restores the Floating Bottom Dock to full opacity and resting position (`translationY = 0`).
 
-**Blocked by:** 01: Scoped Selection State and Orphan Pruning on Route/Tab Transitions
+**Blocked by:** 01 (Scoped Selection State and Orphan Selection Pruning)
 
 **Status:** ready-for-agent
 
-- [ ] `BackHandler` on `ContactsScreen` intercepts back navigation while `uiState.isSelectionMode` is true, clears selections, and restores the Floating Bottom Dock without popping the route.
-- [ ] Tapping the close ("X") button in the contextual selection header clears selections and restores the dock.
-- [ ] Deselecting the last remaining contact automatically clears selection mode and animates the dock back to resting position (`translationY = 0`, opacity = 1).
-- [ ] Reduced motion mode restores the dock instantaneously without animation delays.
-- [ ] Automated tests verify back-press precedence and selection exit dock restoration.
+- [ ] `BackHandler` in `ContactsScreen` intercepts back navigation while `isSelectionMode` is true, clearing selections via `OnClearSelection` without leaving the Relationship Tab.
+- [ ] Tapping the selection header "X" dismiss button clears selections and restores the dock.
+- [ ] Deselecting the last selected contact automatically exits selection mode and restores the dock.
+- [ ] A subsequent back press after selection mode is cleared performs normal route backstack navigation.
+- [ ] Dock visibility animation smoothly animates from hidden to visible (`translationY = 0`, `alpha = 1.0f`) upon edit exit.
+- [ ] Unit and UI contract tests verify back-interception precedence and in-place dock restoration.
