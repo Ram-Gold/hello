@@ -1,6 +1,6 @@
 # Spec: Restore Floating Bottom Dock After Relationship Edit State
 
-**Status:** ready-for-agent
+**Status:** closed
 
 ## Problem Statement
 
