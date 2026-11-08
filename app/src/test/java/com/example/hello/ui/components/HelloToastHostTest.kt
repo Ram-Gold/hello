@@ -3,6 +3,7 @@ package com.example.hello.ui.components
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -124,6 +125,46 @@ class HelloToastHostTest {
         assertEquals(testScheme.secondary, resolveProgressColor(ToastSemanticType.ARCHIVE, testScheme))
         assertEquals(testScheme.primary, resolveProgressColor(ToastSemanticType.SUCCESS, testScheme))
         assertEquals(testScheme.primary, resolveProgressColor(ToastSemanticType.FAVORITE, testScheme))
+    }
+
+    @Test
+    fun shouldShowToastCountdown_actionableMessagesAndLabelsReturnTrue() {
+        // Any non-blank action label displays countdown progress bar
+        assertTrue(shouldShowToastCountdown("Contact updated", actionLabel = "Undo"))
+        assertTrue(shouldShowToastCountdown("Encounter saved", actionLabel = "Details"))
+        assertTrue(shouldShowToastCountdown("Item deleted", actionLabel = "Undo"))
+
+        // Recoverable messages with default 7000ms duration display countdown progress even without actionLabel
+        assertTrue(shouldShowToastCountdown("Contact deleted"))
+        assertTrue(shouldShowToastCountdown("Archived 1 contact"))
+        assertTrue(shouldShowToastCountdown("Contact restored"))
+        assertTrue(shouldShowToastCountdown("Encounter restored"))
+    }
+
+    @Test
+    fun shouldShowToastCountdown_informationalMessagesWithoutActionReturnFalse() {
+        assertFalse(shouldShowToastCountdown("Contact updated"))
+        assertFalse(shouldShowToastCountdown("Marked as done!"))
+        assertFalse(shouldShowToastCountdown("Export finished"))
+        assertFalse(shouldShowToastCountdown("Added to favorites"))
+        assertFalse(shouldShowToastCountdown("Failed to save contact"))
+
+        // Blank or whitespace-only action labels on non-recoverable messages return false
+        assertFalse(shouldShowToastCountdown("Contact updated", actionLabel = null))
+        assertFalse(shouldShowToastCountdown("Contact updated", actionLabel = ""))
+        assertFalse(shouldShowToastCountdown("Contact updated", actionLabel = "   "))
+    }
+
+    @Test
+    fun shouldShowToastCountdown_customDurationsRespectThreshold() {
+        // Custom duration > 3500ms shows countdown bar
+        assertTrue(shouldShowToastCountdown("Custom message", null, durationMs = 3501L))
+        assertTrue(shouldShowToastCountdown("Custom message", null, durationMs = 7000L))
+
+        // Custom duration <= 3500ms does not show countdown bar unless actionLabel is present
+        assertFalse(shouldShowToastCountdown("Custom message", null, durationMs = 3500L))
+        assertFalse(shouldShowToastCountdown("Custom message", null, durationMs = 2000L))
+        assertTrue(shouldShowToastCountdown("Custom message", actionLabel = "Undo", durationMs = 2000L))
     }
 }
 

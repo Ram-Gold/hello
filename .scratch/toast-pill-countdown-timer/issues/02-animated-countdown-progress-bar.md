@@ -4,14 +4,14 @@
 
 **Blocked by:** 01: Duration Policy, Semantic Progress Contract, and 7-Second Repository Undo Window
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Progress line is rendered along the bottom edge of `HelloToastPill` with a height of 2–3dp.
-- [ ] Progress line is strictly clipped within the pill's 24dp rounded corners, never overflowing or bleeding outside the capsule.
-- [ ] Only actionable toasts with an action label (or duration > 4000ms) display the bottom countdown progress line; non-actionable toasts remain clean without a countdown line.
-- [ ] The progress line animates continuously and smoothly from full width to empty width across the duration.
-- [ ] Semantic colors match the action context (error tint for delete, secondary amber for archive, primary for other actions).
-- [ ] Tapping the action button immediately terminates the countdown animation.
-- [ ] Switching or updating messages resets the progress bar cleanly from 100%.
-- [ ] Automated tests verify progress bar visibility rules and lifecycle cleanup.
+- [x] Progress line is rendered along the bottom edge of `HelloToastPill` with a height of 2–3dp.
+- [x] Progress line is strictly clipped within the pill's 24dp rounded corners, never overflowing or bleeding outside the capsule.
+- [x] Only actionable toasts with an action label (or duration > 4000ms) display the bottom countdown progress line; non-actionable toasts remain clean without a countdown line.
+- [x] The progress line animates continuously and smoothly from full width to empty width across the duration.
+- [x] Semantic colors match the action context (error tint for delete, secondary amber for archive, primary for other actions).
+- [x] Tapping the action button immediately terminates the countdown animation.
+- [x] Switching or updating messages resets the progress bar cleanly from 100%.
+- [x] Automated tests verify progress bar visibility rules and lifecycle cleanup.
 
