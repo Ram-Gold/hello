@@ -2,6 +2,8 @@ package com.example.hello.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -124,6 +126,22 @@ fun shouldHideFloatingDock(
         else -> false
     }
     return isScopedSelectionMode
+}
+
+/**
+ * Returns the animation specification for Floating Bottom Dock visibility transitions.
+ * When [isReducedMotion] is true, snaps immediately (duration = 0ms) without lag or dropped frames.
+ * When [isReducedMotion] is false, animates smoothly via [MotionTokens.NAV_BAR_HIDE_DURATION_MS].
+ */
+fun floatingDockVisibilitySpec(isReducedMotion: Boolean = false): FiniteAnimationSpec<Float> {
+    return if (isReducedMotion) {
+        snap()
+    } else {
+        tween(
+            durationMillis = MotionTokens.NAV_BAR_HIDE_DURATION_MS,
+            easing = MotionTokens.NavBarHideEasing
+        )
+    }
 }
 
 /**

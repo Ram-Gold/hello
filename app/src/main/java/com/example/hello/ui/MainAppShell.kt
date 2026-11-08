@@ -120,6 +120,7 @@ import com.example.hello.ui.navigation.aospSharedAxisPopEnter
 import com.example.hello.ui.navigation.aospSharedAxisPopExit
 import com.example.hello.ui.navigation.enterTransition
 import com.example.hello.ui.navigation.exitTransition
+import com.example.hello.ui.navigation.floatingDockVisibilitySpec
 import com.example.hello.ui.navigation.isMainRootRoute
 import com.example.hello.ui.navigation.mainRootEnterTransition
 import com.example.hello.ui.navigation.mainRootExitTransition
@@ -273,12 +274,10 @@ fun MainAppShell(
             )
         }
     }
+    val isReducedMotion = userPreferences?.reduceAnimations == true
     val dockVisibilityProgressState = animateFloatAsState(
         targetValue = if (shouldHideDock) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = MotionTokens.NAV_BAR_HIDE_DURATION_MS,
-            easing = MotionTokens.NavBarHideEasing
-        ),
+        animationSpec = floatingDockVisibilitySpec(isReducedMotion),
         label = "DockVisibilityProgress"
     )
     val shouldRenderDock by remember(shouldHideDock) {
@@ -390,7 +389,7 @@ fun MainAppShell(
                         contactsViewModel = contactsViewModel,
                         quickActionViewModel = quickActionViewModel,
                         terminologyState = terminologyState,
-                        isReducedMotion = userPreferences?.reduceAnimations == true
+                        isReducedMotion = isReducedMotion
                     )
                 }
 
@@ -413,7 +412,7 @@ fun MainAppShell(
                     shouldRenderDock = shouldRenderDock,
                     dockVisibilityProgressState = dockVisibilityProgressState,
                     dockHeightPx = dockHeightPx,
-                    onDockHeightChanged = { dockHeightPx = it },
+                    onDockHeightChanged = { if (it > 0) dockHeightPx = it },
                     homeViewModel = homeViewModel,
                     quickActionViewModel = quickActionViewModel,
                     preferredTerminology = preferredTerminology,
@@ -1099,7 +1098,9 @@ private fun MainAppNavHost(
                                 }
                             }
                             if (!navController.popBackStack(PersonDetailRoute.ROUTE_PATTERN, inclusive = true)) {
-                                navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
+                                if (!navController.popBackStack(PeopleRoute.ROUTE_NAME, inclusive = false)) {
+                                    navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
+                                }
                             }
                         }
                     )
@@ -1183,7 +1184,11 @@ private fun FloatingDockOverlay(
             peopleTabLabel = preferredTerminology.pluralTitle,
             addContactLabel = preferredTerminology.addActionTitle(),
             modifier = modifier
-                .onSizeChanged { onDockHeightChanged(it.height) }
+                .onSizeChanged { size ->
+                    if (size.height > 0) {
+                        onDockHeightChanged(size.height)
+                    }
+                }
                 .graphicsLayer {
                     val progress = dockVisibilityProgressState.value
                     val hideFraction = (1f - progress).coerceIn(0f, 1f)

@@ -2,6 +2,8 @@ package com.example.hello.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.SnapSpec
+import androidx.compose.animation.core.TweenSpec
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.theme.MotionTokens
 import org.junit.Assert.assertEquals
@@ -291,5 +293,62 @@ class NavigationTransitionTest {
         assertEquals(setOf(HomeNavTab.HOME), resolveActiveTransitionTabs(HomeNavTab.HOME, HomeNavTab.HOME))
         assertEquals(setOf(HomeNavTab.PEOPLE), resolveActiveTransitionTabs(HomeNavTab.PEOPLE, HomeNavTab.PEOPLE))
         assertEquals(setOf(HomeNavTab.TIMELINE), resolveActiveTransitionTabs(HomeNavTab.TIMELINE, HomeNavTab.TIMELINE))
+    }
+
+    @Test
+    fun shouldHideFloatingDock_evaluatesToFalse_whenReturningToPeopleRouteFromDetailOrEdit() {
+        // While on PersonDetail screen, dock is hidden
+        val detailRoute = PersonDetailRoute.createRoute("contact-42")
+        assertTrue(
+            "Floating dock must be hidden on PersonDetailRoute",
+            shouldHideFloatingDock(detailRoute, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+        assertTrue(
+            "Floating dock must be hidden on PersonDetailRoute pattern",
+            shouldHideFloatingDock(PersonDetailRoute.ROUTE_PATTERN, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // While on PersonEdit screen, dock is hidden
+        val editRoute = PersonEditRoute.createRoute("contact-42")
+        assertTrue(
+            "Floating dock must be hidden on PersonEditRoute",
+            shouldHideFloatingDock(editRoute, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+        assertTrue(
+            "Floating dock must be hidden on PersonEditRoute pattern",
+            shouldHideFloatingDock(PersonEditRoute.ROUTE_PATTERN, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Returning from PersonEdit to PersonDetail: dock remains hidden
+        assertTrue(
+            "Floating dock remains hidden on PersonDetail when returning from edit",
+            shouldHideFloatingDock(detailRoute, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Returning from PersonDetail or PersonEdit to PeopleRoute: dock visibility is restored
+        assertFalse(
+            "Floating dock must be restored to visible when returning to PeopleRoute from PersonDetail",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+        assertFalse(
+            "Floating dock must be restored to visible when returning to PeopleRoute from PersonEdit directly (save/delete/archive)",
+            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+    }
+
+    @Test
+    fun dockVisibilitySpec_respectsReducedMotionMode_snapVsAnimated() {
+        // Standard motion: 220ms tween with NavBarHideEasing
+        val standardSpec = floatingDockVisibilitySpec(isReducedMotion = false)
+        assertTrue("Standard motion spec must be a TweenSpec", standardSpec is TweenSpec<*>)
+        val standardTween = standardSpec as TweenSpec<Float>
+        assertEquals(MotionTokens.NAV_BAR_HIDE_DURATION_MS, standardTween.durationMillis)
+        assertEquals(MotionTokens.NavBarHideEasing, standardTween.easing)
+
+        // Reduced motion: snap spec (0ms duration) for instant snapping without lag
+        val reducedSpec = floatingDockVisibilitySpec(isReducedMotion = true)
+        assertTrue("Reduced motion spec must be a SnapSpec", reducedSpec is SnapSpec<*>)
+        val snapSpec = reducedSpec as SnapSpec<Float>
+        assertEquals(0, snapSpec.delay)
     }
 }

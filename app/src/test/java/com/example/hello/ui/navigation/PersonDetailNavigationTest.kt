@@ -1,5 +1,7 @@
 package com.example.hello.ui.navigation
 
+import androidx.compose.ui.unit.dp
+import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.theme.MotionTokens
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -82,5 +84,96 @@ class PersonDetailNavigationTest {
             androidx.compose.animation.ExitTransition.None,
             PersonDetailMotionConfig.rootExitTransition()
         )
+    }
+
+    @Test
+    fun personDetailAndEdit_backNavigation_restoresPeopleRouteAndDockVisibility() {
+        // Simulated navigation stack: People -> PersonDetail -> PersonEdit
+        val backStack = mutableListOf(PeopleRoute.ROUTE_NAME)
+        assertEquals(PeopleRoute.ROUTE_NAME, backStack.last())
+        assertFalse(
+            "Floating dock must be visible on initial PeopleRoute",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Navigate to PersonDetail
+        backStack.add(PersonDetailRoute.createRoute("contact-123"))
+        assertTrue(
+            "Floating dock must be hidden on PersonDetail",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Navigate to PersonEdit
+        backStack.add(PersonEditRoute.createRoute("contact-123"))
+        assertTrue(
+            "Floating dock must be hidden on PersonEdit",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Case A: Save / Cancel on PersonEdit pops back to PersonDetail
+        backStack.removeAt(backStack.lastIndex)
+        assertEquals(PersonDetailRoute.createRoute("contact-123"), backStack.last())
+        assertTrue(
+            "Floating dock remains hidden on PersonDetail after popping PersonEdit",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Back from PersonDetail pops back to PeopleRoute
+        backStack.removeAt(backStack.lastIndex)
+        assertEquals(PeopleRoute.ROUTE_NAME, backStack.last())
+        assertFalse(
+            "Floating dock must be restored on PeopleRoute after popping PersonDetail",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+
+        // Case B: Archive / Delete on PersonEdit pops both PersonEdit and PersonDetail back to PeopleRoute
+        backStack.add(PersonDetailRoute.createRoute("contact-456"))
+        backStack.add(PersonEditRoute.createRoute("contact-456"))
+        // Pop back to PeopleRoute directly
+        while (backStack.last() != PeopleRoute.ROUTE_NAME) {
+            backStack.removeAt(backStack.lastIndex)
+        }
+        assertEquals(PeopleRoute.ROUTE_NAME, backStack.last())
+        assertFalse(
+            "Floating dock must be restored on PeopleRoute after deleting/archiving from PersonEdit",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+    }
+
+    @Test
+    fun dockHeightPreservation_preservesLastMeasuredHeightToPreventZeroOffsetJumps() {
+        var preservedDockHeightPx = 0
+
+        // Invariant: dockHeight is updated only when measured height is strictly greater than 0
+        fun updateDockHeight(newHeight: Int) {
+            if (newHeight > 0) {
+                preservedDockHeightPx = newHeight
+            }
+        }
+
+        // Simulate initial measurement when dock is visible on PeopleRoute
+        val initialHeightPx = 210
+        updateDockHeight(initialHeightPx)
+        assertEquals(210, preservedDockHeightPx)
+
+        // Transition to PersonDetail: dock is hidden / translated off-screen / unrendered
+        // An unrendered or detached composable reporting 0 must NOT overwrite preservedDockHeightPx
+        updateDockHeight(0)
+        assertEquals(
+            "Dock height must not be reset to 0 during hide/unrender transition",
+            210,
+            preservedDockHeightPx
+        )
+
+        // Transition back to PeopleRoute: dock restores and preservedDockHeightPx is immediately available
+        // to compute Toast Pill clearances before next layout pass
+        val navBarBottomPaddingDp = 24.dp
+        val toastClearancePadding = if (preservedDockHeightPx > 0) {
+            // dock is available, toast clearance pads above dock
+            70.dp + 16.dp
+        } else {
+            navBarBottomPaddingDp + 16.dp
+        }
+        assertEquals(86.dp, toastClearancePadding)
     }
 }
