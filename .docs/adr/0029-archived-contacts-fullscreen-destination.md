@@ -25,3 +25,4 @@ ADR-0028 introduced archived contact access via an ephemeral modal bottom sheet.
 **Consequences:**
 - **Positive:** Unconfined full-screen experience with native top bar and back navigation; preserves zero idle clutter; supports bi-directional undo on restore; adheres to Android Jetpack Navigation standards.
 - **Negative:** Full-screen navigation adds a new back stack entry (mitigated by instant 0ms back-press pop).
+
