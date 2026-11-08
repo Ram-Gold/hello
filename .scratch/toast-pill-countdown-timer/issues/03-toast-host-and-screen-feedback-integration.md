@@ -4,13 +4,13 @@
 
 **Blocked by:** 02: Animated Slim Countdown Progress Bar Component in Toast Pill
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Global feedback collector in `MainAppShell` passes the 7000ms duration for actionable delete/archive messages.
-- [ ] Sub-screen scaffolds (`PersonDetailScreen`, etc.) pass the 7000ms duration for encounter deletions.
-- [ ] Deleting a contact or encounter displays the Toast Pill with the active countdown progress bar for 7 seconds.
-- [ ] Tapping "Undo" at 5–6 seconds into the countdown successfully restores the contact/encounter in SQLite.
-- [ ] Restoration confirmation toast ("Contact restored" / "Encounter restored") displays as a standard brief toast without a countdown bar.
-- [ ] Non-actionable toasts continue to display for standard brief durations (3–4s).
-- [ ] Automated regression tests verify end-to-end event handling and undo restoration contract.
+- [x] Global feedback collector in `MainAppShell` passes the 7000ms duration for actionable delete/archive messages.
+- [x] Sub-screen scaffolds (`PersonDetailScreen`, etc.) pass the 7000ms duration for encounter deletions.
+- [x] Deleting a contact or encounter displays the Toast Pill with the active countdown progress bar for 7 seconds.
+- [x] Tapping "Undo" at 5–6 seconds into the countdown successfully restores the contact/encounter in SQLite.
+- [x] Restoration confirmation toast ("Contact restored" / "Encounter restored") displays as a standard brief toast without a countdown bar.
+- [x] Non-actionable toasts continue to display for standard brief durations (3–4s).
+- [x] Automated regression tests verify end-to-end event handling and undo restoration contract.
 

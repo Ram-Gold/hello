@@ -50,6 +50,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
+import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
+import com.example.hello.ui.components.showHelloToast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -95,19 +98,23 @@ fun PersonDetailScreen(
         uiState.userMessage?.let { msg ->
             val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
             val result = if (hasUndo) {
-                snackbarHostState.showSnackbar(
+                snackbarHostState.showHelloToast(
                     message = msg,
                     actionLabel = "Undo",
-                    duration = SnackbarDuration.Short
+                    durationMs = TOAST_DURATION_ACTIONABLE_MS
                 )
             } else {
-                snackbarHostState.showSnackbar(msg)
+                snackbarHostState.showHelloToast(
+                    message = msg,
+                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                )
             }
             if (result == SnackbarResult.ActionPerformed) {
                 haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+            } else {
+                onEvent(PersonDetailUiEvent.OnDismissUserMessage)
             }
-            onEvent(PersonDetailUiEvent.OnDismissUserMessage)
         }
     }
 

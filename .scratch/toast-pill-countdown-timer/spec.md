@@ -1,6 +1,6 @@
 # Feature Specification: Toast Pill Countdown Progress Bar and Extended Undo Window
 
-Status: ready-for-agent  
+Status: closed  
 Date: 2026-11-08  
 Topic: UI / Transient Feedback / Toast Pill / Data Safety  
 

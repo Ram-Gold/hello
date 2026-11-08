@@ -231,4 +231,29 @@ class PersonDetailViewModelTest {
         assertTrue(state.userMessage!!.contains("Deleted 1 encounter"))
         assertTrue(state.encounters.none { it.id == toDelete.id })
     }
+
+    @Test
+    fun onUndoDeleteEncounter_restoresDeletedEncounterAndShowsRestorationMessage() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val initialEncounters = viewModel.uiState.value.encounters
+        val toDelete = initialEncounters.first()
+
+        // Select and delete encounter
+        viewModel.onEvent(PersonDetailUiEvent.OnEncounterLongClick(toDelete.id))
+        viewModel.onEvent(PersonDetailUiEvent.OnConfirmDeleteSelected)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Deleted 1 encounter", viewModel.uiState.value.userMessage)
+        assertTrue(viewModel.uiState.value.encounters.none { it.id == toDelete.id })
+
+        // Trigger undo
+        viewModel.onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val restoredState = viewModel.uiState.value
+        assertEquals("Encounter restored", restoredState.userMessage)
+        assertTrue(restoredState.encounters.any { it.id == toDelete.id })
+    }
 }

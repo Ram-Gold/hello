@@ -471,6 +471,11 @@ class ContactRepositoryTest {
     }
 
     @Test
+    fun undoWindowDuration_matches7SecondsSpecification() {
+        assertEquals(7000L, ContactRepository.UNDO_WINDOW_DURATION_MS)
+    }
+
+    @Test
     fun archiveContact_and_undoLastArchive_restoresContact() {
         val contact = repository.contacts.value.first()
         repository.archiveContact(contact.id, archived = true)

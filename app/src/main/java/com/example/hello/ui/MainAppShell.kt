@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
+import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
+import com.example.hello.ui.components.showHelloToast
 import com.example.hello.ui.haptics.HelloHaptics
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
@@ -1028,16 +1031,21 @@ private fun MainAppNavHost(
                         onEvent = editViewModel::onEvent,
                         onNavigateBack = { navController.popBackStack() },
                         onSaveSuccess = {
-                            scope.launch { snackbarHostState.showSnackbar("Contact updated") }
+                            scope.launch {
+                                snackbarHostState.showHelloToast(
+                                    message = "Contact updated",
+                                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                                )
+                            }
                             navController.popBackStack()
                         },
                         onLifecycleSuccess = { isArchived ->
                             scope.launch {
                                 val msg = if (isArchived) "Contact archived" else "Contact deleted"
-                                val result = snackbarHostState.showSnackbar(
+                                val result = snackbarHostState.showHelloToast(
                                     message = msg,
                                     actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
+                                    durationMs = TOAST_DURATION_ACTIONABLE_MS
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
                                     helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
@@ -1047,7 +1055,10 @@ private fun MainAppNavHost(
                                         quickActionViewModel.repository.undoLastDeleteContact()
                                     }
                                     if (restored) {
-                                        snackbarHostState.showSnackbar("Contact restored")
+                                        snackbarHostState.showHelloToast(
+                                            message = "Contact restored",
+                                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                                        )
                                     }
                                 }
                             }
@@ -1181,27 +1192,39 @@ private fun SnackbarFeedbackCollector(
                 msg.contains("archive", ignoreCase = true) ||
                 msg.contains("restored", ignoreCase = true)
             val result = if (hasUndo) {
-                snackbarHostState.showSnackbar(
+                snackbarHostState.showHelloToast(
                     message = msg,
                     actionLabel = "Undo",
-                    duration = SnackbarDuration.Short
+                    durationMs = TOAST_DURATION_ACTIONABLE_MS
                 )
             } else {
-                snackbarHostState.showSnackbar(msg)
+                snackbarHostState.showHelloToast(
+                    message = msg,
+                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                )
             }
             if (result == SnackbarResult.ActionPerformed) {
                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 if (msg.contains("archive", ignoreCase = true)) {
                     if (quickActionViewModel.repository.undoLastArchive()) {
-                        snackbarHostState.showSnackbar("Contact restored")
+                        snackbarHostState.showHelloToast(
+                            message = "Contact restored",
+                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                        )
                     }
                 } else if (msg.contains("restored", ignoreCase = true)) {
                     if (quickActionViewModel.repository.undoLastArchive()) {
-                        snackbarHostState.showSnackbar("Contact archived")
+                        snackbarHostState.showHelloToast(
+                            message = "Contact archived",
+                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                        )
                     }
                 } else {
                     if (quickActionViewModel.repository.undoLastDeleteContact()) {
-                        snackbarHostState.showSnackbar("Contact restored")
+                        snackbarHostState.showHelloToast(
+                            message = "Contact restored",
+                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                        )
                     }
                 }
             }
@@ -1210,7 +1233,7 @@ private fun SnackbarFeedbackCollector(
     }
     LaunchedEffect(homeUiState.userMessage) {
         homeUiState.userMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showHelloToast(it, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
             homeViewModel.onEvent(HomeUiEvent.OnDismissUserMessage)
         }
     }
@@ -1218,18 +1241,24 @@ private fun SnackbarFeedbackCollector(
         timelineUiState.userMessage?.let { msg ->
             val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
             val result = if (hasUndo) {
-                snackbarHostState.showSnackbar(
+                snackbarHostState.showHelloToast(
                     message = msg,
                     actionLabel = "Undo",
-                    duration = SnackbarDuration.Short
+                    durationMs = TOAST_DURATION_ACTIONABLE_MS
                 )
             } else {
-                snackbarHostState.showSnackbar(msg)
+                snackbarHostState.showHelloToast(
+                    message = msg,
+                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                )
             }
             if (result == SnackbarResult.ActionPerformed) {
                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 if (quickActionViewModel.repository.undoLastDeleteEncounters()) {
-                    snackbarHostState.showSnackbar("Encounter restored")
+                    snackbarHostState.showHelloToast(
+                        message = "Encounter restored",
+                        durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                    )
                 }
             }
             timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
@@ -1238,7 +1267,7 @@ private fun SnackbarFeedbackCollector(
     LaunchedEffect(quickActionUiState.userMessage) {
         quickActionUiState.userMessage?.let {
             helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showHelloToast(it, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
             quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
         }
     }

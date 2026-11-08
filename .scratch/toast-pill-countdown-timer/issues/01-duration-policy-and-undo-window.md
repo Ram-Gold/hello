@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Messages with an "Undo" action or destructive keywords ("Deleted", "Archived", "Restored") resolve to 7000ms duration.
-- [ ] Informational notices without an undo action resolve to 3500ms duration.
-- [ ] Progress fraction calculation accurately yields values from 1.0 down to 0.0 based on elapsed time vs total duration.
-- [ ] Progress semantic color resolves to error tone for delete operations, secondary amber for archive operations, and primary brand tone for standard actions.
-- [ ] In-memory undo cache in repositories remains valid and successfully executes rollback for up to 7 seconds.
-- [ ] Unit tests in test suite verify duration mapping, progress math, and repository cache validity.
+- [x] Messages with an "Undo" action or destructive keywords ("Deleted", "Archived", "Restored") resolve to 7000ms duration.
+- [x] Informational notices without an undo action resolve to 3500ms duration.
+- [x] Progress fraction calculation accurately yields values from 1.0 down to 0.0 based on elapsed time vs total duration.
+- [x] Progress semantic color resolves to error tone for delete operations, secondary amber for archive operations, and primary brand tone for standard actions.
+- [x] In-memory undo cache in repositories remains valid and successfully executes rollback for up to 7 seconds.
+- [x] Unit tests in test suite verify duration mapping, progress math, and repository cache validity.
 
