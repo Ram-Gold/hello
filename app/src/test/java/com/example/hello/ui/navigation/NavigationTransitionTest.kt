@@ -218,6 +218,32 @@ class NavigationTransitionTest {
     }
 
     @Test
+    fun shouldHideFloatingDock_transitionsFromTrueToFalseWhenSelectionModeExitsOnPeopleRoute() {
+        // When selection mode is entered on PeopleRoute, dock is hidden
+        var isContactsSelectionMode = true
+        assertTrue(
+            "Floating dock must be hidden on PeopleRoute during selection edit mode",
+            shouldHideFloatingDock(
+                currentRoute = PeopleRoute.ROUTE_NAME,
+                isContactsSelectionMode = isContactsSelectionMode,
+                activeTab = HomeNavTab.PEOPLE
+            )
+        )
+
+        // When selection mode is cleared/exited (e.g. BackHandler, dismiss 'X', or last contact deselected),
+        // shouldHideFloatingDock transitions from true to false, restoring dock visibility
+        isContactsSelectionMode = false
+        assertFalse(
+            "Floating dock must be restored to visible on PeopleRoute once selection mode is exited",
+            shouldHideFloatingDock(
+                currentRoute = PeopleRoute.ROUTE_NAME,
+                isContactsSelectionMode = isContactsSelectionMode,
+                activeTab = HomeNavTab.PEOPLE
+            )
+        )
+    }
+
+    @Test
     fun personDetailTransitions_areLayeredAboveWithFullWidthSlide() {
         assertEquals(
             "PersonDetailScreen must be layered above main page with zIndex = 1f",

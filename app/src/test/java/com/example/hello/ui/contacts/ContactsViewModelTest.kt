@@ -203,7 +203,29 @@ class ContactsViewModelTest {
 
         val state = viewModel.uiState.value
         assertTrue(state.selectedContactIds.isEmpty())
-        assertTrue(!state.isSelectionMode)
+        assertFalse(state.isSelectionMode)
+    }
+
+    @Test
+    fun onToggleSelectContact_togglingOffLastRemainingSelectedContact_setsSelectionModeFalseAndClearsSelectedIds() {
+        val firstId = viewModel.uiState.value.contacts[0].id
+        val secondId = viewModel.uiState.value.contacts[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+        assertEquals(setOf(firstId, secondId), viewModel.uiState.value.selectedContactIds)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Toggle first contact off; second remains selected so selection mode is still active
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(firstId))
+        assertEquals(setOf(secondId), viewModel.uiState.value.selectedContactIds)
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+
+        // Toggle off the last remaining contact; selection mode must automatically exit
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+        val state = viewModel.uiState.value
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertFalse(state.isSelectionMode)
     }
 
     @Test
@@ -220,7 +242,24 @@ class ContactsViewModelTest {
 
         val state = viewModel.uiState.value
         assertTrue(state.selectedContactIds.isEmpty())
-        assertTrue(!state.isSelectionMode)
+        assertFalse(state.isSelectionMode)
+    }
+
+    @Test
+    fun onClearSelection_resetsSelectionModeAndDismissesPendingBatchDeleteDialog() {
+        val targetId = viewModel.uiState.value.contacts.first().id
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(targetId))
+        viewModel.onEvent(ContactsUiEvent.OnRequestDeleteSelected)
+
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.isDeleteConfirmationVisible)
+
+        viewModel.onEvent(ContactsUiEvent.OnClearSelection)
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSelectionMode)
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertFalse(state.isDeleteConfirmationVisible)
     }
 
     @Test

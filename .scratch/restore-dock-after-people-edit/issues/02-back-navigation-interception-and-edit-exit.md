@@ -5,11 +5,11 @@ Ensure that invoking back navigation (system back gesture, device back button, t
 
 **Blocked by:** 01 (Scoped Selection State and Orphan Selection Pruning)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] `BackHandler` in `ContactsScreen` intercepts back navigation while `isSelectionMode` is true, clearing selections via `OnClearSelection` without leaving the Relationship Tab.
-- [ ] Tapping the selection header "X" dismiss button clears selections and restores the dock.
-- [ ] Deselecting the last selected contact automatically exits selection mode and restores the dock.
-- [ ] A subsequent back press after selection mode is cleared performs normal route backstack navigation.
-- [ ] Dock visibility animation smoothly animates from hidden to visible (`translationY = 0`, `alpha = 1.0f`) upon edit exit.
-- [ ] Unit and UI contract tests verify back-interception precedence and in-place dock restoration.
+- [x] `BackHandler` in `ContactsScreen` intercepts back navigation while `isSelectionMode` is true, clearing selections via `OnClearSelection` without leaving the Relationship Tab.
+- [x] Tapping the selection header "X" dismiss button clears selections and restores the dock.
+- [x] Deselecting the last selected contact automatically exits selection mode and restores the dock.
+- [x] A subsequent back press after selection mode is cleared performs normal route backstack navigation.
+- [x] Dock visibility animation smoothly animates from hidden to visible (`translationY = 0`, `alpha = 1.0f`) upon edit exit.
+- [x] Unit and UI contract tests verify back-interception precedence and in-place dock restoration.
