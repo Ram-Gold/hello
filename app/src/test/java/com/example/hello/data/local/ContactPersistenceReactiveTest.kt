@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -41,12 +42,13 @@ import java.time.temporal.ChronoUnit
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactPersistenceReactiveTest {
 
-    private val testDispatcher = StandardTestDispatcher(TestCoroutineScheduler())
+    private lateinit var testDispatcher: TestDispatcher
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
 
     @Before
     fun setUp() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
