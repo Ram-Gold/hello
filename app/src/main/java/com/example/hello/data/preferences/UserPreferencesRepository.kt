@@ -32,15 +32,10 @@ enum class ThemeStyle(val id: String, val title: String, val subtitle: String) {
         id = "monochrome",
         title = "Minimalist (Mallow & Vellum)",
         subtitle = "High-contrast monochrome palette (#121212), Mallow & Vellum typography, 8dp borders"
-    ),
-    WARM_EARTH(
-        id = "warm_earth",
-        title = "Warm Organic (Terracotta & Sage)",
-        subtitle = "Warm cream & terracotta palette, Nunito & Open Sans typography, organic curves"
     );
 
     companion object {
-        fun fromId(id: String?): ThemeStyle = entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: MONOCHROME
+        fun fromId(id: String?): ThemeStyle = MONOCHROME
     }
 }
 

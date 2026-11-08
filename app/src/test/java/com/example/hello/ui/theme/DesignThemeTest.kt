@@ -66,13 +66,13 @@ class DesignThemeTest {
     }
 
     @Test
-    fun themeStyle_enumAllowsBothMonochromeAndWarmEarth() {
-        assertEquals(2, ThemeStyle.entries.size)
+    fun themeStyle_enumHasSingularMonochromeMinimalistTheme() {
+        assertEquals(1, ThemeStyle.entries.size)
         assertTrue(ThemeStyle.entries.contains(ThemeStyle.MONOCHROME))
-        assertTrue(ThemeStyle.entries.contains(ThemeStyle.WARM_EARTH))
 
         assertEquals(ThemeStyle.MONOCHROME, ThemeStyle.fromId("monochrome"))
-        assertEquals(ThemeStyle.WARM_EARTH, ThemeStyle.fromId("warm_earth"))
+        // Legacy warm earth maps to MONOCHROME
+        assertEquals(ThemeStyle.MONOCHROME, ThemeStyle.fromId("warm_earth"))
         // Fallback default on unknown id
         assertEquals(ThemeStyle.MONOCHROME, ThemeStyle.fromId("unknown_style"))
     }

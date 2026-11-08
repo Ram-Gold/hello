@@ -46,7 +46,6 @@ import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.Place
 import com.example.hello.ui.components.CustomizableIcon
-import com.example.hello.ui.theme.WarmTerracottaPrimary
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

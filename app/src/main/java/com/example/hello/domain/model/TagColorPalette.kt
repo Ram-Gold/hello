@@ -5,7 +5,7 @@ package com.example.hello.domain.model
  */
 object TagColorPalette {
     val PALETTE_HEX = listOf(
-        "#E06D3B", // Terracotta
+        "#404040", // Charcoal Accent
         "#F3A261", // Amber
         "#7DAA82", // Sage
         "#D87D7D", // Dusty Rose

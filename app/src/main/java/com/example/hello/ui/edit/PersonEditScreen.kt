@@ -106,7 +106,6 @@ import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.edit.components.AvatarCropDialog
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.theme.HelloTheme
-import com.example.hello.ui.theme.WarmTerracottaPrimary
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

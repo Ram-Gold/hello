@@ -69,7 +69,7 @@ The floating bottom navigation bar that houses the three primary navigation tabs
 _Avoid_: Navbar, Bottom bar, Tab bar
 
 **Toast Pill**:
-A compact, floating tactile capsule (`RoundedCornerShape(24.dp)`) surfaced to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs context-aware semantic leading icons (Archive, Delete, Star, CheckCircle, Info) with concise message text and an optional trailing action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`), preventing any overlap or obstruction of primary navigation controls.
+A crisp, floating tactile notification card (`RoundedCornerShape(8.dp)` with 1dp border) rendered as an inverted high-contrast surface (`#121212` in light mode, `#FFFFFF` in dark mode) to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs semantic leading icons (Archive, Delete, Star, CheckCircle, Info) and a bottom countdown line with concise message copy and a right-anchored action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`).
 _Avoid_: Toast, Snackbar, Banner, Flash message, Notification bar
 
 **Undo Action**:

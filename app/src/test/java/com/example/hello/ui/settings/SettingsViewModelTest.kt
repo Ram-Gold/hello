@@ -94,18 +94,10 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun onSelectThemeStyle_switchesToWarmEarth_andCanSwitchBack() = runTest {
+    fun onSelectThemeStyle_maintainsMonochromeMinimalist() = runTest {
         advanceUntilIdle()
         assertEquals(ThemeStyle.MONOCHROME, viewModel.uiState.value.themeStyle)
 
-        // Switch to warm earth
-        viewModel.onEvent(SettingsUiEvent.OnSelectThemeStyle(ThemeStyle.WARM_EARTH))
-        advanceUntilIdle()
-
-        assertEquals(ThemeStyle.WARM_EARTH, viewModel.uiState.value.themeStyle)
-        assertTrue(viewModel.uiState.value.userMessage?.contains("Warm Organic") == true)
-
-        // Switch back to monochrome default
         viewModel.onEvent(SettingsUiEvent.OnSelectThemeStyle(ThemeStyle.MONOCHROME))
         advanceUntilIdle()
 

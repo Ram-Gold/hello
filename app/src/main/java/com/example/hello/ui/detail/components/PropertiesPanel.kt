@@ -41,10 +41,6 @@ import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
 import com.example.hello.ui.detail.CadenceHealth
 import com.example.hello.ui.detail.CadenceStatusInfo
-import com.example.hello.ui.theme.AvatarSage
-import com.example.hello.ui.theme.MutedPeachSecondary
-import com.example.hello.ui.theme.WarmSageTertiary
-import com.example.hello.ui.theme.WarmTerracottaPrimary
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -187,18 +183,18 @@ fun PropertiesPanel(
 private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
     val (statusColor, _, icon) = when (cadenceStatus.health) {
         CadenceHealth.ON_TRACK -> Triple(
-            WarmSageTertiary,
-            AvatarSage.copy(alpha = 0.35f),
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             Icons.Rounded.CheckCircle
         )
         CadenceHealth.DUE_SOON -> Triple(
-            MutedPeachSecondary,
-            MutedPeachSecondary.copy(alpha = 0.15f),
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
             Icons.Rounded.AccessTime
         )
         CadenceHealth.OVERDUE -> Triple(
-            WarmTerracottaPrimary,
-            WarmTerracottaPrimary.copy(alpha = 0.15f),
+            MaterialTheme.colorScheme.error,
+            MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
             Icons.Rounded.Warning
         )
         CadenceHealth.NO_CADENCE -> Triple(
@@ -209,7 +205,7 @@ private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
     }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {

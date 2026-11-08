@@ -47,7 +47,7 @@ object TagColorCache {
     private val containerAlphaMap = ConcurrentHashMap<Color, Color>()
     private val borderMap = ConcurrentHashMap<Color, BorderStroke>()
 
-    fun parseColor(hex: String, fallback: Color = Color(0xFFE06D3B)): Color {
+    fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color {
         return colorMap.computeIfAbsent(hex) { raw ->
             try {
                 val cleanHex = raw.trim().removePrefix("#")
@@ -84,7 +84,7 @@ object TagColorCache {
  * container fills, and border strokes. Prevents string parsing and object allocation churn
  * during list scrolling and navigation transitions.
  */
-fun parseTagColor(hex: String, fallback: Color = Color(0xFFE06D3B)): Color =
+fun parseTagColor(hex: String, fallback: Color = Color(0xFF121212)): Color =
     TagColorCache.parseColor(hex, fallback)
 
 /**

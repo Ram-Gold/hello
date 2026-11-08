@@ -44,7 +44,7 @@ import com.example.hello.domain.model.Tag
 object TagColorPalette {
     val PALETTE_HEX = com.example.hello.domain.model.TagColorPalette.PALETTE_HEX
 
-    fun parseColor(hex: String, fallback: Color = Color(0xFFE06D3B)): Color {
+    fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color {
         return try {
             val cleanHex = hex.trim().removePrefix("#")
             val fullHex = if (cleanHex.length == 6) "FF$cleanHex" else cleanHex

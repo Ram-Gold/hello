@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -308,23 +309,31 @@ fun HelloToastPill(
     }
 
     val currentProgress = progressOverride ?: progressAnimatable.value
-    val pillShape = RoundedCornerShape(24.dp)
+    val pillShape = RoundedCornerShape(8.dp)
+
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val toastBackground = if (isDark) Color(0xFFFFFFFF) else Color(0xFF121212)
+    val toastTextColor = if (isDark) Color(0xFF161616) else Color(0xFFFFFFFF)
+    val toastBorderColor = if (isDark) Color(0xFFE2E8F0) else Color(0xFF27272A)
+    val toastActionColor = if (isDark) Color(0xFF121212) else Color(0xFFFFFFFF)
+
+    val hasAction = !actionLabel.isNullOrBlank()
 
     Surface(
         shape = pillShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = toastBackground,
+        contentColor = toastTextColor,
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+            color = toastBorderColor
         ),
         modifier = modifier
             .padding(horizontal = 24.dp)
             .shadow(
                 elevation = 4.dp,
                 shape = pillShape,
-                ambientColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.08f),
-                spotColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.12f)
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+                spotColor = Color.Black.copy(alpha = 0.12f)
             )
             .clip(pillShape)
             .widthIn(max = 380.dp)
@@ -336,7 +345,13 @@ fun HelloToastPill(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = if (hasAction) {
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                } else {
+                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                }
             ) {
                 Icon(
                     imageVector = leadingIcon,
@@ -351,14 +366,13 @@ fun HelloToastPill(
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = toastTextColor,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.weight(1f, fill = hasAction)
                 )
 
-                if (!actionLabel.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.width(4.dp))
+                if (hasAction) {
                     TextButton(
                         onClick = onAction,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
@@ -369,7 +383,7 @@ fun HelloToastPill(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp
                             ),
-                            color = MaterialTheme.colorScheme.primary
+                            color = toastActionColor
                         )
                     }
                 }

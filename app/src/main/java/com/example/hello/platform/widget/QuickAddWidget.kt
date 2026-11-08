@@ -24,21 +24,21 @@ import com.example.hello.ui.quickaction.QuickCaptureActivity
 
 /**
  * Native 1x1 Glance App Widget for the Android home screen.
- * Styled as a warm terracotta (#E06D3B) rounded squircle with a tactile '+' icon
+ * Styled as a crisp Minimalist (#121212) rounded squircle with a tactile '+' icon
  * that launches directly into the Add Contact step-by-step flow in <50ms.
  */
 class QuickAddWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            val terracotta = Color(0xFFE06D3B)
+            val minimalistPrimary = Color(0xFF121212)
             val white = Color(0xFFFFFFFF)
 
             Box(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .background(ColorProvider(terracotta))
-                    .cornerRadius(20.dp)
+                    .background(ColorProvider(minimalistPrimary))
+                    .cornerRadius(16.dp)
                     .clickable(actionStartActivity<QuickCaptureActivity>()),
                 contentAlignment = Alignment.Center
             ) {

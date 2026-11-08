@@ -56,6 +56,9 @@ class ContactPersistenceReactiveTest {
 
     @After
     fun tearDown() {
+        if (this::testDispatcher.isInitialized) {
+            testDispatcher.scheduler.advanceUntilIdle()
+        }
         if (database.isOpen) {
             database.close()
         }

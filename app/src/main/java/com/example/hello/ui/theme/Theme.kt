@@ -76,63 +76,6 @@ val MonochromeDarkColorScheme = darkColorScheme(
     surfaceContainerHighest = Color(0xFF3F3F46)
 )
 
-// Warm Earth Schemes (Previous Theme)
-val DarkColorScheme = darkColorScheme(
-    primary = BurntOrangePrimary,
-    onPrimary = BurntOrangeOnPrimary,
-    primaryContainer = BurntOrangeContainer,
-    onPrimaryContainer = BurntOrangeOnContainer,
-    secondary = SoftAmberSecondary,
-    onSecondary = SoftAmberOnSecondary,
-    secondaryContainer = SoftAmberContainer,
-    onSecondaryContainer = SoftAmberOnContainer,
-    tertiary = DarkSageTertiary,
-    onTertiary = DarkSageOnTertiary,
-    tertiaryContainer = DarkSageContainer,
-    onTertiaryContainer = DarkSageOnContainer,
-    background = DarkOatmealBackground,
-    onBackground = DarkCharcoalText,
-    surface = WarmGraphiteSurface,
-    onSurface = DarkCharcoalText,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = DarkSandstoneGrayText,
-    outline = DarkSandstoneGrayText,
-    outlineVariant = DarkWarmBorder,
-    surfaceContainerLowest = Color(0xFF1E1C1A),
-    surfaceContainerLow = Color(0xFF23201E),
-    surfaceContainer = Color(0xFF2B2724),
-    surfaceContainerHigh = Color(0xFF332F2C),
-    surfaceContainerHighest = DarkSurfaceContainerHighest
-)
-
-val LightColorScheme = lightColorScheme(
-    primary = WarmTerracottaPrimary,
-    onPrimary = WarmTerracottaOnPrimary,
-    primaryContainer = WarmTerracottaContainer,
-    onPrimaryContainer = WarmTerracottaOnContainer,
-    secondary = MutedPeachSecondary,
-    onSecondary = MutedPeachOnSecondary,
-    secondaryContainer = MutedPeachContainer,
-    onSecondaryContainer = MutedPeachOnContainer,
-    tertiary = WarmSageTertiary,
-    onTertiary = WarmSageOnTertiary,
-    tertiaryContainer = WarmSageContainer,
-    onTertiaryContainer = WarmSageOnContainer,
-    background = WarmCreamBackground,
-    onBackground = DeepCharcoalText,
-    surface = WarmWhiteSurface,
-    onSurface = DeepCharcoalText,
-    surfaceVariant = WarmSurfaceVariant,
-    onSurfaceVariant = SandstoneGrayText,
-    outline = SandstoneGrayText,
-    outlineVariant = WarmBorder,
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFFAF5EE),
-    surfaceContainer = Color(0xFFF3ECE3),
-    surfaceContainerHigh = Color(0xFFEDE5DC),
-    surfaceContainerHighest = WarmSurfaceContainerHighest
-)
-
 // Design Shapes (8dp rounded-md per .agents/design.md)
 val DesignShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),
@@ -142,15 +85,6 @@ val DesignShapes = Shapes(
     extraLarge = RoundedCornerShape(16.dp)
 )
 
-// MD3 Expressive organic shapes for Hello (Warm Earth)
-val HelloShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp),
-    extraLarge = RoundedCornerShape(28.dp)
-)
-
 @Composable
 fun HelloTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -158,21 +92,7 @@ fun HelloTheme(
     themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        themeStyle == ThemeStyle.WARM_EARTH -> {
-            if (darkTheme) DarkColorScheme else LightColorScheme
-        }
-        else -> {
-            if (darkTheme) MonochromeDarkColorScheme else MonochromeLightColorScheme
-        }
-    }
-
-    val typography = if (themeStyle == ThemeStyle.WARM_EARTH) Typography else DesignTypography
-    val shapes = if (themeStyle == ThemeStyle.WARM_EARTH) HelloShapes else DesignShapes
+    val colorScheme = if (darkTheme) MonochromeDarkColorScheme else MonochromeLightColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -187,8 +107,8 @@ fun HelloTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = typography,
-        shapes = shapes,
+        typography = DesignTypography,
+        shapes = DesignShapes,
         content = content
     )
 }
