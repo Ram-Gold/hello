@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -26,10 +27,86 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+/**
+ * Standard display duration constants for Toast Pills (ADR-0027 & countdown timer spec).
+ */
+const val TOAST_DURATION_ACTIONABLE_MS: Long = 7000L
+const val TOAST_DURATION_INFORMATIONAL_MS: Long = 3500L
+
+/**
+ * Resolves the toast display duration based on user intent and action recoverability.
+ * Actionable messages (or those with non-blank action labels) receive 7000ms to allow
+ * ample time to register and tap "Undo". Informational notices receive standard 3500ms.
+ */
+fun resolveToastDurationMs(message: String, actionLabel: String? = null): Long {
+    if (!actionLabel.isNullOrBlank()) {
+        return TOAST_DURATION_ACTIONABLE_MS
+    }
+    val isRecoverableAction = message.contains("deleted", ignoreCase = true) ||
+        message.contains("archived", ignoreCase = true) ||
+        message.contains("restored", ignoreCase = true)
+
+    return if (isRecoverableAction) {
+        TOAST_DURATION_ACTIONABLE_MS
+    } else {
+        TOAST_DURATION_INFORMATIONAL_MS
+    }
+}
+
+/**
+ * Linearly computes the remaining fraction of the countdown progress bar.
+ * Starts at 1.0f when elapsedMs = 0, and linearly drops to 0.0f when elapsedMs >= totalDurationMs.
+ * Clamped strictly between 0.0f and 1.0f.
+ */
+fun calculateCountdownProgress(elapsedMs: Long, totalDurationMs: Long): Float {
+    if (totalDurationMs <= 0L) return 0.0f
+    val remainingMs = totalDurationMs - elapsedMs
+    return (remainingMs.toFloat() / totalDurationMs.toFloat()).coerceIn(0.0f, 1.0f)
+}
+
+/**
+ * Semantic tone classification for countdown progress tracks.
+ */
+enum class ToastProgressTone {
+    PRIMARY,
+    SECONDARY,
+    ERROR
+}
+
+/**
+ * Resolves the progress track semantic tone based on the toast semantic classification:
+ * - DELETE / ALERT -> ERROR
+ * - ARCHIVE -> SECONDARY
+ * - FAVORITE / SUCCESS -> PRIMARY
+ */
+fun resolveProgressTone(semanticType: ToastSemanticType): ToastProgressTone = when (semanticType) {
+    ToastSemanticType.DELETE, ToastSemanticType.ALERT -> ToastProgressTone.ERROR
+    ToastSemanticType.ARCHIVE -> ToastProgressTone.SECONDARY
+    ToastSemanticType.FAVORITE, ToastSemanticType.SUCCESS -> ToastProgressTone.PRIMARY
+}
+
+/**
+ * Maps semantic type to concrete theme color given a [ColorScheme].
+ */
+fun resolveProgressColor(semanticType: ToastSemanticType, colorScheme: ColorScheme): Color =
+    when (resolveProgressTone(semanticType)) {
+        ToastProgressTone.ERROR -> colorScheme.error
+        ToastProgressTone.SECONDARY -> colorScheme.secondary
+        ToastProgressTone.PRIMARY -> colorScheme.primary
+    }
+
+/**
+ * Composable helper resolving progress color from current [MaterialTheme].
+ */
+@Composable
+fun resolveProgressColor(semanticType: ToastSemanticType): Color =
+    resolveProgressColor(semanticType, MaterialTheme.colorScheme)
 
 /**
  * Semantic type classification for Toast Pill leading status icons (ADR-0027).

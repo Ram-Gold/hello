@@ -86,7 +86,7 @@ class ContactRepository(
     private val _upcomingAlerts = MutableStateFlow(HomeViewModel.createInitialState().upcomingAlerts)
     val upcomingAlerts: StateFlow<List<UpcomingAlert>> = _upcomingAlerts.asStateFlow()
 
-    // In-memory undo buffer for transient 5-second recovery (ADR-0027)
+    // In-memory undo buffer for transient 7-second recovery (ADR-0027)
     private var lastArchiveOperation: Pair<String, Boolean>? = null
     private var lastDeletedContact: Contact? = null
     private var lastDeletedContactEncounters: List<Encounter> = emptyList()
@@ -1013,7 +1013,7 @@ class ContactRepository(
     }
 
     /**
-     * Reverts the most recent archive operation within the transient 5-second window (ADR-0027).
+     * Reverts the most recent archive operation within the transient 7-second window (ADR-0027).
      */
     fun undoLastArchive(): Boolean {
         val (contactId, previousArchived) = lastArchiveOperation ?: return false
@@ -1024,7 +1024,7 @@ class ContactRepository(
 
     /**
      * Reverts the most recent contact deletion, restoring full contact data, encounters,
-     * and follow-ups within the transient 5-second window (ADR-0027).
+     * and follow-ups within the transient 7-second window (ADR-0027).
      */
     fun undoLastDeleteContact(): Boolean {
         val contactToRestore = lastDeletedContact ?: return false
@@ -1076,7 +1076,7 @@ class ContactRepository(
 
     /**
      * Reverts the most recent encounter deletion, restoring encounters and recalculating
-     * contact encounter metrics within the transient 5-second window (ADR-0027).
+     * contact encounter metrics within the transient 7-second window (ADR-0027).
      */
     fun undoLastDeleteEncounters(): Boolean {
         if (lastDeletedEncounters.isEmpty()) return false
@@ -1266,6 +1266,12 @@ class ContactRepository(
     }
 
     companion object {
+        /**
+         * The standard transient recovery window during which destructive/state mutations can be undone.
+         * Synchronized with the 7-second Toast Pill countdown progress lifecycle (Ticket 01).
+         */
+        const val UNDO_WINDOW_DURATION_MS: Long = 7000L
+
         fun formatFtsQuery(query: String): String? {
             val clean = query.trim()
             if (clean.isBlank()) return null

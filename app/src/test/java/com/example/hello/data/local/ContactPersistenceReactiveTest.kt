@@ -59,6 +59,7 @@ class ContactPersistenceReactiveTest {
         if (database.isOpen) {
             database.close()
         }
+        Thread.sleep(50)
         Dispatchers.resetMain()
     }
 
