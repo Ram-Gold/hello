@@ -142,7 +142,7 @@ private fun ArchivedContactsTopBar(
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Text(
-                text = "$count",
+                text = "Total: $count",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -272,3 +272,4 @@ private fun ArchivedContactsEmptyState(
         }
     }
 }
+

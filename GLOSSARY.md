@@ -92,12 +92,12 @@ _Avoid_: Drop shadow, Box shadow, Divider bar
 The primary navigation tab within the Floating Bottom Dock that opens the contacts surface, dynamically labeled and styled according to the active Relationship Terminology (People, Friends, Connections, or Contacts).
 _Avoid_: People Tab, Contacts Tab, Navbar item
 
-**Archived Contacts Sheet**:
-A drag-up bottom sheet surface accessed from the bottom of the Relationship Tab, displaying archived Contacts in a clean list with instantaneous single-tap Restore capabilities.
-_Avoid_: Archive Screen, Trash Can, Vault, Cold Storage
+**Archived Contacts Screen**:
+A dedicated full-screen destination accessed by pulling down past the activation threshold at the top of the Relationship Tab, displaying archived Contacts in a clean list with instantaneous single-tap Restore capabilities.
+_Avoid_: Trash Can, Vault, Cold Storage
 
 **Restore Action**:
-An action that reactivates an archived Contact, removing them from the Archived Contacts Sheet, moving them back into the active relationship directory, and resuming proactive check-in cadences.
+An action that reactivates an archived Contact, removing them from the Archived Contacts Screen, moving them back into the active relationship directory, and resuming proactive check-in cadences.
 _Avoid_: Unarchive, Recover, Undelete
 
 **Contact Card**:

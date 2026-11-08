@@ -1156,7 +1156,9 @@ private fun SnackbarFeedbackCollector(
 
     LaunchedEffect(contactsUiState.userMessage) {
         contactsUiState.userMessage?.let { msg ->
-            val hasUndo = msg.startsWith("Deleted", ignoreCase = true) || msg.contains("archive", ignoreCase = true)
+            val hasUndo = msg.startsWith("Deleted", ignoreCase = true) ||
+                msg.contains("archive", ignoreCase = true) ||
+                msg.contains("restored", ignoreCase = true)
             val result = if (hasUndo) {
                 snackbarHostState.showSnackbar(
                     message = msg,
@@ -1170,6 +1172,10 @@ private fun SnackbarFeedbackCollector(
                 if (msg.contains("archive", ignoreCase = true)) {
                     if (quickActionViewModel.repository.undoLastArchive()) {
                         snackbarHostState.showSnackbar("Contact restored")
+                    }
+                } else if (msg.contains("restored", ignoreCase = true)) {
+                    if (quickActionViewModel.repository.undoLastArchive()) {
+                        snackbarHostState.showSnackbar("Contact archived")
                     }
                 } else {
                     if (quickActionViewModel.repository.undoLastDeleteContact()) {

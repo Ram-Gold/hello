@@ -59,5 +59,24 @@ class ArchivedContactsContractTest {
         assertTrue(viewModel.uiState.value.contacts.any { it.id == "c-arc-1" })
         assertFalse(viewModel.uiState.value.contacts.first { it.id == "c-arc-1" }.isArchived)
     }
+
+    @Test
+    fun repository_undoLastArchive_supportsReArchivingRestoredContact() {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val contactId = repo.contacts.value.first().id
+
+        // Initially archive the contact
+        repo.archiveContact(contactId, archived = true)
+        assertTrue(repo.fullContacts.value[contactId]?.isArchived == true)
+
+        // Restore contact (unarchive)
+        repo.archiveContact(contactId, archived = false)
+        assertTrue(repo.fullContacts.value[contactId]?.isArchived == false)
+
+        // Undo restore -> contact should be re-archived!
+        val undone = repo.undoLastArchive()
+        assertTrue(undone)
+        assertTrue(repo.fullContacts.value[contactId]?.isArchived == true)
+    }
 }
 

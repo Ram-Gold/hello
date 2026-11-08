@@ -87,7 +87,7 @@ class ContactRepository(
     val upcomingAlerts: StateFlow<List<UpcomingAlert>> = _upcomingAlerts.asStateFlow()
 
     // In-memory undo buffer for transient 5-second recovery (ADR-0027)
-    private var lastArchivedContactId: String? = null
+    private var lastArchiveOperation: Pair<String, Boolean>? = null
     private var lastDeletedContact: Contact? = null
     private var lastDeletedContactEncounters: List<Encounter> = emptyList()
     private var lastDeletedContactFollowUps: List<FollowUp> = emptyList()
@@ -440,9 +440,7 @@ class ContactRepository(
 
     fun archiveContact(contactId: String, archived: Boolean = true) {
         val existing = _fullContacts.value[contactId] ?: return
-        if (archived) {
-            lastArchivedContactId = contactId
-        }
+        lastArchiveOperation = Pair(contactId, existing.isArchived)
         val updated = existing.copy(isArchived = archived)
         updateContact(updated)
 
@@ -1018,9 +1016,9 @@ class ContactRepository(
      * Reverts the most recent archive operation within the transient 5-second window (ADR-0027).
      */
     fun undoLastArchive(): Boolean {
-        val contactId = lastArchivedContactId ?: return false
-        archiveContact(contactId, archived = false)
-        lastArchivedContactId = null
+        val (contactId, previousArchived) = lastArchiveOperation ?: return false
+        archiveContact(contactId, archived = previousArchived)
+        lastArchiveOperation = null
         return true
     }
 
