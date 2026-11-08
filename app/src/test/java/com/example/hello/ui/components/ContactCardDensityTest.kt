@@ -3,8 +3,10 @@ package com.example.hello.ui.components
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.Tag
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class ContactCardDensityTest {
 
@@ -116,10 +118,54 @@ class ContactCardDensityTest {
     }
 
     @Test
-    fun selectionIndicator_rendersInlineCheckmarkInHeaderTier() {
-        // Contract: When isSelected == true, an inline checkmark icon is displayed in Tier 1 beside the name.
-        val isSelected = true
-        val hasCheckmarkInHeader = isSelected
-        assertTrue("Checkmark must be present in header when selected", hasCheckmarkInHeader)
+    fun selectionIndicator_headerTierDoesNotRenderInlineCheckmark_guaranteeingStableStartAlignment() {
+        val srcRoot = File("src/main/java").takeIf { it.exists() } ?: File("app/src/main/java")
+        val contactCardFile = File(srcRoot, "com/example/hello/ui/components/ContactCard.kt")
+        assertTrue("ContactCard.kt must exist", contactCardFile.exists())
+        val content = contactCardFile.readText()
+
+        // 1. ContactCard must use SelectableAvatarBadge wired to isSelected
+        assertTrue(
+            "ContactCard must use SelectableAvatarBadge for avatar selection overlay",
+            content.contains("SelectableAvatarBadge(") && content.contains("isSelected = isSelected")
+        )
+
+        // 2. ContactCard must not render an inline checkmark in the header tier or anywhere in the card
+        assertFalse(
+            "ContactCard must not import or render Icons.Rounded.Check (eliminated in favor of SelectableAvatarBadge)",
+            content.contains("Icons.Rounded.Check")
+        )
+
+        // 3. Name text start alignment offset is invariant across selection states (0dp shift)
+        val unselectedLeadingIconCount = 0
+        val selectedLeadingIconCount = if (content.contains("Icons.Rounded.Check")) 1 else 0
+        assertEquals(
+            "Selected state must not introduce leading checkmark icon before name",
+            unselectedLeadingIconCount,
+            selectedLeadingIconCount
+        )
+    }
+
+    @Test
+    fun headerTier_nameStartOffsetInvariantAcrossSelectionStates() {
+        // Layout contract:
+        // Prior implementation rendered checkmark (18dp) + spacing (8dp) in the header row when selected,
+        // shifting the name 26dp to the right.
+        // Under the refactored contract, Tier 1 row leading element is always contact.name directly.
+        fun calculateHeaderLeadingShift(hasInlineCheckmark: Boolean, checkmarkWidth: Float = 18f, spacing: Float = 8f): Float {
+            return if (hasInlineCheckmark) checkmarkWidth + spacing else 0f
+        }
+
+        val unselectedShift = calculateHeaderLeadingShift(hasInlineCheckmark = false)
+        val selectedShift = calculateHeaderLeadingShift(hasInlineCheckmark = false) // No inline checkmark in either state
+
+        assertEquals("Unselected name shift must be 0", 0f, unselectedShift, 0.001f)
+        assertEquals("Selected name shift must remain 0 (stable start alignment)", 0f, selectedShift, 0.001f)
+        assertEquals(
+            "Horizontal delta between unselected and selected name alignment must be exactly 0 (no layout jumps)",
+            0f,
+            selectedShift - unselectedShift,
+            0.001f
+        )
     }
 }

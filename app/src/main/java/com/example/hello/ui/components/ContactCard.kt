@@ -1,10 +1,8 @@
 package com.example.hello.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,15 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.Tag
-import com.example.hello.ui.home.components.DoodleAvatar
-import com.example.hello.ui.settings.TagColorPalette
 
 /**
  * Material 3 Expressive connected Contact Card matching Settings styling (ADR-0008):
  * - Surface color: surfaceContainer with 0dp elevation and zero borders
  * - When isSelected: decoupled to RoundedCornerShape(24.dp) on all four corners,
- *   MaterialTheme.colorScheme.errorContainer background, inline checkmark icon next to bold name.
- * - 56dp circular avatar container
+ *   MaterialTheme.colorScheme.errorContainer background, animated checkmark badge on avatar.
+ * - 56dp circular avatar container with SelectableAvatarBadge
  * - 3-tier hierarchy:
  *     1. Header: Name + Date tonal pill badge (surfaceContainerHigh) + subtle chevron
  *     2. Body: Contextual Notes preview (adaptive collapse if blank)
@@ -91,8 +86,9 @@ fun ContactCard(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            // 1. 56dp Circular Avatar
-            DoodleAvatar(
+            // 1. 56dp Circular Avatar with Selection Badge
+            SelectableAvatarBadge(
+                isSelected = isSelected,
                 initials = contact.avatarInitials,
                 bgIndex = contact.avatarBgIndex,
                 size = 56.dp,
@@ -105,21 +101,12 @@ fun ContactCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Tier 1: Bold Name + Subtle Chevron + Checkmark when selected
+                // Tier 1: Bold Name + Subtle Chevron (stable start alignment)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = "Selected",
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
                     Text(
                         text = contact.name,
                         style = MaterialTheme.typography.titleMedium.copy(

@@ -5,10 +5,10 @@ Refactor `ContactCard` in the relationship directory to remove the inline checkm
 
 **Blocked by:** 01 (SelectableAvatarBadge Component with Ease-Out Motion)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Remove inline `Icon(Icons.Rounded.Check, ...)` from next to `contact.name` in `ContactCard.kt`.
-- [ ] Ensure name text maintains stable start alignment and never shifts horizontally on selection toggle.
-- [ ] Integrate `SelectableAvatarBadge` into `ContactCard.kt` driven by `isSelected`.
-- [ ] Verify card visual aesthetics and selection state responsiveness.
+- [x] Remove inline `Icon(Icons.Rounded.Check, ...)` from next to `contact.name` in `ContactCard.kt`.
+- [x] Ensure name text maintains stable start alignment and never shifts horizontally on selection toggle.
+- [x] Integrate `SelectableAvatarBadge` into `ContactCard.kt` driven by `isSelected`.
+- [x] Verify card visual aesthetics and selection state responsiveness.
 
