@@ -99,6 +99,8 @@ import com.example.hello.ui.components.rememberPullToActionState
 import com.example.hello.ui.components.TonalFilterPill
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.HelloTheme
@@ -119,8 +121,9 @@ fun ContactsScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val pullToActionState = rememberPullToActionState()
+    val haptics = LocalHelloHaptics.current
 
-    val pullNestedScrollConnection = remember(pullToActionState, listState, uiState.isSelectionMode) {
+    val pullNestedScrollConnection = remember(pullToActionState, listState, uiState.isSelectionMode, haptics) {
         PullToActionNestedScrollConnection(
             state = pullToActionState,
             coroutineScope = coroutineScope,
@@ -129,6 +132,7 @@ fun ContactsScreen(
                 listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
             },
             onTrigger = {
+                haptics.perform(SemanticHapticType.THRESHOLD_ACTIVATION)
                 onNavigateToArchivedContacts()
             }
         )
@@ -261,6 +265,7 @@ fun ContactsScreen(
                                     }
                                 },
                                 onLongClick = {
+                                    haptics.perform(SemanticHapticType.EDIT_ENTRY)
                                     onEvent(ContactsUiEvent.OnContactLongClick(contact.id))
                                 },
                                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -314,7 +319,10 @@ fun ContactsScreen(
                 },
                 confirmButton = {
                     Button(
-                        onClick = { onEvent(ContactsUiEvent.OnConfirmDeleteSelected) },
+                        onClick = {
+                            haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                            onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
                             contentColor = MaterialTheme.colorScheme.onError

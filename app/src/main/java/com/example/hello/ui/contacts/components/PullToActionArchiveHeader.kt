@@ -26,13 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.ui.components.PullToActionState
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 
 /**
  * Scroll-driven reveal header displayed above the contacts list during overscroll.
@@ -48,11 +48,11 @@ fun PullToActionArchiveHeader(
     if (state.pullOffsetPx <= 0f) return
 
     val density = LocalDensity.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = LocalHelloHaptics.current
 
     LaunchedEffect(state.isTriggered) {
         if (state.isTriggered) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            haptics.perform(SemanticHapticType.THRESHOLD_ACTIVATION)
         }
     }
 

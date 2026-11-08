@@ -5,11 +5,11 @@ Deliver strong, deliberate warning haptic feedback for high-consequence operatio
 
 **Blocked by:** 02 (Edit Entry and Completion Success Haptics Wiring)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming contact archive actions.
-- [ ] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming single or batch contact deletion in alert dialogs.
-- [ ] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming encounter deletion.
-- [ ] Connect `SUCCESS_CONFIRMATION` feedback when tapping "Restore" on an archived contact and when tapping "Undo" on a toast pill.
-- [ ] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.
+- [x] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming contact archive actions.
+- [x] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming single or batch contact deletion in alert dialogs.
+- [x] Connect `DESTRUCTIVE_ACTION` heavy warning pulse upon confirming encounter deletion.
+- [x] Connect `SUCCESS_CONFIRMATION` feedback when tapping "Restore" on an archived contact and when tapping "Undo" on a toast pill.
+- [x] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.
 

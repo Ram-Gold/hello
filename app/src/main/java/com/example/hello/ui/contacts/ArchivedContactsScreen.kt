@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.home.components.DoodleAvatar
 
 /**
@@ -207,8 +209,12 @@ private fun ArchivedContactCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
+            val haptics = LocalHelloHaptics.current
             TextButton(
-                onClick = onRestore,
+                onClick = {
+                    haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                    onRestore()
+                },
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
             ) {

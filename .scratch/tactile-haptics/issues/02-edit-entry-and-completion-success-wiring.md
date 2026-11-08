@@ -5,10 +5,10 @@ Connect tactile feedback when transitioning into edit states and upon successful
 
 **Blocked by:** 01 (Core Semantic Haptics Dispatcher and Navigation / Mode Toggle Wiring)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Connect `EDIT_ENTRY` tactile tap when clicking "Edit" on a contact profile and when long-pressing a contact to enter multi-selection mode.
-- [ ] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon saving a new contact in Flow A.
-- [ ] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon tapping "Save Encounter" in Flow B.
-- [ ] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon successfully saving profile updates in `PersonEditScreen`.
+- [x] Connect `EDIT_ENTRY` tactile tap when clicking "Edit" on a contact profile and when long-pressing a contact to enter multi-selection mode.
+- [x] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon saving a new contact in Flow A.
+- [x] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon tapping "Save Encounter" in Flow B.
+- [x] Connect `SUCCESS_CONFIRMATION` affirmative haptic feedback upon successfully saving profile updates in `PersonEditScreen`.
 

@@ -27,6 +27,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -51,6 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.haptics.HelloHaptics
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
+import com.example.hello.ui.haptics.rememberHelloHaptics
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.navigation.NavType
@@ -305,12 +310,15 @@ fun MainAppShell(
         }
     }
 
+    val helloHaptics = rememberHelloHaptics()
+
     SnackbarFeedbackCollector(
         homeViewModel = homeViewModel,
         timelineViewModel = timelineViewModel,
         contactsViewModel = contactsViewModel,
         quickActionViewModel = quickActionViewModel,
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        helloHaptics = helloHaptics
     )
 
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
@@ -324,21 +332,24 @@ fun MainAppShell(
         navBarBottomPadding + 16.dp
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = {
-            HelloToastHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = toastBottomPadding)
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+    CompositionLocalProvider(
+        LocalHelloHaptics provides helloHaptics
+    ) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = {
+                HelloToastHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(bottom = toastBottomPadding)
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
                 if (hasCompletedOnboarding || (currentRoute != null && currentRoute != OnboardingRoute.ROUTE_NAME)) {
                     WarmRootTabsHost(
                         navController = navController,
@@ -383,6 +394,7 @@ fun MainAppShell(
             }
         }
     }
+}
 
 /**
  * Keeps both [HomeScreen] and [ContactsScreen] permanently composed and laid out in memory
@@ -657,6 +669,7 @@ private fun MainAppNavHost(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val helloHaptics = LocalHelloHaptics.current
     val isReducedMotion = userPreferences?.reduceAnimations == true
     val motionDuration = if (isReducedMotion) 0 else MotionTokens.AOSP_TRANSITION_DURATION
 
@@ -1021,6 +1034,7 @@ private fun MainAppNavHost(
                                     duration = SnackbarDuration.Short
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
+                                    helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                                     val restored = if (isArchived) {
                                         quickActionViewModel.repository.undoLastArchive()
                                     } else {
@@ -1147,7 +1161,8 @@ private fun SnackbarFeedbackCollector(
     timelineViewModel: TimelineViewModel,
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    helloHaptics: HelloHaptics = LocalHelloHaptics.current
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val timelineUiState by timelineViewModel.uiState.collectAsState()
@@ -1169,6 +1184,7 @@ private fun SnackbarFeedbackCollector(
                 snackbarHostState.showSnackbar(msg)
             }
             if (result == SnackbarResult.ActionPerformed) {
+                helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 if (msg.contains("archive", ignoreCase = true)) {
                     if (quickActionViewModel.repository.undoLastArchive()) {
                         snackbarHostState.showSnackbar("Contact restored")
@@ -1205,6 +1221,7 @@ private fun SnackbarFeedbackCollector(
                 snackbarHostState.showSnackbar(msg)
             }
             if (result == SnackbarResult.ActionPerformed) {
+                helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 if (quickActionViewModel.repository.undoLastDeleteEncounters()) {
                     snackbarHostState.showSnackbar("Encounter restored")
                 }
@@ -1214,6 +1231,7 @@ private fun SnackbarFeedbackCollector(
     }
     LaunchedEffect(quickActionUiState.userMessage) {
         quickActionUiState.userMessage?.let {
+            helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
             snackbarHostState.showSnackbar(it)
             quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
         }

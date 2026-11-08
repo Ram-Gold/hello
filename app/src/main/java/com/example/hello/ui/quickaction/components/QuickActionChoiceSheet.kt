@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 
 @Composable
 fun QuickActionChoiceContent(
@@ -40,6 +42,8 @@ fun QuickActionChoiceContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = LocalHelloHaptics.current
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -92,7 +96,10 @@ fun QuickActionChoiceContent(
             badgeText = "2s Escape Hatch",
             accentContainerColor = MaterialTheme.colorScheme.primaryContainer,
             accentContentColor = MaterialTheme.colorScheme.primary,
-            onClick = onSelectAddContact
+            onClick = {
+                haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                onSelectAddContact()
+            }
         )
 
         // Option 2: Met Again / Log Encounter (Flow B)
@@ -103,7 +110,10 @@ fun QuickActionChoiceContent(
             badgeText = "Instant Search",
             accentContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             accentContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            onClick = onSelectLogEncounter
+            onClick = {
+                haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                onSelectLogEncounter()
+            }
         )
     }
 }

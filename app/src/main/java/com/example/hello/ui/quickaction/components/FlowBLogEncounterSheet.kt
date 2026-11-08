@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
@@ -72,6 +74,7 @@ fun FlowBLogEncounterSheet(
     onEvent: (QuickActionUiEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = LocalHelloHaptics.current
     var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
@@ -130,6 +133,7 @@ fun FlowBLogEncounterSheet(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable {
                         if (isEncounterStage) {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
                             onEvent(QuickActionUiEvent.OnClearSelectedContact)
                         } else {
                             onEvent(QuickActionUiEvent.OnDismiss)
@@ -232,6 +236,7 @@ private fun ContactSelectorContent(
     uiState: QuickActionUiState,
     onEvent: (QuickActionUiEvent) -> Unit
 ) {
+    val haptics = LocalHelloHaptics.current
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -272,7 +277,10 @@ private fun ContactSelectorContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onEvent(QuickActionUiEvent.OnSelectExistingContact(contact)) }
+                        .clickable {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onEvent(QuickActionUiEvent.OnSelectExistingContact(contact))
+                        }
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween

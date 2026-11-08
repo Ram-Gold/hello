@@ -78,6 +78,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import com.example.hello.ui.components.ClearTextTrailingIcon
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.components.bringIntoViewOnFocus
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,6 +130,7 @@ fun PersonEditScreen(
     val emailRequester = remember { BringIntoViewRequester() }
     val notesRequester = remember { BringIntoViewRequester() }
     val cadenceRequester = remember { BringIntoViewRequester() }
+    val haptics = LocalHelloHaptics.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -142,6 +145,7 @@ fun PersonEditScreen(
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
+            haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
             onSaveSuccess()
         }
     }
@@ -562,7 +566,10 @@ fun PersonEditScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { onEvent(PersonEditUiEvent.OnConfirmArchive) },
+                    onClick = {
+                        haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                        onEvent(PersonEditUiEvent.OnConfirmArchive)
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary
                     )
@@ -588,7 +595,10 @@ fun PersonEditScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { onEvent(PersonEditUiEvent.OnConfirmDelete) },
+                    onClick = {
+                        haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                        onEvent(PersonEditUiEvent.OnConfirmDelete)
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )

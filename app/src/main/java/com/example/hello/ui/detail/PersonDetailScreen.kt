@@ -67,6 +67,8 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
 import com.example.hello.ui.detail.components.PropertiesPanel
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
@@ -83,6 +85,7 @@ fun PersonDetailScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = LocalHelloHaptics.current
 
     BackHandler(enabled = uiState.isSelectionMode) {
         onEvent(PersonDetailUiEvent.OnClearSelection)
@@ -101,6 +104,7 @@ fun PersonDetailScreen(
                 snackbarHostState.showSnackbar(msg)
             }
             if (result == SnackbarResult.ActionPerformed) {
+                haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
             }
             onEvent(PersonDetailUiEvent.OnDismissUserMessage)
@@ -172,7 +176,10 @@ fun PersonDetailScreen(
                                 tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = onEditClick) {
+                        IconButton(onClick = {
+                            haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                            onEditClick()
+                        }) {
                             Icon(
                                 imageVector = Icons.Rounded.Edit,
                                 contentDescription = "Edit Contact",
@@ -283,7 +290,10 @@ fun PersonDetailScreen(
                         },
                         confirmButton = {
                             Button(
-                                onClick = { onEvent(PersonDetailUiEvent.OnConfirmDeleteSelected) },
+                                onClick = {
+                                    haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                                    onEvent(PersonDetailUiEvent.OnConfirmDeleteSelected)
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error,
                                     contentColor = MaterialTheme.colorScheme.onError

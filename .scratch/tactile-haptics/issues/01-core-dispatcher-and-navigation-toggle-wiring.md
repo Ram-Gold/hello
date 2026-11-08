@@ -5,10 +5,10 @@ Create the centralized `HelloHaptics` interface and default implementation mappi
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Create `HelloHaptics` interface and default Compose provider defining semantic interaction feedback types.
-- [ ] Connect `THRESHOLD_ACTIVATION` haptic feedback to the overscroll pull-to-action threshold breach and trigger when accessing Archived Contacts.
-- [ ] Connect `MODE_TOGGLE` tactile tick feedback when switching between logging a new encounter and updating timeline memories in Quick Action sheets.
-- [ ] Write unit tests for `HelloHaptics` verifying semantic event mapping and fallback execution.
+- [x] Create `HelloHaptics` interface and default Compose provider defining semantic interaction feedback types.
+- [x] Connect `THRESHOLD_ACTIVATION` haptic feedback to the overscroll pull-to-action threshold breach and trigger when accessing Archived Contacts.
+- [x] Connect `MODE_TOGGLE` tactile tick feedback when switching between logging a new encounter and updating timeline memories in Quick Action sheets.
+- [x] Write unit tests for `HelloHaptics` verifying semantic event mapping and fallback execution.
 

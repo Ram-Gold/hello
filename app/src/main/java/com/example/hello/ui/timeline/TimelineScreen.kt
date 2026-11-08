@@ -73,6 +73,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.ui.components.SelectableAvatarBadge
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
@@ -89,6 +91,7 @@ fun TimelineScreen(
     val showFuture = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.FUTURE
     val showPast = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.PAST
     val showTodayDivider = uiState.selectedFilter == TimelineFilter.ALL
+    val haptics = LocalHelloHaptics.current
 
     BackHandler(enabled = uiState.isSelectionMode) {
         onEvent(TimelineUiEvent.OnClearSelection)
@@ -242,6 +245,7 @@ fun TimelineScreen(
                                         }
                                     },
                                     onLongClick = {
+                                        haptics.perform(SemanticHapticType.EDIT_ENTRY)
                                         onEvent(TimelineUiEvent.OnNodeLongClick(node.id))
                                     }
                                 )
@@ -311,7 +315,10 @@ fun TimelineScreen(
                 },
                 confirmButton = {
                     Button(
-                        onClick = { onEvent(TimelineUiEvent.OnConfirmDeleteSelected) },
+                        onClick = {
+                            haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                            onEvent(TimelineUiEvent.OnConfirmDeleteSelected)
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
                             contentColor = MaterialTheme.colorScheme.onError
