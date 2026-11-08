@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -91,6 +92,17 @@ class ContactRepository(
             coroutineScope.launch {
                 seedDatabaseIfEmpty()
                 sanitizeLegacyHashtags()
+                val initialEntities = database.contactDao().getAllContacts()
+                val domainMap = initialEntities.associate { it.id to it.toDomain() }
+                _fullContacts.value = domainMap
+                _contacts.value = initialEntities.map { it.toSummary() }
+                _recentContacts.value = initialEntities
+                    .filterNot { it.isArchived }
+                    .sortedByDescending { it.lastMetAt ?: Instant.MIN }
+                    .take(4)
+                    .map { it.toSummary() }
+                refreshBirthdayAlerts(domainMap.values)
+                refreshFavorites()
                 observeDatabaseStreams()
             }
         }
@@ -106,26 +118,23 @@ class ContactRepository(
 
     private suspend fun seedDatabaseIfEmpty() {
         val db = database ?: return
-        val existingContacts = db.contactDao().getAllContactsFlow().firstOrNull().orEmpty()
-        if (existingContacts.isEmpty()) {
-            val contactsToSeed = _fullContacts.value.values.toList()
-            db.withTransactionSafe {
-                db.contactDao().insertContacts(contactsToSeed.map { it.toEntity() })
-                db.contactDao().insertContactFtsList(
-                    contactsToSeed.map { contact ->
-                        ContactFtsEntity(
-                            contactId = contact.id,
-                            name = contact.name,
-                            aliases = contact.aliases.joinToString(" "),
-                            notes = contact.notes
-                        )
-                    }
-                )
-                db.placeDao().insertPlaces(_places.value.map { it.toEntity() })
-                db.tagDao().insertTags(_tags.value.map { it.toEntity() })
-                db.encounterDao().insertEncounters(_encounters.value.map { it.toEntity() })
-                db.followUpDao().insertFollowUps(_followUps.value.map { it.toEntity() })
-            }
+        if (db.contactDao().getContactCount() == 0) {
+            val contactsToSeed = initialFullContacts().values.toList()
+            db.contactDao().insertContactsIfAbsent(contactsToSeed.map { it.toEntity() })
+            db.contactDao().insertContactFtsList(
+                contactsToSeed.map { contact ->
+                    ContactFtsEntity(
+                        contactId = contact.id,
+                        name = contact.name,
+                        aliases = contact.aliases.joinToString(" "),
+                        notes = contact.notes
+                    )
+                }
+            )
+            db.placeDao().insertPlaces(_places.value.map { it.toEntity() })
+            db.tagDao().insertTags(_tags.value.map { it.toEntity() })
+            db.encounterDao().insertEncounters(_encounters.value.map { it.toEntity() })
+            db.followUpDao().insertFollowUps(_followUps.value.map { it.toEntity() })
         }
     }
 
@@ -358,12 +367,29 @@ class ContactRepository(
     }
 
     fun toggleFavorite(contactId: String) {
-        val current = _fullContacts.value[contactId] ?: return
-        val updated = current.copy(
-            isFavorite = !current.isFavorite,
-            updatedAt = Instant.now()
-        )
-        updateContact(updated)
+        val current = _fullContacts.value[contactId]
+        if (current != null) {
+            val updated = current.copy(
+                isFavorite = !current.isFavorite,
+                updatedAt = Instant.now()
+            )
+            updateContact(updated)
+        } else {
+            val db = database
+            if (db != null) {
+                coroutineScope.launch {
+                    val entity = db.contactDao().getContactById(contactId)
+                    if (entity != null) {
+                        val newFavorite = !entity.isFavorite
+                        val updatedEntity = entity.copy(isFavorite = newFavorite, updatedAt = Instant.now())
+                        db.contactDao().insertContact(updatedEntity)
+                        val domain = updatedEntity.toDomain()
+                        _fullContacts.update { it + (contactId to domain) }
+                        refreshFavorites()
+                    }
+                }
+            }
+        }
     }
 
     fun updateContact(updated: Contact) {
@@ -391,7 +417,7 @@ class ContactRepository(
         val db = database
         if (db != null) {
             coroutineScope.launch {
-                db.contactDao().updateContact(updated.toEntity())
+                db.contactDao().insertContact(updated.toEntity())
                 db.contactDao().deleteContactFtsByContactId(updated.id)
                 db.contactDao().insertContactFts(
                     ContactFtsEntity(

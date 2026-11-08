@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.Contact
 import com.example.hello.platform.avatar.AvatarStorageManager
+import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -372,6 +373,8 @@ class PersonEditViewModel(
             meetCount = base?.meetCount ?: 0,
             cadenceDays = current.cadenceDays,
             isArchived = base?.isArchived ?: false,
+            isFavorite = base?.isFavorite ?: false,
+            updatedAt = Instant.now(),
             customProperties = current.customProperties
         )
 

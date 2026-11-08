@@ -187,12 +187,14 @@ class HomeViewModel(
 
     fun syncRepositoryData(
         recentContacts: List<ContactSummary>,
-        upcomingAlerts: List<UpcomingAlert>
+        upcomingAlerts: List<UpcomingAlert>,
+        favoriteContacts: List<ContactSummary> = _uiState.value.favoriteContacts
     ) {
         _uiState.update { state ->
             state.copy(
                 recentContacts = recentContacts,
-                upcomingAlerts = upcomingAlerts
+                upcomingAlerts = upcomingAlerts,
+                favoriteContacts = favoriteContacts
             )
         }
     }

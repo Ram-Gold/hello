@@ -68,6 +68,10 @@ _Avoid_: Field, Form Item, Input Widget
 The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Timeline Tab, and Relationship Tab) alongside the companion Quick-Add Floating Action Button. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
 _Avoid_: Navbar, Bottom bar, Tab bar
 
+**Toast Pill**:
+A compact, floating tactile capsule (`RoundedCornerShape(24.dp)`) surfaced to deliver lightweight, transient user feedback (such as confirmations and alerts). It includes a subtle leading icon and concise message, positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`), preventing any overlap or obstruction of primary navigation controls.
+_Avoid_: Toast, Snackbar, Banner, Flash message, Notification bar
+
 **Timeline Tab**:
 The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays across a 365-day year-round horizon and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
 _Avoid_: Activity Feed, History Screen, Global Log, Audit Trail

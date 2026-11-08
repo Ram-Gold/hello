@@ -16,6 +16,12 @@ interface ContactDao {
     @Query("SELECT * FROM contacts ORDER BY name COLLATE NOCASE ASC")
     fun getAllContactsFlow(): Flow<List<ContactEntity>>
 
+    @Query("SELECT * FROM contacts ORDER BY name COLLATE NOCASE ASC")
+    suspend fun getAllContacts(): List<ContactEntity>
+
+    @Query("SELECT COUNT(*) FROM contacts")
+    suspend fun getContactCount(): Int
+
     @Query("SELECT * FROM contacts WHERE isArchived = 0 ORDER BY name COLLATE NOCASE ASC")
     fun getActiveContactsFlow(): Flow<List<ContactEntity>>
 
@@ -30,6 +36,9 @@ interface ContactDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContacts(contacts: List<ContactEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertContactsIfAbsent(contacts: List<ContactEntity>)
 
     @Update
     suspend fun updateContact(contact: ContactEntity)

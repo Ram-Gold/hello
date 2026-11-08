@@ -43,10 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
+import com.example.hello.ui.components.HelloToastHost
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.navigation.NavType
@@ -254,7 +256,8 @@ fun MainAppShell(
                 repository.recentContacts.collect { recents ->
                     homeViewModel.syncRepositoryData(
                         recentContacts = recents,
-                        upcomingAlerts = repository.upcomingAlerts.value
+                        upcomingAlerts = repository.upcomingAlerts.value,
+                        favoriteContacts = repository.favoriteContacts.value
                     )
                 }
             }
@@ -262,7 +265,17 @@ fun MainAppShell(
                 repository.upcomingAlerts.collect { alerts ->
                     homeViewModel.syncRepositoryData(
                         recentContacts = repository.recentContacts.value,
-                        upcomingAlerts = alerts
+                        upcomingAlerts = alerts,
+                        favoriteContacts = repository.favoriteContacts.value
+                    )
+                }
+            }
+            launch {
+                repository.favoriteContacts.collect { favs ->
+                    homeViewModel.syncRepositoryData(
+                        recentContacts = repository.recentContacts.value,
+                        upcomingAlerts = repository.upcomingAlerts.value,
+                        favoriteContacts = favs
                     )
                 }
             }
@@ -270,8 +283,20 @@ fun MainAppShell(
     }
     LaunchedEffect(repository, contactsViewModel) {
         if (contactsViewModel.repository !== repository) {
-            repository.contacts.collect { contacts ->
-                contactsViewModel.syncContacts(contacts)
+            launch {
+                repository.contacts.collect { contacts ->
+                    contactsViewModel.syncContacts(contacts)
+                }
+            }
+            launch {
+                repository.favoriteContacts.collect { favs ->
+                    contactsViewModel.syncFavorites(favs)
+                }
+            }
+            launch {
+                repository.tags.collect { tags ->
+                    contactsViewModel.syncTags(tags)
+                }
             }
         }
     }
@@ -285,11 +310,25 @@ fun MainAppShell(
     )
 
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
+    val density = LocalDensity.current
+    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val toastBottomPadding = if (shouldRenderDock) {
+        val measuredDockDp = with(density) { dockHeightPx.toDp() }
+        val effectiveDockHeight = if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
+        effectiveDockHeight + 16.dp
+    } else {
+        navBarBottomPadding + 16.dp
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = {
+            HelloToastHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = toastBottomPadding)
+            )
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier

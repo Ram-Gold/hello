@@ -17,12 +17,18 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,11 +76,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import com.example.hello.ui.components.ClearTextTrailingIcon
+import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.bringIntoViewOnFocus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,7 +117,17 @@ fun PersonEditScreen(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val nameRequester = remember { BringIntoViewRequester() }
+    val aliasRequester = remember { BringIntoViewRequester() }
+    val roleRequester = remember { BringIntoViewRequester() }
+    val companyRequester = remember { BringIntoViewRequester() }
+    val phoneRequester = remember { BringIntoViewRequester() }
+    val emailRequester = remember { BringIntoViewRequester() }
+    val notesRequester = remember { BringIntoViewRequester() }
+    val cadenceRequester = remember { BringIntoViewRequester() }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -187,13 +206,22 @@ fun PersonEditScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            HelloToastHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .imePadding()
+                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+            )
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -232,7 +260,9 @@ fun PersonEditScreen(
                 singleLine = true,
                 isError = uiState.name.isBlank(),
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, nameRequester)
             )
 
             // Nicknames / Aliases Manager
@@ -241,7 +271,9 @@ fun PersonEditScreen(
                 aliasInput = uiState.aliasInput,
                 onInputChange = { onEvent(PersonEditUiEvent.OnAliasInputChange(it)) },
                 onAddAlias = { onEvent(PersonEditUiEvent.OnAddAlias(it)) },
-                onRemoveAlias = { onEvent(PersonEditUiEvent.OnRemoveAlias(it)) }
+                onRemoveAlias = { onEvent(PersonEditUiEvent.OnRemoveAlias(it)) },
+                coroutineScope = coroutineScope,
+                bringIntoViewRequester = aliasRequester
             )
 
             // Role / Title
@@ -265,7 +297,9 @@ fun PersonEditScreen(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, roleRequester)
             )
 
             // Company / Organization
@@ -289,7 +323,9 @@ fun PersonEditScreen(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, companyRequester)
             )
 
             // Birthday
@@ -409,7 +445,9 @@ fun PersonEditScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, phoneRequester)
             )
 
             // Email Address
@@ -434,7 +472,9 @@ fun PersonEditScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, emailRequester)
             )
 
             // Relationship Notes & Context
@@ -452,7 +492,9 @@ fun PersonEditScreen(
                 minLines = 3,
                 maxLines = 6,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewOnFocus(coroutineScope, notesRequester)
             )
 
             // Tags Manager
@@ -463,6 +505,17 @@ fun PersonEditScreen(
                 onOpenNewTagDialog = { onEvent(PersonEditUiEvent.OnShowNewTagDialog(true)) }
             )
 
+            // Stay-in-touch Cadence
+            CadenceIntervalSelector(
+                cadenceDays = uiState.cadenceDays,
+                isCustomCadence = uiState.isCustomCadence,
+                customInput = uiState.customCadenceInput,
+                onSelectCadence = { onEvent(PersonEditUiEvent.OnSelectCadence(it)) },
+                onCustomChange = { onEvent(PersonEditUiEvent.OnCustomCadenceChange(it)) },
+                coroutineScope = coroutineScope,
+                bringIntoViewRequester = cadenceRequester
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Bottom Lifecycle & Destructive Actions
@@ -471,7 +524,7 @@ fun PersonEditScreen(
                 onDeleteClick = { onEvent(PersonEditUiEvent.OnShowDeleteDialog) }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 
@@ -681,7 +734,9 @@ private fun AliasesChipManager(
     aliasInput: String,
     onInputChange: (String) -> Unit,
     onAddAlias: (String) -> Unit,
-    onRemoveAlias: (String) -> Unit
+    onRemoveAlias: (String) -> Unit,
+    coroutineScope: kotlinx.coroutines.CoroutineScope? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -749,7 +804,13 @@ private fun AliasesChipManager(
                     if (aliasInput.isNotBlank()) onAddAlias(aliasInput)
                 }
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (coroutineScope != null && bringIntoViewRequester != null) {
+                        Modifier.bringIntoViewOnFocus(coroutineScope, bringIntoViewRequester)
+                    } else Modifier
+                )
         )
     }
 }
@@ -813,7 +874,9 @@ private fun CadenceIntervalSelector(
     isCustomCadence: Boolean,
     customInput: String,
     onSelectCadence: (Int?) -> Unit,
-    onCustomChange: (String) -> Unit
+    onCustomChange: (String) -> Unit,
+    coroutineScope: kotlinx.coroutines.CoroutineScope? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null
 ) {
     val presets = listOf(
         7 to "Weekly (7d)",
@@ -879,7 +942,13 @@ private fun CadenceIntervalSelector(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (coroutineScope != null && bringIntoViewRequester != null) {
+                            Modifier.bringIntoViewOnFocus(coroutineScope, bringIntoViewRequester)
+                        } else Modifier
+                    )
             )
         }
     }

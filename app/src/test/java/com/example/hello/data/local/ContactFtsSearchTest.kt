@@ -9,6 +9,7 @@ import com.example.hello.ui.contacts.ContactsUiEvent
 import com.example.hello.ui.contacts.ContactsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -34,15 +35,13 @@ import java.nio.file.Files
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactFtsSearchTest {
 
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
-    private lateinit var testDispatcher: TestDispatcher
 
     @Before
     fun setUp() {
-        val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
-        testDispatcher = dispatcher
-        Dispatchers.setMain(dispatcher)
+        Dispatchers.setMain(testDispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
     }
@@ -173,41 +172,33 @@ class ContactFtsSearchTest {
     }
 
     @Test
-    fun contactsViewModel_ftsSearchPipeline_updatesMatchingAndFallsBackOnClear() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher)
-
+    fun contactsViewModel_ftsSearchPipeline_updatesMatchingAndFallsBackOnClear() = runTest(testDispatcher) {
         val repository = ContactRepository(
             database = database,
             ioDispatcher = testDispatcher,
-            coroutineScope = testScope
+            coroutineScope = backgroundScope
         )
-        testScope.advanceUntilIdle()
+        advanceUntilIdle()
 
-        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
-        try {
-            val viewModel = ContactsViewModel(repository)
-            testScope.advanceUntilIdle()
+        val viewModel = ContactsViewModel(repository)
+        advanceUntilIdle()
 
-            val initialTotal = viewModel.uiState.value.totalCount
-            assertTrue(initialTotal > 0)
+        val initialTotal = viewModel.uiState.value.totalCount
+        assertTrue(initialTotal > 0)
 
-            // Type search query
-            viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("Alex"))
-            testScope.advanceUntilIdle()
+        // Type search query
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("Alex"))
+        advanceUntilIdle()
 
-            val searchResults = viewModel.uiState.value.contacts
-            assertEquals(1, searchResults.size)
-            assertEquals("Alex Rivera", searchResults.first().name)
+        val searchResults = viewModel.uiState.value.contacts
+        assertEquals(1, searchResults.size)
+        assertEquals("Alex Rivera", searchResults.first().name)
 
-            // Clear search query
-            viewModel.onEvent(ContactsUiEvent.OnClearSearch)
-            testScope.advanceUntilIdle()
+        // Clear search query
+        viewModel.onEvent(ContactsUiEvent.OnClearSearch)
+        advanceUntilIdle()
 
-            assertEquals(initialTotal, viewModel.uiState.value.totalCount)
-        } finally {
-            kotlinx.coroutines.Dispatchers.resetMain()
-        }
+        assertEquals(initialTotal, viewModel.uiState.value.totalCount)
     }
 
     private fun createMockContext(): Context {

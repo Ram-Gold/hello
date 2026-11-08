@@ -10,6 +10,9 @@ import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.home.HomeViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -37,15 +40,13 @@ import java.time.temporal.ChronoUnit
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactPersistenceReactiveTest {
 
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
-    private lateinit var testDispatcher: kotlinx.coroutines.test.TestDispatcher
 
     @Before
     fun setUp() {
-        val dispatcher = StandardTestDispatcher()
-        testDispatcher = dispatcher
-        Dispatchers.setMain(dispatcher)
+        Dispatchers.setMain(testDispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
     }
@@ -96,7 +97,7 @@ class ContactPersistenceReactiveTest {
     }
 
     @Test
-    fun contactDao_crudAndReactiveFlowEmission() = runTest {
+    fun contactDao_crudAndReactiveFlowEmission() = runTest(testDispatcher) {
         val dao = database.contactDao()
         val contact1 = Contact(
             id = "c-100",
@@ -123,7 +124,7 @@ class ContactPersistenceReactiveTest {
     }
 
     @Test
-    fun acidInsertMicrobenchmark_commitsUnder2ms() = runTest {
+    fun acidInsertMicrobenchmark_commitsUnder2ms() = runTest(testDispatcher) {
         val dao = database.contactDao()
         val contact = Contact(
             id = "c-bench-1",
@@ -151,55 +152,78 @@ class ContactPersistenceReactiveTest {
     }
 
     @Test
-    fun contactRepository_withRoomDatabase_reactivelySyncsToViewModels() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val testScope = TestScope(testDispatcher)
-
+    fun contactRepository_withRoomDatabase_reactivelySyncsToViewModels() = runTest(testDispatcher) {
         val repository = ContactRepository(
             database = database,
             ioDispatcher = testDispatcher,
-            coroutineScope = testScope
+            coroutineScope = backgroundScope
         )
 
-        testScope.advanceUntilIdle()
+        advanceUntilIdle()
 
-        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
-        try {
-            val homeViewModel = HomeViewModel(repository)
-            val contactsViewModel = ContactsViewModel(repository)
+        val homeViewModel = HomeViewModel(repository)
+        val contactsViewModel = ContactsViewModel(repository)
 
-            // Verify initial seed loaded
-            assertTrue(repository.contacts.value.isNotEmpty())
+        // Verify initial seed loaded
+        assertTrue(repository.contacts.value.isNotEmpty())
 
-            // Quick add a new contact
-            val added = repository.addContactWithInitialEncounter(
-                name = "Grace Hopper",
-                tagIds = emptySet(),
-                placeId = null,
-                customPlaceName = null,
-                note = "Compiler pioneer",
-                followUpDays = 7
-            )
+        // Quick add a new contact
+        val added = repository.addContactWithInitialEncounter(
+            name = "Grace Hopper",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "Compiler pioneer",
+            followUpDays = 7
+        )
 
-            testScope.advanceUntilIdle()
+        advanceUntilIdle()
 
-            // Verify persisted to Room
-            val persistedEntity = database.contactDao().getContactById(added.id)
-            assertNotNull(persistedEntity)
-            assertEquals("Grace Hopper", persistedEntity?.name)
+        // Verify persisted to Room
+        val persistedEntity = database.contactDao().getContactFlow(added.id).filterNotNull().first()
+        assertNotNull(persistedEntity)
+        assertEquals("Grace Hopper", persistedEntity.name)
 
-            // Verify reactive emission to ContactsViewModel
-            val matchingInContacts = contactsViewModel.uiState.value.contacts.firstOrNull { it.id == added.id }
-            assertNotNull(matchingInContacts)
-            assertEquals("Grace Hopper", matchingInContacts?.name)
+        // Verify reactive emission to ContactsViewModel
+        val matchingInContacts = contactsViewModel.uiState.value.contacts.firstOrNull { it.id == added.id }
+        assertNotNull(matchingInContacts)
+        assertEquals("Grace Hopper", matchingInContacts?.name)
 
-            // Verify reactive emission to HomeViewModel
-            val matchingInHome = homeViewModel.uiState.value.recentContacts.firstOrNull { it.id == added.id }
-            assertNotNull(matchingInHome)
-            assertEquals("Grace Hopper", matchingInHome?.name)
-        } finally {
-            kotlinx.coroutines.Dispatchers.resetMain()
-        }
+        // Verify reactive emission to HomeViewModel
+        val matchingInHome = homeViewModel.uiState.value.recentContacts.firstOrNull { it.id == added.id }
+        assertNotNull(matchingInHome)
+        assertEquals("Grace Hopper", matchingInHome?.name)
+    }
+
+    @Test
+    fun favoriteStatus_persistsAcrossRepositoryRestarts() = runTest(testDispatcher) {
+        val repository1 = ContactRepository(
+            database = database,
+            ioDispatcher = testDispatcher,
+            coroutineScope = backgroundScope
+        )
+        advanceUntilIdle()
+
+        val targetId = repository1.contacts.value.first().id
+
+        repository1.toggleFavorite(targetId)
+        advanceUntilIdle()
+
+        val dbEntity = database.contactDao().getContactFlow(targetId).filter { it?.isFavorite == true }.first()
+        assertTrue("Database entity must be marked as favorite: $dbEntity", dbEntity?.isFavorite == true)
+
+        val repository2 = ContactRepository(
+            database = database,
+            ioDispatcher = testDispatcher,
+            coroutineScope = backgroundScope
+        )
+        advanceUntilIdle()
+
+        val favs = repository2.favoriteContacts.first { it.isNotEmpty() }
+        assertTrue(
+            "Favorite contacts must be loaded from DB on startup: $favs",
+            favs.any { it.id == targetId }
+        )
     }
 
     private fun createMockContext(): Context {
