@@ -359,7 +359,8 @@ fun MainAppShell(
                         timelineViewModel = timelineViewModel,
                         contactsViewModel = contactsViewModel,
                         quickActionViewModel = quickActionViewModel,
-                        terminologyState = terminologyState
+                        terminologyState = terminologyState,
+                        isReducedMotion = userPreferences?.reduceAnimations == true
                     )
                 }
 
@@ -411,7 +412,8 @@ private fun WarmRootTabsHost(
     timelineViewModel: TimelineViewModel,
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
-    terminologyState: State<RelationshipTerminology>
+    terminologyState: State<RelationshipTerminology>,
+    isReducedMotion: Boolean = false
 ) {
     val targetProgress = when (activeTab) {
         HomeNavTab.HOME -> 0f
@@ -555,7 +557,8 @@ private fun WarmRootTabsHost(
                 onNavigateToArchivedContacts = onNavigateToArchivedContacts,
                 onContactClick = onContactClick,
                 onAddContactClick = onAddContactClick,
-                terminology = terminologyState.value
+                terminology = terminologyState.value,
+                isReducedMotion = isReducedMotion
             )
         }
 
@@ -640,7 +643,8 @@ private fun PeopleTabDestination(
     onNavigateToArchivedContacts: () -> Unit,
     onContactClick: (String) -> Unit,
     onAddContactClick: () -> Unit,
-    terminology: RelationshipTerminology
+    terminology: RelationshipTerminology,
+    isReducedMotion: Boolean = false
 ) {
     val contactsUiState by contactsViewModel.uiState.collectAsState()
     ScreenDepthWrapper(isDepthVisible = false) {
@@ -651,7 +655,8 @@ private fun PeopleTabDestination(
             onNavigateToArchivedContacts = onNavigateToArchivedContacts,
             onContactClick = onContactClick,
             onAddContactClick = onAddContactClick,
-            terminology = terminology
+            terminology = terminology,
+            isReducedMotion = isReducedMotion
         )
     }
 }
@@ -955,7 +960,8 @@ private fun MainAppNavHost(
                         contacts = contactsUiState.archivedContacts,
                         onRestoreContact = { contactsViewModel.onEvent(ContactsUiEvent.OnRestoreContact(it)) },
                         onNavigateBack = { navController.popBackStack() },
-                        terminology = preferredTerminology
+                        terminology = preferredTerminology,
+                        isReducedMotion = isReducedMotion
                     )
                 }
             }

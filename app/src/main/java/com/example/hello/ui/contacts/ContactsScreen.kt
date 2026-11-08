@@ -90,20 +90,26 @@ import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.platform.portability.VCardShareHelper
-import com.example.hello.ui.contacts.components.PeopleFavoritesSection
-import com.example.hello.ui.contacts.components.PullToActionArchiveHeader
-import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.ContactCard
+import com.example.hello.ui.components.ContactCardExitTransition
+import com.example.hello.ui.components.ContactExitType
+import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.PullToActionNestedScrollConnection
-import com.example.hello.ui.components.rememberPullToActionState
+import com.example.hello.ui.components.PullToActionState
 import com.example.hello.ui.components.TonalFilterPill
 import com.example.hello.ui.components.TonalTagPill
+import com.example.hello.ui.components.rememberPullToActionState
 import com.example.hello.ui.contacts.components.ContactSelectionActionTray
+import com.example.hello.ui.contacts.components.PeopleFavoritesSection
+import com.example.hello.ui.contacts.components.PullToActionArchiveHeader
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.home.components.DoodleAvatar
 import com.example.hello.ui.settings.shapeFor
+import com.example.hello.ui.theme.ContactExitMotionTokens
 import com.example.hello.ui.theme.HelloTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -115,6 +121,7 @@ fun ContactsScreen(
     onContactClick: (String) -> Unit = { onEvent(ContactsUiEvent.OnContactClick(it)) },
     onAddContactClick: () -> Unit = {},
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
+    isReducedMotion: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -122,6 +129,7 @@ fun ContactsScreen(
     val listState = rememberLazyListState()
     val pullToActionState = rememberPullToActionState()
     val haptics = LocalHelloHaptics.current
+    val exitingContacts = remember { androidx.compose.runtime.mutableStateMapOf<String, ContactExitType>() }
 
     val pullNestedScrollConnection = remember(pullToActionState, listState, uiState.isSelectionMode, haptics) {
         PullToActionNestedScrollConnection(
@@ -253,23 +261,33 @@ fun ContactsScreen(
                             contentType = { _, _ -> "contact_card" }
                         ) { index, contact ->
                             val isSelected = contact.id in uiState.selectedContactIds
-                            ContactCard(
-                                contact = contact,
-                                isSelected = isSelected,
-                                shape = if (isSelected) RoundedCornerShape(24.dp) else shapeFor(index, contactsInGroup.size),
-                                onClick = {
-                                    if (uiState.isSelectionMode) {
-                                        onEvent(ContactsUiEvent.OnToggleSelectContact(contact.id))
-                                    } else {
-                                        onContactClick(contact.id)
-                                    }
-                                },
-                                onLongClick = {
-                                    haptics.perform(SemanticHapticType.EDIT_ENTRY)
-                                    onEvent(ContactsUiEvent.OnContactLongClick(contact.id))
-                                },
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
+                            val exitType = exitingContacts[contact.id] ?: ContactExitType.NONE
+
+                            ContactCardExitTransition(
+                                exitType = exitType,
+                                isReducedMotion = isReducedMotion,
+                                modifier = Modifier.animateItem(
+                                    placementSpec = ContactExitMotionTokens.placementSpringSpec()
+                                )
+                            ) {
+                                ContactCard(
+                                    contact = contact,
+                                    isSelected = isSelected,
+                                    shape = if (isSelected) RoundedCornerShape(24.dp) else shapeFor(index, contactsInGroup.size),
+                                    onClick = {
+                                        if (uiState.isSelectionMode) {
+                                            onEvent(ContactsUiEvent.OnToggleSelectContact(contact.id))
+                                        } else {
+                                            onContactClick(contact.id)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                                        onEvent(ContactsUiEvent.OnContactLongClick(contact.id))
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -321,7 +339,14 @@ fun ContactsScreen(
                     Button(
                         onClick = {
                             haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
-                            onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+                            val toDelete = uiState.selectedContactIds.toList()
+                            toDelete.forEach { id -> exitingContacts[id] = ContactExitType.DELETE }
+                            coroutineScope.launch {
+                                val delayMs = if (isReducedMotion) 0L else ContactExitMotionTokens.DELETE_EXIT_FADE_DURATION_MS.toLong()
+                                if (delayMs > 0) delay(delayMs)
+                                onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+                                toDelete.forEach { id -> exitingContacts.remove(id) }
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,

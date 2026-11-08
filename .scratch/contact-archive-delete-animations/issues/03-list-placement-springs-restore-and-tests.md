@@ -5,10 +5,10 @@ Wire Compose `Modifier.animateItem` into `ContactsScreen` and `ArchivedContactsS
 
 **Blocked by:** 02 (Dissolve Deletion Animation and Batch Selection Exit)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Apply `Modifier.animateItem` placement springs across `ContactsScreen` contact cards so remaining items smoothly reflow.
-- [ ] Implement restore row departure animation in `ArchivedContactsScreen` upon tapping "Restore".
-- [ ] Add unit tests verifying exit motion specs, duration bounds, and reduced motion bypass.
-- [ ] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.
+- [x] Apply `Modifier.animateItem` placement springs across `ContactsScreen` contact cards so remaining items smoothly reflow.
+- [x] Implement restore row departure animation in `ArchivedContactsScreen` upon tapping "Restore".
+- [x] Add unit tests verifying exit motion specs, duration bounds, and reduced motion bypass.
+- [x] Run full project test suite (`./gradlew testDebugUnitTest`) and verify 100% pass rate.
 

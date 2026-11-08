@@ -42,9 +42,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.ContactCardExitTransition
+import com.example.hello.ui.components.ContactExitType
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.home.components.DoodleAvatar
+import com.example.hello.ui.theme.ContactExitMotionTokens
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateMapOf
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Dedicated full-screen destination displaying archived contacts.
@@ -58,9 +66,12 @@ fun ArchivedContactsScreen(
     onRestoreContact: (String) -> Unit,
     onNavigateBack: () -> Unit,
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
+    isReducedMotion: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onNavigateBack)
+    val coroutineScope = rememberCoroutineScope()
+    val exitingContacts = remember { mutableStateMapOf<String, ContactExitType>() }
 
     Column(
         modifier = modifier
@@ -90,10 +101,28 @@ fun ArchivedContactsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(contacts, key = { it.id }) { contact ->
-                    ArchivedContactCard(
-                        contact = contact,
-                        onRestore = { onRestoreContact(contact.id) }
-                    )
+                    val exitType = exitingContacts[contact.id] ?: ContactExitType.NONE
+
+                    ContactCardExitTransition(
+                        exitType = exitType,
+                        isReducedMotion = isReducedMotion,
+                        modifier = Modifier.animateItem(
+                            placementSpec = ContactExitMotionTokens.placementSpringSpec()
+                        )
+                    ) {
+                        ArchivedContactCard(
+                            contact = contact,
+                            onRestore = {
+                                val delayMs = if (isReducedMotion) 0L else ContactExitMotionTokens.RESTORE_EXIT_FADE_DURATION_MS.toLong()
+                                exitingContacts[contact.id] = ContactExitType.RESTORE
+                                coroutineScope.launch {
+                                    if (delayMs > 0) delay(delayMs)
+                                    onRestoreContact(contact.id)
+                                    exitingContacts.remove(contact.id)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

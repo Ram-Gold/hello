@@ -5,10 +5,10 @@ Create the motion tokens and departure state coordinator for contact card exits.
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Define `ContactExitMotionTokens` specifying physics springs, slide offsets, and fade curves for archive and delete exits.
-- [ ] Implement `ContactCardExitTransition` composable wrapper or modifier driving the archive exit tuck.
-- [ ] Wire archive exit motion into `ContactsScreen` and `PersonEditScreen` archive confirmation flows.
-- [ ] Support reduced-motion fallback bypassing animation delays when enabled.
+- [x] Define `ContactExitMotionTokens` specifying physics springs, slide offsets, and fade curves for archive and delete exits.
+- [x] Implement `ContactCardExitTransition` composable wrapper or modifier driving the archive exit tuck.
+- [x] Wire archive exit motion into `ContactsScreen` and `PersonEditScreen` archive confirmation flows.
+- [x] Support reduced-motion fallback bypassing animation delays when enabled.
 
