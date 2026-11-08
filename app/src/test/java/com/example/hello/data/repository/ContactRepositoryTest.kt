@@ -469,4 +469,45 @@ class ContactRepositoryTest {
         repository.deleteContact(contact.id)
         assertFalse(repository.favoriteContacts.value.any { it.id == contact.id })
     }
+
+    @Test
+    fun archiveContact_and_undoLastArchive_restoresContact() {
+        val contact = repository.contacts.value.first()
+        repository.archiveContact(contact.id, archived = true)
+        assertTrue(repository.fullContacts.value[contact.id]?.isArchived == true)
+
+        val undone = repository.undoLastArchive()
+        assertTrue(undone)
+        assertTrue(repository.fullContacts.value[contact.id]?.isArchived == false)
+    }
+
+    @Test
+    fun deleteContact_and_undoLastDeleteContact_restoresContact() {
+        val contact = repository.contacts.value.first()
+        val contactId = contact.id
+        val contactName = contact.name
+
+        repository.deleteContact(contactId)
+        assertNull(repository.fullContacts.value[contactId])
+        assertFalse(repository.contacts.value.any { it.id == contactId })
+
+        val undone = repository.undoLastDeleteContact()
+        assertTrue(undone)
+        assertNotNull(repository.fullContacts.value[contactId])
+        assertEquals(contactName, repository.fullContacts.value[contactId]?.name)
+        assertTrue(repository.contacts.value.any { it.id == contactId })
+    }
+
+    @Test
+    fun deleteEncounters_and_undoLastDeleteEncounters_restoresEncounters() {
+        val encounter = repository.encounters.value.first()
+        val encounterId = encounter.id
+
+        repository.deleteEncounters(setOf(encounterId))
+        assertFalse(repository.encounters.value.any { it.id == encounterId })
+
+        val undone = repository.undoLastDeleteEncounters()
+        assertTrue(undone)
+        assertTrue(repository.encounters.value.any { it.id == encounterId })
+    }
 }

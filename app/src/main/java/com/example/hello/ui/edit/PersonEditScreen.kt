@@ -113,7 +113,7 @@ fun PersonEditScreen(
     onEvent: (PersonEditUiEvent) -> Unit,
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
-    onLifecycleSuccess: () -> Unit,
+    onLifecycleSuccess: (isArchived: Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -147,8 +147,10 @@ fun PersonEditScreen(
     }
 
     LaunchedEffect(uiState.isArchivedCompleted, uiState.isDeletedCompleted) {
-        if (uiState.isArchivedCompleted || uiState.isDeletedCompleted) {
-            onLifecycleSuccess()
+        if (uiState.isArchivedCompleted) {
+            onLifecycleSuccess(true)
+        } else if (uiState.isDeletedCompleted) {
+            onLifecycleSuccess(false)
         }
     }
 

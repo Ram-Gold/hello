@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -27,6 +30,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+/**
+ * Semantic type classification for Toast Pill leading status icons (ADR-0027).
+ */
+enum class ToastSemanticType {
+    ARCHIVE,
+    DELETE,
+    FAVORITE,
+    ALERT,
+    SUCCESS
+}
+
+fun resolveToastSemanticType(message: String): ToastSemanticType = when {
+    message.contains("archive", ignoreCase = true) -> ToastSemanticType.ARCHIVE
+    message.contains("favorit", ignoreCase = true) || message.contains("star", ignoreCase = true) -> ToastSemanticType.FAVORITE
+    message.contains("delete", ignoreCase = true) || message.contains("remove", ignoreCase = true) -> ToastSemanticType.DELETE
+    message.contains("error", ignoreCase = true) ||
+        message.contains("fail", ignoreCase = true) ||
+        message.contains("no ", ignoreCase = true) -> ToastSemanticType.ALERT
+    else -> ToastSemanticType.SUCCESS
+}
 
 /**
  * Reusable HelloToastHost component implementing the Toast Pill canonical design (ADR-0026):
@@ -61,15 +85,18 @@ fun HelloToastPill(
     onAction: () -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
-    val isAlert = message.contains("error", ignoreCase = true) ||
-        message.contains("fail", ignoreCase = true) ||
-        message.contains("no ", ignoreCase = true)
-
-    val leadingIcon = if (isAlert) Icons.Rounded.Info else Icons.Rounded.CheckCircle
-    val iconTint = if (isAlert) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.primary
+    val semanticType = resolveToastSemanticType(message)
+    val leadingIcon = when (semanticType) {
+        ToastSemanticType.ARCHIVE -> Icons.Rounded.Archive
+        ToastSemanticType.DELETE -> Icons.Rounded.Delete
+        ToastSemanticType.FAVORITE -> Icons.Rounded.Star
+        ToastSemanticType.ALERT -> Icons.Rounded.Info
+        ToastSemanticType.SUCCESS -> Icons.Rounded.CheckCircle
+    }
+    val iconTint = when (semanticType) {
+        ToastSemanticType.DELETE, ToastSemanticType.ALERT -> MaterialTheme.colorScheme.error
+        ToastSemanticType.ARCHIVE -> MaterialTheme.colorScheme.secondary
+        ToastSemanticType.FAVORITE, ToastSemanticType.SUCCESS -> MaterialTheme.colorScheme.primary
     }
 
     val pillShape = RoundedCornerShape(24.dp)
@@ -80,15 +107,15 @@ fun HelloToastPill(
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
         ),
         modifier = modifier
             .padding(horizontal = 24.dp)
             .shadow(
-                elevation = 6.dp,
+                elevation = 4.dp,
                 shape = pillShape,
-                ambientColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.12f),
-                spotColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.18f)
+                ambientColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.08f),
+                spotColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.12f)
             )
             .widthIn(max = 380.dp)
     ) {
@@ -120,11 +147,14 @@ fun HelloToastPill(
                 Spacer(modifier = Modifier.width(4.dp))
                 TextButton(
                     onClick = onAction,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = actionLabel,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        ),
                         color = MaterialTheme.colorScheme.primary
                     )
                 }

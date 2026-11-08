@@ -41,8 +41,10 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -88,7 +90,19 @@ fun PersonDetailScreen(
 
     LaunchedEffect(uiState.userMessage) {
         uiState.userMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
+            val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
+            val result = if (hasUndo) {
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Short
+                )
+            } else {
+                snackbarHostState.showSnackbar(msg)
+            }
+            if (result == SnackbarResult.ActionPerformed) {
+                onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+            }
             onEvent(PersonDetailUiEvent.OnDismissUserMessage)
         }
     }

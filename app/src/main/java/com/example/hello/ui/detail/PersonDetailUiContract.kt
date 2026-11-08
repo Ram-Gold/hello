@@ -52,4 +52,5 @@ sealed interface PersonDetailUiEvent {
     data object OnRequestDeleteSelected : PersonDetailUiEvent
     data object OnConfirmDeleteSelected : PersonDetailUiEvent
     data object OnDismissDeleteDialog : PersonDetailUiEvent
+    data object OnUndoDeleteEncounter : PersonDetailUiEvent
 }

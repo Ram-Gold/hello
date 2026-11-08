@@ -22,8 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -977,7 +979,25 @@ private fun MainAppNavHost(
                             scope.launch { snackbarHostState.showSnackbar("Contact updated") }
                             navController.popBackStack()
                         },
-                        onLifecycleSuccess = {
+                        onLifecycleSuccess = { isArchived ->
+                            scope.launch {
+                                val msg = if (isArchived) "Contact archived" else "Contact deleted"
+                                val result = snackbarHostState.showSnackbar(
+                                    message = msg,
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    val restored = if (isArchived) {
+                                        quickActionViewModel.repository.undoLastArchive()
+                                    } else {
+                                        quickActionViewModel.repository.undoLastDeleteContact()
+                                    }
+                                    if (restored) {
+                                        snackbarHostState.showSnackbar("Contact restored")
+                                    }
+                                }
+                            }
                             if (!navController.popBackStack(PersonDetailRoute.ROUTE_PATTERN, inclusive = true)) {
                                 navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
                             }
@@ -1102,8 +1122,28 @@ private fun SnackbarFeedbackCollector(
     val quickActionUiState by quickActionViewModel.uiState.collectAsState()
 
     LaunchedEffect(contactsUiState.userMessage) {
-        contactsUiState.userMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        contactsUiState.userMessage?.let { msg ->
+            val hasUndo = msg.startsWith("Deleted", ignoreCase = true) || msg.contains("archive", ignoreCase = true)
+            val result = if (hasUndo) {
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Short
+                )
+            } else {
+                snackbarHostState.showSnackbar(msg)
+            }
+            if (result == SnackbarResult.ActionPerformed) {
+                if (msg.contains("archive", ignoreCase = true)) {
+                    if (quickActionViewModel.repository.undoLastArchive()) {
+                        snackbarHostState.showSnackbar("Contact restored")
+                    }
+                } else {
+                    if (quickActionViewModel.repository.undoLastDeleteContact()) {
+                        snackbarHostState.showSnackbar("Contact restored")
+                    }
+                }
+            }
             contactsViewModel.onEvent(ContactsUiEvent.OnDismissUserMessage)
         }
     }
@@ -1114,8 +1154,22 @@ private fun SnackbarFeedbackCollector(
         }
     }
     LaunchedEffect(timelineUiState.userMessage) {
-        timelineUiState.userMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        timelineUiState.userMessage?.let { msg ->
+            val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
+            val result = if (hasUndo) {
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Short
+                )
+            } else {
+                snackbarHostState.showSnackbar(msg)
+            }
+            if (result == SnackbarResult.ActionPerformed) {
+                if (quickActionViewModel.repository.undoLastDeleteEncounters()) {
+                    snackbarHostState.showSnackbar("Encounter restored")
+                }
+            }
             timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
         }
     }

@@ -69,8 +69,12 @@ The floating bottom navigation bar that houses the three primary navigation tabs
 _Avoid_: Navbar, Bottom bar, Tab bar
 
 **Toast Pill**:
-A compact, floating tactile capsule (`RoundedCornerShape(24.dp)`) surfaced to deliver lightweight, transient user feedback (such as confirmations and alerts). It includes a subtle leading icon and concise message, positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`), preventing any overlap or obstruction of primary navigation controls.
+A compact, floating tactile capsule (`RoundedCornerShape(24.dp)`) surfaced to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs context-aware semantic leading icons (Archive, Delete, Star, CheckCircle, Info) with concise message text and an optional trailing action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`), preventing any overlap or obstruction of primary navigation controls.
 _Avoid_: Toast, Snackbar, Banner, Flash message, Notification bar
+
+**Undo Action**:
+A transient 5-second recovery mechanism surfaced on a Toast Pill following a destructive operation (such as archiving or deleting a Contact or Encounter), allowing the user to restore the entity immediately from an in-memory repository cache without navigation interruptions.
+_Avoid_: Revert Button, Restore Dialog, Rollback Trigger
 
 **Timeline Tab**:
 The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays across a 365-day year-round horizon and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).

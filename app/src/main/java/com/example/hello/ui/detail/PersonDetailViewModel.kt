@@ -159,6 +159,11 @@ class PersonDetailViewModel(
                     }
                 }
             }
+            PersonDetailUiEvent.OnUndoDeleteEncounter -> {
+                if (repository.undoLastDeleteEncounters()) {
+                    _uiState.update { it.copy(userMessage = "Encounter restored") }
+                }
+            }
         }
     }
 

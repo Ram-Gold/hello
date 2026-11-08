@@ -1,44 +1,32 @@
 package com.example.hello.ui.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HelloToastHostTest {
 
     @Test
-    fun toastPill_isAlertLogic_identifiesErrorAndInformationMessages() {
-        val successMessages = listOf(
-            "Marked as done!",
-            "Contact updated",
-            "Added to favorites",
-            "Export finished"
-        )
+    fun resolveToastSemanticType_mapsMessagesToCorrectSemanticTypes() {
+        assertEquals(ToastSemanticType.ARCHIVE, resolveToastSemanticType("Contact archived"))
+        assertEquals(ToastSemanticType.ARCHIVE, resolveToastSemanticType("Archived 1 contact"))
 
-        val alertMessages = listOf(
-            "Failed to save contact",
-            "No phone number available",
-            "An error occurred"
-        )
+        assertEquals(ToastSemanticType.DELETE, resolveToastSemanticType("Contact deleted"))
+        assertEquals(ToastSemanticType.DELETE, resolveToastSemanticType("Deleted 2 contacts"))
+        assertEquals(ToastSemanticType.DELETE, resolveToastSemanticType("Deleted 1 encounter"))
+        assertEquals(ToastSemanticType.DELETE, resolveToastSemanticType("Photo removed"))
 
-        successMessages.forEach { msg ->
-            val isAlert = msg.contains("error", ignoreCase = true) ||
-                msg.contains("fail", ignoreCase = true) ||
-                msg.contains("no ", ignoreCase = true)
-            assertFalse("Expected '$msg' not to be classified as alert", isAlert)
-        }
+        assertEquals(ToastSemanticType.FAVORITE, resolveToastSemanticType("Added to favorites"))
+        assertEquals(ToastSemanticType.FAVORITE, resolveToastSemanticType("Removed from favorites"))
+        assertEquals(ToastSemanticType.FAVORITE, resolveToastSemanticType("Starred contact"))
 
-        alertMessages.forEach { msg ->
-            val isAlert = msg.contains("error", ignoreCase = true) ||
-                msg.contains("fail", ignoreCase = true) ||
-                msg.contains("no ", ignoreCase = true)
-            assertTrue("Expected '$msg' to be classified as alert", isAlert)
-        }
+        assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("Failed to save contact"))
+        assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("No phone number available"))
+        assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("An error occurred"))
+
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Contact updated"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Contact restored"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Marked as done!"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Export finished"))
     }
 }
 

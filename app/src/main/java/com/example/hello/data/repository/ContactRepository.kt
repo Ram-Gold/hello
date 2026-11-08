@@ -86,6 +86,13 @@ class ContactRepository(
     private val _upcomingAlerts = MutableStateFlow(HomeViewModel.createInitialState().upcomingAlerts)
     val upcomingAlerts: StateFlow<List<UpcomingAlert>> = _upcomingAlerts.asStateFlow()
 
+    // In-memory undo buffer for transient 5-second recovery (ADR-0027)
+    private var lastArchivedContactId: String? = null
+    private var lastDeletedContact: Contact? = null
+    private var lastDeletedContactEncounters: List<Encounter> = emptyList()
+    private var lastDeletedContactFollowUps: List<FollowUp> = emptyList()
+    private var lastDeletedEncounters: List<Encounter> = emptyList()
+
     init {
         refreshFavorites()
         if (database != null) {
@@ -433,6 +440,9 @@ class ContactRepository(
 
     fun archiveContact(contactId: String, archived: Boolean = true) {
         val existing = _fullContacts.value[contactId] ?: return
+        if (archived) {
+            lastArchivedContactId = contactId
+        }
         val updated = existing.copy(isArchived = archived)
         updateContact(updated)
 
@@ -463,7 +473,11 @@ class ContactRepository(
         contactFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
 
         val existing = _fullContacts.value[contactId]
-        com.example.hello.platform.avatar.AvatarStorageManager.deleteIfManagedAvatarFile(existing?.photoUri)
+        if (existing != null) {
+            lastDeletedContact = existing
+            lastDeletedContactEncounters = _encounters.value.filter { it.contactId == contactId }
+            lastDeletedContactFollowUps = contactFollowUps
+        }
         _fullContacts.update { it - contactId }
         _contacts.update { list -> list.filterNot { it.id == contactId } }
         _recentContacts.update { list -> list.filterNot { it.id == contactId } }
@@ -918,6 +932,7 @@ class ContactRepository(
         if (encounterIds.isEmpty()) return
         val encountersToDelete = _encounters.value.filter { it.id in encounterIds }
         if (encountersToDelete.isEmpty()) return
+        lastDeletedEncounters = encountersToDelete
 
         val affectedContactIds = encountersToDelete.map { it.contactId }.distinct()
 
@@ -997,6 +1012,142 @@ class ContactRepository(
                 }
             }
         }
+    }
+
+    /**
+     * Reverts the most recent archive operation within the transient 5-second window (ADR-0027).
+     */
+    fun undoLastArchive(): Boolean {
+        val contactId = lastArchivedContactId ?: return false
+        archiveContact(contactId, archived = false)
+        lastArchivedContactId = null
+        return true
+    }
+
+    /**
+     * Reverts the most recent contact deletion, restoring full contact data, encounters,
+     * and follow-ups within the transient 5-second window (ADR-0027).
+     */
+    fun undoLastDeleteContact(): Boolean {
+        val contactToRestore = lastDeletedContact ?: return false
+        val encountersToRestore = lastDeletedContactEncounters
+        val followUpsToRestore = lastDeletedContactFollowUps
+
+        val summary = contactToRestore.toSummary(_tags.value)
+        _fullContacts.update { it + (contactToRestore.id to contactToRestore) }
+        _contacts.update { listOf(summary) + it.filterNot { c -> c.id == contactToRestore.id } }
+        _recentContacts.update { listOf(summary) + it.filterNot { c -> c.id == contactToRestore.id } }
+        if (encountersToRestore.isNotEmpty()) {
+            _encounters.update { encountersToRestore + it }
+        }
+        if (followUpsToRestore.isNotEmpty()) {
+            _followUps.update { followUpsToRestore + it }
+        }
+        refreshFavorites()
+        refreshBirthdayAlerts(_fullContacts.value.values)
+
+        val db = database
+        if (db != null) {
+            coroutineScope.launch {
+                db.withTransactionSafe {
+                    db.contactDao().insertContact(contactToRestore.toEntity())
+                    db.contactDao().deleteContactFtsByContactId(contactToRestore.id)
+                    db.contactDao().insertContactFts(
+                        com.example.hello.data.local.entity.ContactFtsEntity(
+                            contactId = contactToRestore.id,
+                            name = contactToRestore.name,
+                            aliases = contactToRestore.aliases.joinToString(" "),
+                            notes = contactToRestore.notes
+                        )
+                    )
+                    encountersToRestore.forEach { enc ->
+                        db.encounterDao().insertEncounter(enc.toEntity())
+                    }
+                    followUpsToRestore.forEach { fu ->
+                        db.followUpDao().insertFollowUp(fu.toEntity())
+                    }
+                }
+            }
+        }
+
+        lastDeletedContact = null
+        lastDeletedContactEncounters = emptyList()
+        lastDeletedContactFollowUps = emptyList()
+        return true
+    }
+
+    /**
+     * Reverts the most recent encounter deletion, restoring encounters and recalculating
+     * contact encounter metrics within the transient 5-second window (ADR-0027).
+     */
+    fun undoLastDeleteEncounters(): Boolean {
+        if (lastDeletedEncounters.isEmpty()) return false
+        val toRestore = lastDeletedEncounters
+        _encounters.update { toRestore + it }
+
+        val affectedContactIds = toRestore.map { it.contactId }.distinct()
+        val zoneId = ZoneId.systemDefault()
+        for (contactId in affectedContactIds) {
+            val contactEncounters = _encounters.value.filter { it.contactId == contactId }
+                .sortedByDescending { it.occurredAt }
+            val newMeetCount = contactEncounters.size
+            val latest = contactEncounters.firstOrNull()
+            val newLastEncounterText = latest?.let {
+                formatEncounterDateText(it.occurredAt.atZone(zoneId).toLocalDate())
+            } ?: ""
+            val newLastMetAt = latest?.occurredAt
+
+            _fullContacts.update { map ->
+                val existing = map[contactId] ?: return@update map
+                map + (contactId to existing.copy(
+                    meetCount = newMeetCount,
+                    lastMetAt = newLastMetAt
+                ))
+            }
+            _contacts.update { list ->
+                list.map { c ->
+                    if (c.id == contactId) {
+                        c.copy(lastEncounterText = newLastEncounterText.ifBlank { null })
+                    } else c
+                }
+            }
+            _recentContacts.update { list ->
+                list.map { c ->
+                    if (c.id == contactId) {
+                        c.copy(lastEncounterText = newLastEncounterText.ifBlank { null })
+                    } else c
+                }
+            }
+        }
+
+        val db = database
+        if (db != null) {
+            coroutineScope.launch {
+                db.withTransactionSafe {
+                    toRestore.forEach { enc ->
+                        db.encounterDao().insertEncounter(enc.toEntity())
+                    }
+                    for (contactId in affectedContactIds) {
+                        val contactEncounters = _encounters.value.filter { it.contactId == contactId }
+                            .sortedByDescending { it.occurredAt }
+                        val newMeetCount = contactEncounters.size
+                        val latest = contactEncounters.firstOrNull()
+                        val existingEntity = db.contactDao().getContactById(contactId)
+                        if (existingEntity != null) {
+                            db.contactDao().updateContact(
+                                existingEntity.copy(
+                                    meetCount = newMeetCount,
+                                    lastMetAt = latest?.occurredAt
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        lastDeletedEncounters = emptyList()
+        return true
     }
 
     fun deleteFollowUps(followUpIds: Set<String>) {
@@ -1143,6 +1294,40 @@ class ContactRepository(
             val resolvedTags = tagIds.mapNotNull { tagId ->
                 MockDataProvider.tags.find { it.id == tagId }
             }
+            return ContactSummary(
+                id = id,
+                name = name,
+                contextSubtitle = subtitle,
+                avatarInitials = initials,
+                avatarBgIndex = (id.hashCode().let { if (it < 0) -it else it } % 6),
+                lastEncounterText = lastMet,
+                phone = phone,
+                email = email,
+                notes = notes,
+                tags = resolvedTags,
+                isArchived = isArchived,
+                isFavorite = isFavorite,
+                updatedAt = updatedAt,
+                photoUri = photoUri
+            )
+        }
+
+        fun Contact.toSummary(availableTags: List<Tag>): ContactSummary {
+            val initials = extractAlphanumericInitials(name)
+            val subtitle = notes.ifBlank { "Contact" }
+            val lastMet = when {
+                lastMetAt == null -> "Never met"
+                else -> {
+                    val date = lastMetAt.atZone(ZoneId.systemDefault()).toLocalDate()
+                    val today = LocalDate.now()
+                    when (date) {
+                        today -> "Met today"
+                        today.minusDays(1) -> "Met yesterday"
+                        else -> "Met ${date.format(DateTimeFormatter.ofPattern("MMM d"))}"
+                    }
+                }
+            }
+            val resolvedTags = availableTags.filter { it.id in tagIds }
             return ContactSummary(
                 id = id,
                 name = name,
