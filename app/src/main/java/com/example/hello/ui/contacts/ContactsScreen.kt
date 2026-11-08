@@ -90,7 +90,6 @@ import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.platform.portability.VCardShareHelper
-import com.example.hello.ui.contacts.components.ArchivedContactsSheet
 import com.example.hello.ui.contacts.components.PeopleFavoritesSection
 import com.example.hello.ui.contacts.components.PullToActionArchiveHeader
 import com.example.hello.ui.components.CustomizableIcon
@@ -110,6 +109,7 @@ fun ContactsScreen(
     uiState: ContactsUiState,
     onEvent: (ContactsUiEvent) -> Unit,
     onNavigateToHome: () -> Unit = {},
+    onNavigateToArchivedContacts: () -> Unit = {},
     onContactClick: (String) -> Unit = { onEvent(ContactsUiEvent.OnContactClick(it)) },
     onAddContactClick: () -> Unit = {},
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
@@ -129,7 +129,7 @@ fun ContactsScreen(
                 listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
             },
             onTrigger = {
-                onEvent(ContactsUiEvent.OnOpenArchivedSheet)
+                onNavigateToArchivedContacts()
             }
         )
     }
@@ -336,14 +336,6 @@ fun ContactsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             )
         }
-
-        // Archived Contacts Pull-Up Sheet (ADR-0028)
-        ArchivedContactsSheet(
-            isOpen = uiState.isArchivedSheetOpen,
-            archivedContacts = uiState.archivedContacts,
-            onDismiss = { onEvent(ContactsUiEvent.OnDismissArchivedSheet) },
-            onRestoreContact = { onEvent(ContactsUiEvent.OnRestoreContact(it)) }
-        )
     }
 }
 

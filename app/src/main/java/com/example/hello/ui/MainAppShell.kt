@@ -77,6 +77,7 @@ import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.ui.components.ScreenDepthWrapper
 import com.example.hello.ui.contacts.ContactsScreen
 import com.example.hello.ui.contacts.ContactsUiEvent
+import com.example.hello.ui.contacts.ArchivedContactsScreen
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.detail.PersonDetailScreen
 import com.example.hello.ui.detail.PersonDetailViewModel
@@ -86,6 +87,7 @@ import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
+import com.example.hello.ui.navigation.ArchivedContactsRoute
 import com.example.hello.ui.navigation.HomeRoute
 import com.example.hello.ui.navigation.NavigationTransitionConfig
 import com.example.hello.ui.navigation.OnboardingRoute
@@ -355,6 +357,8 @@ fun MainAppShell(
                     startDestination = startDestination,
                     preferencesRepository = resolvedPreferencesRepository,
                     quickActionViewModel = quickActionViewModel,
+                    contactsViewModel = contactsViewModel,
+                    preferredTerminology = preferredTerminology,
                     snackbarHostState = snackbarHostState,
                     userPreferences = userPreferences
                 )
@@ -432,6 +436,12 @@ private fun WarmRootTabsHost(
     val onNavigateToHome = remember(navController) {
         {
             navController.navigateToTopLevelSafely(HomeRoute.ROUTE_NAME)
+            Unit
+        }
+    }
+    val onNavigateToArchivedContacts = remember(navController) {
+        {
+            navController.navigateSafely(ArchivedContactsRoute.ROUTE_NAME)
             Unit
         }
     }
@@ -530,6 +540,7 @@ private fun WarmRootTabsHost(
             PeopleTabDestination(
                 contactsViewModel = contactsViewModel,
                 onNavigateToHome = onNavigateToHome,
+                onNavigateToArchivedContacts = onNavigateToArchivedContacts,
                 onContactClick = onContactClick,
                 onAddContactClick = onAddContactClick,
                 terminology = terminologyState.value
@@ -614,6 +625,7 @@ private fun HomeTabDestination(
 private fun PeopleTabDestination(
     contactsViewModel: ContactsViewModel,
     onNavigateToHome: () -> Unit,
+    onNavigateToArchivedContacts: () -> Unit,
     onContactClick: (String) -> Unit,
     onAddContactClick: () -> Unit,
     terminology: RelationshipTerminology
@@ -624,6 +636,7 @@ private fun PeopleTabDestination(
             uiState = contactsUiState,
             onEvent = contactsViewModel::onEvent,
             onNavigateToHome = onNavigateToHome,
+            onNavigateToArchivedContacts = onNavigateToArchivedContacts,
             onContactClick = onContactClick,
             onAddContactClick = onAddContactClick,
             terminology = terminology
@@ -637,6 +650,8 @@ private fun MainAppNavHost(
     startDestination: String,
     preferencesRepository: UserPreferencesRepository,
     quickActionViewModel: QuickActionViewModel,
+    contactsViewModel: ContactsViewModel,
+    preferredTerminology: RelationshipTerminology,
     snackbarHostState: SnackbarHostState,
     userPreferences: UserPreferences?
 ) {
@@ -910,6 +925,24 @@ private fun MainAppNavHost(
                 ScreenDepthWrapper(isDepthVisible = false) {
                     SettingsAboutScreen(
                         onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = ArchivedContactsRoute.ROUTE_NAME,
+                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+            ) {
+                val contactsUiState by contactsViewModel.uiState.collectAsState()
+                ScreenDepthWrapper(isDepthVisible = false) {
+                    ArchivedContactsScreen(
+                        contacts = contactsUiState.archivedContacts,
+                        onRestoreContact = { contactsViewModel.onEvent(ContactsUiEvent.OnRestoreContact(it)) },
+                        onNavigateBack = { navController.popBackStack() },
+                        terminology = preferredTerminology
                     )
                 }
             }
