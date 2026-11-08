@@ -127,3 +127,11 @@ _Avoid_: Timeline edit mode, Event delete mode, History multi-select
 **Contact Profile Screen**:
 The dedicated Material 3 Expressive view displaying a Contact's relationship properties, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
 _Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry
+
+**Semantic Tactile Feedback**:
+The centralized interaction feedback layer (`HelloHaptics`) providing deliberate physical sensation mapped to interaction gravity: light threshold clicks (`THRESHOLD_ACTIVATION`), subtle mode ticks (`MODE_TOGGLE`), affirmative success pulses (`SUCCESS_CONFIRMATION`), crisp transition taps (`EDIT_ENTRY`), and heavy warning vibrations (`DESTRUCTIVE_ACTION`).
+_Avoid_: Raw vibrations, Buzzers, Game haptics, Hardware buzz
+
+**Contact Departure Motion**:
+The choreographed exit animation system (`ContactCardExitTransition`) driving physical spatial tucks upon archiving (elevating and sliding upwards toward the top boundary), physical dissolution upon deleting ($0.92\times$ scale reduction and fade), and spring-loaded row collapse and placement reflow (`Modifier.animateItem`) preventing jarring list jump-cuts.
+_Avoid_: Sudden vanish, Instant card delete, Jump-cut removal
