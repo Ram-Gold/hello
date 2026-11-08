@@ -54,18 +54,15 @@ class HelloToastHostTest {
         assertEquals(7000L, resolveToastDurationMs("Contact updated", actionLabel = "Undo"))
         assertEquals(7000L, resolveToastDurationMs("Custom notice", actionLabel = "Retry"))
 
-        // Messages with recoverable keywords resolve to 7000ms even without action label
+        // Messages with recoverable deletion/archive keywords resolve to 7000ms even without action label
         assertEquals(7000L, resolveToastDurationMs("Deleted 1 contact"))
         assertEquals(7000L, resolveToastDurationMs("Contact deleted"))
         assertEquals(7000L, resolveToastDurationMs("Archived 1 contact"))
         assertEquals(7000L, resolveToastDurationMs("Contact archived"))
-        assertEquals(7000L, resolveToastDurationMs("Contact restored"))
-        assertEquals(7000L, resolveToastDurationMs("Encounter restored"))
 
         // Case-insensitivity check
         assertEquals(7000L, resolveToastDurationMs("DELETED 2 ITEMS"))
         assertEquals(7000L, resolveToastDurationMs("contact ARCHIVED"))
-        assertEquals(7000L, resolveToastDurationMs("RESTORED contact"))
     }
 
     @Test
@@ -75,6 +72,11 @@ class HelloToastHostTest {
         assertEquals(3500L, resolveToastDurationMs("Export finished"))
         assertEquals(3500L, resolveToastDurationMs("Added to favorites"))
         assertEquals(3500L, resolveToastDurationMs("Failed to save contact"))
+
+        // Restoration confirmations without an action label resolve to brief informational duration
+        assertEquals(3500L, resolveToastDurationMs("Contact restored"))
+        assertEquals(3500L, resolveToastDurationMs("Encounter restored"))
+        assertEquals(3500L, resolveToastDurationMs("RESTORED contact"))
 
         // Blank or whitespace-only action labels do not trigger actionable duration unless message keywords match
         assertEquals(3500L, resolveToastDurationMs("Contact updated", actionLabel = null))
@@ -141,12 +143,11 @@ class HelloToastHostTest {
         assertTrue(shouldShowToastCountdown("Contact updated", actionLabel = "Undo"))
         assertTrue(shouldShowToastCountdown("Encounter saved", actionLabel = "Details"))
         assertTrue(shouldShowToastCountdown("Item deleted", actionLabel = "Undo"))
+        assertTrue(shouldShowToastCountdown("Contact restored", actionLabel = "Undo"))
 
-        // Recoverable messages with default 7000ms duration display countdown progress even without actionLabel
+        // Recoverable deletion/archive messages with default 7000ms duration display countdown progress
         assertTrue(shouldShowToastCountdown("Contact deleted"))
         assertTrue(shouldShowToastCountdown("Archived 1 contact"))
-        assertTrue(shouldShowToastCountdown("Contact restored"))
-        assertTrue(shouldShowToastCountdown("Encounter restored"))
     }
 
     @Test
@@ -156,6 +157,10 @@ class HelloToastHostTest {
         assertFalse(shouldShowToastCountdown("Export finished"))
         assertFalse(shouldShowToastCountdown("Added to favorites"))
         assertFalse(shouldShowToastCountdown("Failed to save contact"))
+
+        // Subsequent restoration confirmations without action button omit countdown bar (User Story 10)
+        assertFalse(shouldShowToastCountdown("Contact restored"))
+        assertFalse(shouldShowToastCountdown("Encounter restored"))
 
         // Blank or whitespace-only action labels on non-recoverable messages return false
         assertFalse(shouldShowToastCountdown("Contact updated", actionLabel = null))

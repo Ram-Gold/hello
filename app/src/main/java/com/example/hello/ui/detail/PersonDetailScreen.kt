@@ -112,8 +112,9 @@ fun PersonDetailScreen(
             if (result == SnackbarResult.ActionPerformed) {
                 haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+            } else {
+                onEvent(PersonDetailUiEvent.OnDismissUserMessage)
             }
-            onEvent(PersonDetailUiEvent.OnDismissUserMessage)
         }
     }
 

@@ -66,11 +66,13 @@ fun resolveToastDurationMs(message: String, actionLabel: String? = null): Long {
     if (!actionLabel.isNullOrBlank()) {
         return TOAST_DURATION_ACTIONABLE_MS
     }
-    val isRecoverableAction = message.contains("deleted", ignoreCase = true) ||
-        message.contains("archived", ignoreCase = true) ||
-        message.contains("restored", ignoreCase = true)
+    // Informational notices (including restoration confirmations without an action label)
+    // dismiss quickly (3500ms) without an extended countdown window.
+    val isRecoverableDeletionOrArchive = (message.contains("deleted", ignoreCase = true) ||
+        message.contains("archived", ignoreCase = true)) &&
+        !message.contains("restored", ignoreCase = true)
 
-    return if (isRecoverableAction) {
+    return if (isRecoverableDeletionOrArchive) {
         TOAST_DURATION_ACTIONABLE_MS
     } else {
         TOAST_DURATION_INFORMATIONAL_MS
@@ -81,12 +83,16 @@ fun resolveToastDurationMs(message: String, actionLabel: String? = null): Long {
  * Determines whether the slim animated countdown progress bar should be displayed.
  * Only actionable toasts (with a non-blank [actionLabel] or [durationMs] > [TOAST_DURATION_INFORMATIONAL_MS])
  * display the bottom countdown progress line; non-actionable toasts remain clean without any countdown line.
+ * Restoration confirmations without an action button never display a countdown progress bar.
  */
 fun shouldShowToastCountdown(
     message: String,
     actionLabel: String? = null,
     durationMs: Long = resolveToastDurationMs(message, actionLabel)
 ): Boolean {
+    if (actionLabel.isNullOrBlank() && message.contains("restored", ignoreCase = true)) {
+        return false
+    }
     return !actionLabel.isNullOrBlank() || durationMs > TOAST_DURATION_INFORMATIONAL_MS
 }
 
@@ -224,8 +230,7 @@ fun HelloToastHost(
             message = message,
             actionLabel = actionLabel,
             durationMs = durationMs,
-            onAction = { snackbarData.performAction() },
-            onDismiss = { snackbarData.dismiss() }
+            onAction = { snackbarData.performAction() }
         )
     }
 }
@@ -273,8 +278,7 @@ fun HelloToastPill(
     actionLabel: String? = null,
     durationMs: Long = resolveToastDurationMs(message, actionLabel),
     progressOverride: Float? = null,
-    onAction: () -> Unit = {},
-    onDismiss: () -> Unit = {}
+    onAction: () -> Unit = {}
 ) {
     val semanticType = resolveToastSemanticType(message)
     val leadingIcon = when (semanticType) {
@@ -284,13 +288,8 @@ fun HelloToastPill(
         ToastSemanticType.ALERT -> Icons.Rounded.Info
         ToastSemanticType.SUCCESS -> Icons.Rounded.CheckCircle
     }
-    val iconTint = when (semanticType) {
-        ToastSemanticType.DELETE, ToastSemanticType.ALERT -> MaterialTheme.colorScheme.error
-        ToastSemanticType.ARCHIVE -> MaterialTheme.colorScheme.secondary
-        ToastSemanticType.FAVORITE, ToastSemanticType.SUCCESS -> MaterialTheme.colorScheme.primary
-    }
-
-    val progressColor = resolveProgressColor(semanticType)
+    val iconTint = resolveProgressColor(semanticType)
+    val progressColor = iconTint
     val showCountdown = shouldShowToastCountdown(message, actionLabel, durationMs)
 
     val progressAnimatable = remember(message) { Animatable(1.0f) }
