@@ -284,24 +284,12 @@ class ContactsViewModelTest {
     }
 
     @Test
-    fun onTabDeparture_helperMethod_resetsSelectionState() {
+    fun onClearSelection_clearsSelectionStateViaUdfEvent() {
         val firstId = viewModel.uiState.value.contacts[0].id
         viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
         assertTrue(viewModel.uiState.value.isSelectionMode)
 
-        viewModel.onTabDeparture()
-
-        assertFalse(viewModel.uiState.value.isSelectionMode)
-        assertTrue(viewModel.uiState.value.selectedContactIds.isEmpty())
-    }
-
-    @Test
-    fun clearSelection_helperMethod_resetsSelectionState() {
-        val firstId = viewModel.uiState.value.contacts[0].id
-        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
-        assertTrue(viewModel.uiState.value.isSelectionMode)
-
-        viewModel.clearSelection()
+        viewModel.onEvent(ContactsUiEvent.OnClearSelection)
 
         assertFalse(viewModel.uiState.value.isSelectionMode)
         assertTrue(viewModel.uiState.value.selectedContactIds.isEmpty())

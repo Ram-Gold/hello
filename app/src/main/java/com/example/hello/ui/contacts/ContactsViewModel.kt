@@ -94,14 +94,6 @@ class ContactsViewModel(
         }
     }
 
-    fun clearSelection() {
-        onEvent(ContactsUiEvent.OnClearSelection)
-    }
-
-    fun onTabDeparture() {
-        onEvent(ContactsUiEvent.OnTabDeparture)
-    }
-
     fun onEvent(event: ContactsUiEvent) {
         when (event) {
             is ContactsUiEvent.OnSearchQueryChange -> {
@@ -208,14 +200,7 @@ class ContactsViewModel(
                     current.copy(selectedContactIds = updated)
                 }
             }
-            is ContactsUiEvent.OnClearSelection -> {
-                _uiState.update { current ->
-                    current.copy(
-                        selectedContactIds = emptySet(),
-                        isDeleteConfirmationVisible = false
-                    )
-                }
-            }
+            is ContactsUiEvent.OnClearSelection,
             is ContactsUiEvent.OnTabDeparture -> {
                 _uiState.update { current ->
                     current.copy(

@@ -120,9 +120,9 @@ fun shouldHideFloatingDock(
     if (currentRoute == null) return false
     if (!isMainRootRoute(currentRoute)) return true
 
-    val isScopedSelectionMode = when {
-        currentRoute == PeopleRoute.ROUTE_NAME || activeTab == HomeNavTab.PEOPLE -> isContactsSelectionMode
-        currentRoute == TimelineRoute.ROUTE_NAME || activeTab == HomeNavTab.TIMELINE -> isTimelineSelectionMode
+    val isScopedSelectionMode = when (currentRoute) {
+        PeopleRoute.ROUTE_NAME -> isContactsSelectionMode
+        TimelineRoute.ROUTE_NAME -> isTimelineSelectionMode
         else -> false
     }
     return isScopedSelectionMode

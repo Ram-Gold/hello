@@ -226,29 +226,19 @@ fun MainAppShell(
         when (currentRoute) {
             HomeRoute.ROUTE_NAME -> {
                 selectedRootTab = HomeNavTab.HOME
-                if (contactsViewModel.uiState.value.isSelectionMode) {
-                    contactsViewModel.onTabDeparture()
-                }
+                contactsViewModel.onEvent(ContactsUiEvent.OnTabDeparture)
             }
             PeopleRoute.ROUTE_NAME -> {
                 selectedRootTab = HomeNavTab.PEOPLE
-                if (timelineViewModel.uiState.value.isSelectionMode) {
-                    timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
-                }
+                timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
             }
             TimelineRoute.ROUTE_NAME -> {
                 selectedRootTab = HomeNavTab.TIMELINE
-                if (contactsViewModel.uiState.value.isSelectionMode) {
-                    contactsViewModel.onTabDeparture()
-                }
+                contactsViewModel.onEvent(ContactsUiEvent.OnTabDeparture)
             }
             else -> {
-                if (contactsViewModel.uiState.value.isSelectionMode) {
-                    contactsViewModel.onTabDeparture()
-                }
-                if (timelineViewModel.uiState.value.isSelectionMode) {
-                    timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
-                }
+                contactsViewModel.onEvent(ContactsUiEvent.OnTabDeparture)
+                timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
             }
         }
     }
@@ -353,12 +343,12 @@ fun MainAppShell(
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
     val density = LocalDensity.current
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val toastBottomPadding = if (shouldRenderDock) {
+    val toastBottomPadding = run {
         val measuredDockDp = with(density) { dockHeightPx.toDp() }
-        val effectiveDockHeight = if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
-        effectiveDockHeight + 16.dp
-    } else {
-        navBarBottomPadding + 16.dp
+        val restingDockHeight = if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
+        val dockProgress = dockVisibilityProgressState.value
+        val currentDockOffsetDp = restingDockHeight * dockProgress
+        maxOf(navBarBottomPadding, currentDockOffsetDp) + 16.dp
     }
 
     CompositionLocalProvider(
@@ -476,29 +466,20 @@ private fun WarmRootTabsHost(
             Unit
         }
     }
-    val onNavigateToHome = remember(navController, contactsViewModel) {
+    val onNavigateToHome = remember(navController) {
         {
-            if (contactsViewModel.uiState.value.isSelectionMode) {
-                contactsViewModel.onTabDeparture()
-            }
             navController.navigateToTopLevelSafely(HomeRoute.ROUTE_NAME)
             Unit
         }
     }
-    val onNavigateToArchivedContacts = remember(navController, contactsViewModel) {
+    val onNavigateToArchivedContacts = remember(navController) {
         {
-            if (contactsViewModel.uiState.value.isSelectionMode) {
-                contactsViewModel.onTabDeparture()
-            }
             navController.navigateSafely(ArchivedContactsRoute.ROUTE_NAME)
             Unit
         }
     }
-    val onContactClick = remember(navController, contactsViewModel) {
+    val onContactClick = remember(navController) {
         { contactId: String ->
-            if (contactsViewModel.uiState.value.isSelectionMode) {
-                contactsViewModel.onTabDeparture()
-            }
             navController.navigateSafely(PersonDetailRoute.createRoute(contactId))
             Unit
         }

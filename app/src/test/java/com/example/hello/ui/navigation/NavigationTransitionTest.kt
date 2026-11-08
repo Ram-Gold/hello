@@ -208,7 +208,7 @@ class NavigationTransitionTest {
             shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isContactsSelectionMode = true)
         )
 
-        // Active tab parameter support
+        // Active tab parameter support: currentRoute takes strict precedence over lagging activeTab
         assertTrue(
             "Active tab People with contacts selection mode hides dock",
             shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = true, activeTab = HomeNavTab.PEOPLE)
@@ -216,6 +216,10 @@ class NavigationTransitionTest {
         assertFalse(
             "Active tab Home with contacts selection mode does not hide dock",
             shouldHideFloatingDock(HomeRoute.ROUTE_NAME, isContactsSelectionMode = true, activeTab = HomeNavTab.HOME)
+        )
+        assertFalse(
+            "Lagging activeTab state People when currentRoute is Home does not hide dock",
+            shouldHideFloatingDock(HomeRoute.ROUTE_NAME, isContactsSelectionMode = true, activeTab = HomeNavTab.PEOPLE)
         )
     }
 

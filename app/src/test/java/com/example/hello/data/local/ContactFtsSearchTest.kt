@@ -36,13 +36,12 @@ import java.nio.file.Files
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContactFtsSearchTest {
 
-    private lateinit var testDispatcher: TestDispatcher
+    private val testDispatcher = StandardTestDispatcher(TestCoroutineScheduler())
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
 
     @Before
     fun setUp() {
-        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
