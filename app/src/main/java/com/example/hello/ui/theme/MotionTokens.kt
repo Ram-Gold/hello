@@ -58,8 +58,10 @@ object MotionTokens {
     // 7. Avatar Selection Badge Transition (Ease-Out entry & exit)
     const val AVATAR_SELECTION_ENTER_DURATION_MS = 180
     const val AVATAR_SELECTION_EXIT_DURATION_MS = 140
-    const val AVATAR_SELECTION_INITIAL_SCALE = 0.45f
-    const val AVATAR_SELECTION_EXIT_SCALE = 0.45f
+    const val AVATAR_SELECTION_FADE_IN_DURATION_MS = 140
+    const val AVATAR_SELECTION_FADE_OUT_DURATION_MS = 100
+    const val AVATAR_SELECTION_INITIAL_SCALE = 0.85f
+    const val AVATAR_SELECTION_EXIT_SCALE = 0.85f
     val AvatarSelectionEasing = FastOutSlowInEasing
 
     // Material 3 Expressive – Emphasized easing (matches Material Motion spec & PixelPlayer)

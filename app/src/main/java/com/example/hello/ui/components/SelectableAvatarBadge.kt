@@ -41,35 +41,45 @@ import com.example.hello.ui.theme.MotionTokens
 object SelectableAvatarBadgeDefaults {
     const val ENTER_DURATION_MS: Int = MotionTokens.AVATAR_SELECTION_ENTER_DURATION_MS
     const val EXIT_DURATION_MS: Int = MotionTokens.AVATAR_SELECTION_EXIT_DURATION_MS
+    const val FADE_IN_DURATION_MS: Int = MotionTokens.AVATAR_SELECTION_FADE_IN_DURATION_MS
+    const val FADE_OUT_DURATION_MS: Int = MotionTokens.AVATAR_SELECTION_FADE_OUT_DURATION_MS
     const val INITIAL_SCALE: Float = MotionTokens.AVATAR_SELECTION_INITIAL_SCALE
     const val TARGET_EXIT_SCALE: Float = MotionTokens.AVATAR_SELECTION_EXIT_SCALE
     val EasingCurve: Easing = MotionTokens.AvatarSelectionEasing
 
-    val enterTransition: EnterTransition = scaleIn(
-        animationSpec = tween(
-            durationMillis = ENTER_DURATION_MS,
-            easing = EasingCurve
-        ),
-        initialScale = INITIAL_SCALE
-    ) + fadeIn(
-        animationSpec = tween(
-            durationMillis = ENTER_DURATION_MS,
-            easing = EasingCurve
+    fun enterTransition(isReducedMotion: Boolean = false): EnterTransition {
+        if (isReducedMotion) return EnterTransition.None
+        return scaleIn(
+            animationSpec = tween(
+                durationMillis = ENTER_DURATION_MS,
+                easing = EasingCurve
+            ),
+            initialScale = INITIAL_SCALE
+        ) + fadeIn(
+            animationSpec = tween(
+                durationMillis = FADE_IN_DURATION_MS,
+                easing = EasingCurve
+            )
         )
-    )
+    }
 
-    val exitTransition: ExitTransition = scaleOut(
-        animationSpec = tween(
-            durationMillis = EXIT_DURATION_MS,
-            easing = EasingCurve
-        ),
-        targetScale = TARGET_EXIT_SCALE
-    ) + fadeOut(
-        animationSpec = tween(
-            durationMillis = EXIT_DURATION_MS,
-            easing = EasingCurve
+    fun exitTransition(isReducedMotion: Boolean = false): ExitTransition {
+        if (isReducedMotion) return ExitTransition.None
+        return scaleOut(
+            animationSpec = tween(
+                durationMillis = EXIT_DURATION_MS,
+                easing = EasingCurve
+            ),
+            targetScale = TARGET_EXIT_SCALE
+        ) + fadeOut(
+            animationSpec = tween(
+                durationMillis = FADE_OUT_DURATION_MS
+            )
         )
-    )
+    }
+
+    val enterTransition: EnterTransition = enterTransition(isReducedMotion = false)
+    val exitTransition: ExitTransition = exitTransition(isReducedMotion = false)
 }
 
 /**
@@ -87,6 +97,7 @@ fun SelectableAvatarBadge(
     size: Dp = 48.dp,
     shape: Shape = CircleShape,
     photoUri: String? = null,
+    isReducedMotion: Boolean = false,
     badgeContainerColor: Color = MaterialTheme.colorScheme.primary,
     badgeContentColor: Color = MaterialTheme.colorScheme.onPrimary,
     contentDescription: String? = if (isSelected) "Selected" else null
@@ -96,6 +107,7 @@ fun SelectableAvatarBadge(
         modifier = modifier,
         size = size,
         shape = shape,
+        isReducedMotion = isReducedMotion,
         badgeContainerColor = badgeContainerColor,
         badgeContentColor = badgeContentColor,
         contentDescription = contentDescription
@@ -120,11 +132,12 @@ fun SelectableAvatarBadge(
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
     shape: Shape = CircleShape,
+    isReducedMotion: Boolean = false,
     badgeContainerColor: Color = MaterialTheme.colorScheme.primary,
     badgeContentColor: Color = MaterialTheme.colorScheme.onPrimary,
     contentDescription: String? = if (isSelected) "Selected" else null,
-    enterTransition: EnterTransition = SelectableAvatarBadgeDefaults.enterTransition,
-    exitTransition: ExitTransition = SelectableAvatarBadgeDefaults.exitTransition,
+    enterTransition: EnterTransition = SelectableAvatarBadgeDefaults.enterTransition(isReducedMotion),
+    exitTransition: ExitTransition = SelectableAvatarBadgeDefaults.exitTransition(isReducedMotion),
     avatar: @Composable () -> Unit
 ) {
     Box(

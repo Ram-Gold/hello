@@ -16,8 +16,10 @@ class SelectableAvatarBadgeTest {
     fun motionTokens_matchAvatarSelectionSpecs() {
         assertEquals(180, MotionTokens.AVATAR_SELECTION_ENTER_DURATION_MS)
         assertEquals(140, MotionTokens.AVATAR_SELECTION_EXIT_DURATION_MS)
-        assertEquals(0.45f, MotionTokens.AVATAR_SELECTION_INITIAL_SCALE, 0.001f)
-        assertEquals(0.45f, MotionTokens.AVATAR_SELECTION_EXIT_SCALE, 0.001f)
+        assertEquals(140, MotionTokens.AVATAR_SELECTION_FADE_IN_DURATION_MS)
+        assertEquals(100, MotionTokens.AVATAR_SELECTION_FADE_OUT_DURATION_MS)
+        assertEquals(0.85f, MotionTokens.AVATAR_SELECTION_INITIAL_SCALE, 0.001f)
+        assertEquals(0.85f, MotionTokens.AVATAR_SELECTION_EXIT_SCALE, 0.001f)
         assertSame(FastOutSlowInEasing, MotionTokens.AvatarSelectionEasing)
     }
 
@@ -25,6 +27,8 @@ class SelectableAvatarBadgeTest {
     fun selectableAvatarBadgeDefaults_exposeConsistentTokens() {
         assertEquals(MotionTokens.AVATAR_SELECTION_ENTER_DURATION_MS, SelectableAvatarBadgeDefaults.ENTER_DURATION_MS)
         assertEquals(MotionTokens.AVATAR_SELECTION_EXIT_DURATION_MS, SelectableAvatarBadgeDefaults.EXIT_DURATION_MS)
+        assertEquals(MotionTokens.AVATAR_SELECTION_FADE_IN_DURATION_MS, SelectableAvatarBadgeDefaults.FADE_IN_DURATION_MS)
+        assertEquals(MotionTokens.AVATAR_SELECTION_FADE_OUT_DURATION_MS, SelectableAvatarBadgeDefaults.FADE_OUT_DURATION_MS)
         assertEquals(MotionTokens.AVATAR_SELECTION_INITIAL_SCALE, SelectableAvatarBadgeDefaults.INITIAL_SCALE, 0.001f)
         assertEquals(MotionTokens.AVATAR_SELECTION_EXIT_SCALE, SelectableAvatarBadgeDefaults.TARGET_EXIT_SCALE, 0.001f)
         assertSame(FastOutSlowInEasing, SelectableAvatarBadgeDefaults.EasingCurve)
@@ -34,6 +38,14 @@ class SelectableAvatarBadgeTest {
     fun transitions_areProperlyConfiguredAndNonEmpty() {
         assertNotEquals(EnterTransition.None, SelectableAvatarBadgeDefaults.enterTransition)
         assertNotEquals(ExitTransition.None, SelectableAvatarBadgeDefaults.exitTransition)
+        assertNotEquals(EnterTransition.None, SelectableAvatarBadgeDefaults.enterTransition(isReducedMotion = false))
+        assertNotEquals(ExitTransition.None, SelectableAvatarBadgeDefaults.exitTransition(isReducedMotion = false))
+    }
+
+    @Test
+    fun reducedMotion_disablesTransitionsCleanly() {
+        assertEquals(EnterTransition.None, SelectableAvatarBadgeDefaults.enterTransition(isReducedMotion = true))
+        assertEquals(ExitTransition.None, SelectableAvatarBadgeDefaults.exitTransition(isReducedMotion = true))
     }
 
     @Test
