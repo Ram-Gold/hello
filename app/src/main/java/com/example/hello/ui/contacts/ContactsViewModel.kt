@@ -205,7 +205,8 @@ class ContactsViewModel(
                 _uiState.update { current ->
                     current.copy(
                         selectedContactIds = emptySet(),
-                        isDeleteConfirmationVisible = false
+                        isDeleteConfirmationVisible = false,
+                        isArchiveConfirmationVisible = false
                     )
                 }
             }
@@ -220,6 +221,38 @@ class ContactsViewModel(
             }
             is ContactsUiEvent.OnDismissDeleteDialog -> {
                 _uiState.update { it.copy(isDeleteConfirmationVisible = false) }
+            }
+            is ContactsUiEvent.OnRequestArchiveSelected -> {
+                _uiState.update { it.copy(isArchiveConfirmationVisible = true) }
+            }
+            is ContactsUiEvent.OnDismissArchiveDialog -> {
+                _uiState.update { it.copy(isArchiveConfirmationVisible = false) }
+            }
+            is ContactsUiEvent.OnConfirmArchiveSelected -> {
+                val toArchive = _uiState.value.selectedContactIds
+                if (repository != null) {
+                    toArchive.forEach { contactId ->
+                        repository.archiveContact(contactId, archived = true)
+                    }
+                }
+                allContacts = allContacts.map { c ->
+                    if (c.id in toArchive) c.copy(isArchived = true) else c
+                }
+                val archiveCount = toArchive.size
+                val message = "Archived $archiveCount contact${if (archiveCount > 1) "s" else ""}"
+                _uiState.update { current ->
+                    computeState(
+                        searchQuery = current.searchQuery,
+                        selectedTags = current.selectedTags,
+                        sortMode = current.sortMode,
+                        contacts = allContacts,
+                        selectedContactIds = emptySet(),
+                        isDeleteConfirmationVisible = false,
+                        isArchiveConfirmationVisible = false,
+                        availableTags = availableTags,
+                        favoriteContacts = favoriteContacts
+                    ).copy(userMessage = message)
+                }
             }
             is ContactsUiEvent.OnConfirmDeleteSelected -> {
                 val toDelete = _uiState.value.selectedContactIds
@@ -298,6 +331,7 @@ class ContactsViewModel(
             selectedTags: Set<String> = if (selectedTag != null) setOf(selectedTag) else emptySet(),
             selectedContactIds: Set<String> = emptySet(),
             isDeleteConfirmationVisible: Boolean = false,
+            isArchiveConfirmationVisible: Boolean = false,
             availableTags: List<Tag> = emptyList(),
             favoriteContacts: List<ContactSummary> = emptyList(),
             isArchivedSheetOpen: Boolean = false
@@ -390,6 +424,7 @@ class ContactsViewModel(
                 totalCount = filtered.size,
                 selectedContactIds = prunedSelectedIds,
                 isDeleteConfirmationVisible = isDeleteConfirmationVisible,
+                isArchiveConfirmationVisible = isArchiveConfirmationVisible,
                 favoriteContacts = favoriteContacts,
                 archivedContacts = filteredArchived,
                 isArchivedSheetOpen = isArchivedSheetOpen

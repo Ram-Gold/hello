@@ -251,7 +251,10 @@ fun ContactsScreen(
                         ) {
                             ContactGroupHeader(
                                 title = header,
-                                count = contactsInGroup.size
+                                count = contactsInGroup.size,
+                                modifier = Modifier.animateItem(
+                                    placementSpec = ContactExitMotionTokens.placementSpringSpec()
+                                )
                             )
                         }
 
@@ -308,12 +311,64 @@ fun ContactsScreen(
                     val selectedContacts = uiState.contacts.filter { it.id in uiState.selectedContactIds }
                     VCardShareHelper.shareVCard(context, selectedContacts)
                 },
+                onArchiveClick = {
+                    onEvent(ContactsUiEvent.OnRequestArchiveSelected)
+                },
                 onDeleteClick = {
                     onEvent(ContactsUiEvent.OnRequestDeleteSelected)
                 },
                 onSelectAllClick = {
                     onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
                 }
+            )
+        }
+
+        // Batch Archive Confirmation Dialog
+        if (uiState.isArchiveConfirmationVisible) {
+            val count = uiState.selectedContactIds.size
+            AlertDialog(
+                onDismissRequest = { onEvent(ContactsUiEvent.OnDismissArchiveDialog) },
+                title = {
+                    Text(
+                        text = "Archive $count contact${if (count > 1) "s" else ""}?",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Archived ${terminology.pluralTitle.lowercase()} are moved out of your active directory and can be restored anytime.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                            val toArchive = uiState.selectedContactIds.toList()
+                            toArchive.forEach { id -> exitingContacts[id] = ContactExitType.ARCHIVE }
+                            coroutineScope.launch {
+                                val delayMs = if (isReducedMotion) 0L else ContactExitMotionTokens.ARCHIVE_EXIT_FADE_DURATION_MS.toLong()
+                                if (delayMs > 0) delay(delayMs)
+                                onEvent(ContactsUiEvent.OnConfirmArchiveSelected)
+                                toArchive.forEach { id -> exitingContacts.remove(id) }
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Archive")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { onEvent(ContactsUiEvent.OnDismissArchiveDialog) },
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             )
         }
 

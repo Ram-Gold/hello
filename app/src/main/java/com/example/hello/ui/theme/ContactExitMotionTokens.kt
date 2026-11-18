@@ -12,7 +12,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.unit.IntOffset
@@ -72,8 +71,6 @@ object ContactExitMotionTokens {
                 durationMillis = ARCHIVE_EXIT_FADE_DURATION_MS,
                 easing = ArchiveExitEasing
             )
-        ) + shrinkVertically(
-            animationSpec = placementSpringSpec()
         )
     }
 
@@ -90,8 +87,6 @@ object ContactExitMotionTokens {
                 durationMillis = DELETE_EXIT_FADE_DURATION_MS,
                 easing = DeleteExitEasing
             )
-        ) + shrinkVertically(
-            animationSpec = placementSpringSpec()
         )
     }
 
@@ -108,8 +103,6 @@ object ContactExitMotionTokens {
                 durationMillis = RESTORE_EXIT_FADE_DURATION_MS,
                 easing = RestoreExitEasing
             )
-        ) + shrinkVertically(
-            animationSpec = placementSpringSpec()
         )
     }
 }

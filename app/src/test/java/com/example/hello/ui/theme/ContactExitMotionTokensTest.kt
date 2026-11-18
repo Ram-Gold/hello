@@ -70,5 +70,16 @@ class ContactExitMotionTokensTest {
         assertNotEquals(ExitTransition.None, ContactExitMotionTokens.deleteExitTransition(isReducedMotion = false))
         assertNotEquals(ExitTransition.None, ContactExitMotionTokens.restoreExitTransition(isReducedMotion = false))
     }
+
+    @Test
+    fun exitTransitions_omitVerticalShrinkForTwoPhaseReflow() {
+        val archiveStr = ContactExitMotionTokens.archiveExitTransition(isReducedMotion = false).toString()
+        val deleteStr = ContactExitMotionTokens.deleteExitTransition(isReducedMotion = false).toString()
+        val restoreStr = ContactExitMotionTokens.restoreExitTransition(isReducedMotion = false).toString()
+
+        assertTrue("Archive transition should not shrink vertically: $archiveStr", archiveStr.contains("Shrink - null"))
+        assertTrue("Delete transition should not shrink vertically: $deleteStr", deleteStr.contains("Shrink - null"))
+        assertTrue("Restore transition should not shrink vertically: $restoreStr", restoreStr.contains("Shrink - null"))
+    }
 }
 

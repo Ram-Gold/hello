@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.SelectAll
@@ -30,11 +31,12 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Vertical floating action pill docked on the right edge of ContactsScreen during selection mode.
- * Houses Share, Delete, and Kebab (⋮) menu containing "Select all".
+ * Houses Share, Archive, Delete, and Kebab (⋮) menu containing "Select all".
  */
 @Composable
 fun ContactSelectionActionTray(
     onShareClick: () -> Unit,
+    onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onSelectAllClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -62,6 +64,19 @@ fun ContactSelectionActionTray(
                 Icon(
                     imageVector = Icons.Rounded.Share,
                     contentDescription = "Share contacts",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            // Archive Action
+            IconButton(
+                onClick = onArchiveClick,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Archive,
+                    contentDescription = "Archive contacts",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp)
                 )

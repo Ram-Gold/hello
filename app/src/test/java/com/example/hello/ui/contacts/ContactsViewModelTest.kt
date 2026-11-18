@@ -523,4 +523,35 @@ class ContactsViewModelTest {
         assertTrue(state.contacts.any { it.id == "c-archived-2" })
         assertEquals("Contact restored", state.userMessage)
     }
+
+    @Test
+    fun archiveSelectedContacts_requiresConfirmationAndMovesContactsToArchived() {
+        val sample = ContactsViewModel.createSampleContacts()
+        viewModel.syncContacts(sample)
+        val firstId = sample[0].id
+        val secondId = sample[1].id
+
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnToggleSelectContact(secondId))
+        assertEquals(setOf(firstId, secondId), viewModel.uiState.value.selectedContactIds)
+        assertFalse(viewModel.uiState.value.isArchiveConfirmationVisible)
+
+        viewModel.onEvent(ContactsUiEvent.OnRequestArchiveSelected)
+        assertTrue(viewModel.uiState.value.isArchiveConfirmationVisible)
+
+        viewModel.onEvent(ContactsUiEvent.OnDismissArchiveDialog)
+        assertFalse(viewModel.uiState.value.isArchiveConfirmationVisible)
+        assertEquals(setOf(firstId, secondId), viewModel.uiState.value.selectedContactIds)
+
+        viewModel.onEvent(ContactsUiEvent.OnRequestArchiveSelected)
+        viewModel.onEvent(ContactsUiEvent.OnConfirmArchiveSelected)
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isArchiveConfirmationVisible)
+        assertTrue(state.selectedContactIds.isEmpty())
+        assertFalse(state.contacts.any { it.id == firstId || it.id == secondId })
+        assertTrue(state.archivedContacts.any { it.id == firstId })
+        assertTrue(state.archivedContacts.any { it.id == secondId })
+        assertEquals("Archived 2 contacts", state.userMessage)
+    }
 }

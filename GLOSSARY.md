@@ -117,7 +117,7 @@ An ambient, high-visibility celebration card surfaced in Home Recent Encounters 
 _Avoid_: Birthday Alert Banner, Auto-Encounter, Birthday Notification
 
 **Contact Selection Mode**:
-The contextual interaction phase entered via long-press on a Contact Card within the Relationship Tab, enabling multi-contact batch actions (Share via vCard, Delete with confirmation, Select All). During this mode, selected Contact Cards visually decouple from connected groupings into independent fully-rounded surfaces with theme-aware red tinting and an avatar selection checkmark overlay, while a floating vertical action tray docks on the right edge and the Floating Bottom Dock recedes off-screen.
+The contextual interaction phase entered via long-press on a Contact Card within the Relationship Tab, enabling multi-contact batch actions (Share via vCard, Archive with confirmation, Delete with confirmation, Select All). During this mode, selected Contact Cards visually decouple from connected groupings into independent fully-rounded surfaces with theme-aware red tinting and an avatar selection checkmark overlay, while a floating vertical action tray docks on the right edge and the Floating Bottom Dock recedes off-screen.
 _Avoid_: Edit Mode, Multi-select checkbox mode, Batch screen
 
 **Timeline Selection Mode**:
@@ -133,5 +133,5 @@ The centralized interaction feedback layer (`HelloHaptics`) providing deliberate
 _Avoid_: Raw vibrations, Buzzers, Game haptics, Hardware buzz
 
 **Contact Departure Motion**:
-The choreographed exit animation system (`ContactCardExitTransition`) driving physical spatial tucks upon archiving (elevating and sliding upwards toward the top boundary), physical dissolution upon deleting ($0.92\times$ scale reduction and fade), and spring-loaded row collapse and placement reflow (`Modifier.animateItem`) preventing jarring list jump-cuts.
+The choreographed two-phase exit animation system driving physical spatial tucks upon archiving, physical dissolution upon deleting, and horizontal glide upon restoring, followed by spring-loaded placement reflow of neighboring Contact Cards and group headers to close the gap without jarring list jump-cuts.
 _Avoid_: Sudden vanish, Instant card delete, Jump-cut removal

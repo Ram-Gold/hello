@@ -18,6 +18,7 @@ data class ContactsUiState(
     val userMessage: String? = null,
     val selectedContactIds: Set<String> = emptySet(),
     val isDeleteConfirmationVisible: Boolean = false,
+    val isArchiveConfirmationVisible: Boolean = false,
     val archivedContacts: List<ContactSummary> = emptyList(),
     val isArchivedSheetOpen: Boolean = false
 ) {
@@ -49,6 +50,9 @@ sealed interface ContactsUiEvent {
     data object OnRequestDeleteSelected : ContactsUiEvent
     data object OnConfirmDeleteSelected : ContactsUiEvent
     data object OnDismissDeleteDialog : ContactsUiEvent
+    data object OnRequestArchiveSelected : ContactsUiEvent
+    data object OnConfirmArchiveSelected : ContactsUiEvent
+    data object OnDismissArchiveDialog : ContactsUiEvent
     data object OnClearSelection : ContactsUiEvent
     data object OnTabDeparture : ContactsUiEvent
     data object OnClearFilters : ContactsUiEvent
