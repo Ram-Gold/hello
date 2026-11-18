@@ -351,9 +351,9 @@ fun HelloToastPill(
                 modifier = if (hasAction) {
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                        .padding(horizontal = 14.dp, vertical = 9.dp)
                 } else {
-                    Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                    Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
                 }
             ) {
                 Icon(
@@ -379,7 +379,7 @@ fun HelloToastPill(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .heightIn(min = 28.dp)
+                            .heightIn(min = 32.dp)
                             .clip(CircleShape)
                             .clickable(onClick = onAction)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
