@@ -22,6 +22,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +55,7 @@ fun SettingsTerminologyScreen(
         snackbarHost = {
             HelloToastHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + HelloToastDefaults.BOTTOM_MARGIN_DP)
             )
         },
         topBar = {

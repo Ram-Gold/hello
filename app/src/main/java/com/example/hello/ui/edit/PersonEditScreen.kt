@@ -76,6 +76,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import com.example.hello.ui.components.ClearTextTrailingIcon
+import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.components.bringIntoViewOnFocus
 import com.example.hello.ui.haptics.LocalHelloHaptics
@@ -216,7 +217,7 @@ fun PersonEditScreen(
                 hostState = snackbarHostState,
                 modifier = Modifier
                     .imePadding()
-                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + HelloToastDefaults.BOTTOM_MARGIN_DP)
             )
         },
         containerColor = MaterialTheme.colorScheme.background

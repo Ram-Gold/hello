@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
+import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.home.components.HomeFavoritesSection
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
@@ -177,7 +178,7 @@ fun HomeScreen(
             snackbarHost = {
                 HelloToastHost(
                     hostState = snackbarHostState,
-                    modifier = Modifier.padding(bottom = 84.dp + navBarBottomPadding + 16.dp)
+                    modifier = Modifier.padding(bottom = 84.dp + navBarBottomPadding + HelloToastDefaults.BOTTOM_MARGIN_DP)
                 )
             }
         ) { innerPadding ->

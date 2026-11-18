@@ -51,6 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
+import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
@@ -348,7 +349,7 @@ fun MainAppShell(
         val restingDockHeight = if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
         val dockProgress = dockVisibilityProgressState.value
         val currentDockOffsetDp = restingDockHeight * dockProgress
-        maxOf(navBarBottomPadding, currentDockOffsetDp) + 16.dp
+        maxOf(navBarBottomPadding, currentDockOffsetDp) + HelloToastDefaults.BOTTOM_MARGIN_DP
     }
 
     CompositionLocalProvider(

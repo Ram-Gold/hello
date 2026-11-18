@@ -5,17 +5,17 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -32,7 +32,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -169,6 +168,10 @@ fun resolveToastSemanticType(message: String): ToastSemanticType = when {
 
 const val TOAST_PILL_TEST_TAG = "HelloToastPill"
 const val TOAST_COUNTDOWN_BAR_TEST_TAG = "HelloToastCountdownBar"
+
+object HelloToastDefaults {
+    val BOTTOM_MARGIN_DP: Dp = 8.dp
+}
 
 /**
  * Custom [SnackbarVisuals] carrying the explicit countdown display duration.
@@ -309,7 +312,7 @@ fun HelloToastPill(
     }
 
     val currentProgress = progressOverride ?: progressAnimatable.value
-    val pillShape = RoundedCornerShape(8.dp)
+    val pillShape = CircleShape
 
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val toastBackground = if (isDark) Color(0xFFFFFFFF) else Color(0xFF121212)
@@ -344,27 +347,27 @@ fun HelloToastPill(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = if (hasAction) {
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
                 } else {
-                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                 }
             ) {
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
 
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     ),
                     color = toastTextColor,
                     maxLines = 2,
@@ -373,15 +376,19 @@ fun HelloToastPill(
                 )
 
                 if (hasAction) {
-                    TextButton(
-                        onClick = onAction,
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .heightIn(min = 28.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onAction)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = actionLabel,
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp
+                                fontSize = 13.sp
                             ),
                             color = toastActionColor
                         )

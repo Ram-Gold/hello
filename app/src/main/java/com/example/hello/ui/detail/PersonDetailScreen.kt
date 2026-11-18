@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
@@ -205,7 +206,7 @@ fun PersonDetailScreen(
         snackbarHost = {
             HelloToastHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + HelloToastDefaults.BOTTOM_MARGIN_DP)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
