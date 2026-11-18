@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -158,12 +157,7 @@ fun SelectableAvatarBadge(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(shape)
-                    .background(badgeContainerColor)
-                    .border(
-                        width = 1.5.dp,
-                        color = MaterialTheme.colorScheme.surface,
-                        shape = shape
-                    ),
+                    .background(badgeContainerColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
