@@ -1,8 +1,21 @@
 package com.example.hello.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -26,7 +39,6 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarVisuals
@@ -35,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -173,6 +187,44 @@ object HelloToastDefaults {
     val BOTTOM_MARGIN_DP: Dp = 8.dp
 }
 
+val LocalReducedMotion = staticCompositionLocalOf { false }
+
+object HelloToastMotionDefaults {
+    fun enterTransition(isReducedMotion: Boolean = false): EnterTransition {
+        if (isReducedMotion) return EnterTransition.None
+        val springSpec = spring<androidx.compose.ui.unit.IntOffset>(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        )
+        val scaleSpring = spring<Float>(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        )
+        return slideInVertically(
+            animationSpec = springSpec,
+            initialOffsetY = { it / 2 }
+        ) + fadeIn(
+            animationSpec = tween(durationMillis = 180)
+        ) + scaleIn(
+            animationSpec = scaleSpring,
+            initialScale = 0.92f
+        )
+    }
+
+    fun exitTransition(isReducedMotion: Boolean = false): ExitTransition {
+        if (isReducedMotion) return ExitTransition.None
+        return slideOutVertically(
+            animationSpec = tween(durationMillis = 160),
+            targetOffsetY = { it / 2 }
+        ) + fadeOut(
+            animationSpec = tween(durationMillis = 140)
+        ) + scaleOut(
+            animationSpec = tween(durationMillis = 160),
+            targetScale = 0.94f
+        )
+    }
+}
+
 /**
  * Custom [SnackbarVisuals] carrying the explicit countdown display duration.
  */
@@ -220,22 +272,51 @@ suspend fun SnackbarHostState.showHelloToast(
 @Composable
 fun HelloToastHost(
     hostState: SnackbarHostState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isReducedMotion: Boolean = LocalReducedMotion.current
 ) {
-    SnackbarHost(
-        hostState = hostState,
-        modifier = modifier
-    ) { snackbarData ->
-        val message = snackbarData.visuals.message
-        val actionLabel = snackbarData.visuals.actionLabel
-        val durationMs = (snackbarData.visuals as? HelloToastVisuals)?.durationMs
-            ?: resolveToastDurationMs(message, actionLabel)
-        HelloToastPill(
-            message = message,
-            actionLabel = actionLabel,
-            durationMs = durationMs,
-            onAction = { snackbarData.performAction() }
-        )
+    val currentData = hostState.currentSnackbarData
+    LaunchedEffect(currentData) {
+        if (currentData != null) {
+            val durationMs = when (currentData.visuals.duration) {
+                SnackbarDuration.Short -> 4000L
+                SnackbarDuration.Long -> 10000L
+                SnackbarDuration.Indefinite -> Long.MAX_VALUE
+            }
+            if (durationMs != Long.MAX_VALUE) {
+                delay(durationMs)
+                currentData.dismiss()
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        AnimatedContent(
+            targetState = currentData,
+            transitionSpec = {
+                HelloToastMotionDefaults.enterTransition(isReducedMotion) togetherWith
+                    HelloToastMotionDefaults.exitTransition(isReducedMotion) using
+                    SizeTransform(clip = false)
+            },
+            contentAlignment = Alignment.BottomCenter,
+            label = "HelloToastHostTransition"
+        ) { snackbarData ->
+            if (snackbarData != null) {
+                val message = snackbarData.visuals.message
+                val actionLabel = snackbarData.visuals.actionLabel
+                val durationMs = (snackbarData.visuals as? HelloToastVisuals)?.durationMs
+                    ?: resolveToastDurationMs(message, actionLabel)
+                HelloToastPill(
+                    message = message,
+                    actionLabel = actionLabel,
+                    durationMs = durationMs,
+                    onAction = { snackbarData.performAction() }
+                )
+            }
+        }
     }
 }
 
@@ -347,27 +428,27 @@ fun HelloToastPill(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = if (hasAction) {
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 9.dp)
+                        .padding(horizontal = 16.dp, vertical = 11.dp)
                 } else {
-                    Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+                    Modifier.padding(horizontal = 16.dp, vertical = 11.dp)
                 }
             ) {
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
 
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp
+                        fontSize = 14.sp
                     ),
                     color = toastTextColor,
                     maxLines = 2,
@@ -382,13 +463,13 @@ fun HelloToastPill(
                             .heightIn(min = 32.dp)
                             .clip(CircleShape)
                             .clickable(onClick = onAction)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = actionLabel,
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
+                                fontSize = 14.sp
                             ),
                             color = toastActionColor
                         )

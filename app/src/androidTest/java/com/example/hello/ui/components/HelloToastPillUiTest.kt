@@ -34,7 +34,7 @@ class HelloToastPillUiTest {
         composeTestRule.onNodeWithText("Undo").assertIsDisplayed()
 
         val bounds = pillNode.getUnclippedBoundsInRoot()
-        assertTrue("Expected compact toast height <= 48.dp, got ${bounds.height}", bounds.height.value <= 48f)
+        assertTrue("Expected medium-tall toast height in 44..56.dp, got ${bounds.height}", bounds.height.value in 44f..56f)
     }
 
     @Test
@@ -52,6 +52,6 @@ class HelloToastPillUiTest {
         composeTestRule.onNodeWithTag(TOAST_COUNTDOWN_BAR_TEST_TAG).assertDoesNotExist()
 
         val bounds = pillNode.getUnclippedBoundsInRoot()
-        assertTrue("Expected compact toast height <= 44.dp, got ${bounds.height}", bounds.height.value <= 44f)
+        assertTrue("Expected medium-tall toast height in 40..52.dp, got ${bounds.height}", bounds.height.value in 40f..52f)
     }
 }

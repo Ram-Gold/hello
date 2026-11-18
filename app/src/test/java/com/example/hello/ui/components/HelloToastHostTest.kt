@@ -357,6 +357,27 @@ class HelloToastHostTest {
         assertEquals(SnackbarResult.Dismissed, restoreResult)
         assertFalse(restoreToastJob.isActive)
     }
+
+    @Test
+    fun toastMotionDefaults_provideSlideFadeScaleTransitions_andRespectReducedMotion() {
+        val enter = HelloToastMotionDefaults.enterTransition(isReducedMotion = false)
+        val exit = HelloToastMotionDefaults.exitTransition(isReducedMotion = false)
+        assertTrue(enter != androidx.compose.animation.EnterTransition.None)
+        assertTrue(exit != androidx.compose.animation.ExitTransition.None)
+        assertTrue(enter.toString().contains("Slide("))
+        assertTrue(enter.toString().contains("Scale("))
+        assertTrue(exit.toString().contains("Slide("))
+        assertTrue(exit.toString().contains("Scale("))
+
+        assertEquals(
+            androidx.compose.animation.EnterTransition.None,
+            HelloToastMotionDefaults.enterTransition(isReducedMotion = true)
+        )
+        assertEquals(
+            androidx.compose.animation.ExitTransition.None,
+            HelloToastMotionDefaults.exitTransition(isReducedMotion = true)
+        )
+    }
 }
 
 

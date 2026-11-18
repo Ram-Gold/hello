@@ -53,6 +53,7 @@ import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
 import com.example.hello.ui.components.showHelloToast
@@ -353,7 +354,8 @@ fun MainAppShell(
     }
 
     CompositionLocalProvider(
-        LocalHelloHaptics provides helloHaptics
+        LocalHelloHaptics provides helloHaptics,
+        LocalReducedMotion provides isReducedMotion
     ) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
