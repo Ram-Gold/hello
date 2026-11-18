@@ -1,6 +1,5 @@
 package com.example.hello.ui.contacts
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +68,6 @@ fun ArchivedContactsScreen(
     isReducedMotion: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    BackHandler(onBack = onNavigateBack)
     val coroutineScope = rememberCoroutineScope()
     val exitingContacts = remember { mutableStateMapOf<String, ContactExitType>() }
 

@@ -1,7 +1,6 @@
 package com.example.hello.ui.timeline
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -60,6 +59,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,9 +75,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.SelectableAvatarBadge
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
+import com.example.hello.ui.navigation.predictiveSelectionTrayExit
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
@@ -86,15 +92,25 @@ fun TimelineScreen(
     onContactClick: (String) -> Unit,
     onLogEncounterForContact: (String, String?) -> Unit,
     onLogEncounterClick: () -> Unit,
+    selectionBackProgress: Float = 0f,
+    registerSelectionBackHandler: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val showFuture = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.FUTURE
     val showPast = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.PAST
     val showTodayDivider = uiState.selectedFilter == TimelineFilter.ALL
     val haptics = LocalHelloHaptics.current
+    val isReducedMotion = LocalReducedMotion.current
+    var localSelectionBackProgress by remember { mutableFloatStateOf(0f) }
+    val effectiveSelectionBackProgress = if (registerSelectionBackHandler) localSelectionBackProgress else selectionBackProgress
 
-    BackHandler(enabled = uiState.isSelectionMode) {
-        onEvent(TimelineUiEvent.OnClearSelection)
+    if (registerSelectionBackHandler) {
+        ScrubbablePredictiveBackHandler(
+            enabled = uiState.isSelectionMode,
+            isReducedMotion = isReducedMotion,
+            onProgressChanged = { localSelectionBackProgress = it },
+            onCommit = { onEvent(TimelineUiEvent.OnClearSelection) }
+        )
     }
 
     Box(
@@ -280,6 +296,7 @@ fun TimelineScreen(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 16.dp)
+                .predictiveSelectionTrayExit { effectiveSelectionBackProgress }
         ) {
             TimelineSelectionActionTray(
                 onDeleteClick = { onEvent(TimelineUiEvent.OnRequestDeleteSelected) },

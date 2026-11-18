@@ -285,6 +285,32 @@ object DockMotionConfig {
     }
 
     /**
+     * Resolves continuous `(homeWeight, peopleWeight, timelineWeight)` in `0f..1f` for tab labels
+     * from a continuous pill [progress] in `0f..2f`, suppressing intermediate-tab label expansion
+     * when skipping directly across non-adjacent tabs (e.g., `Timeline <-> Home`).
+     */
+    fun resolveThreeTabLabelWeights(
+        progress: Float,
+        fromTab: HomeNavTab,
+        toTab: HomeNavTab
+    ): Triple<Float, Float, Float> {
+        val p = progress.coerceIn(0f, 2f)
+        val wHome = if (p <= 1f) 1f - p else 0f
+        val wTimeline = if (p > 1f) p - 1f else 0f
+        val includePeople = fromTab == HomeNavTab.PEOPLE || toTab == HomeNavTab.PEOPLE
+        val wPeople = if (includePeople) {
+            if (p <= 1f) p else 2f - p
+        } else {
+            0f
+        }
+        return Triple(
+            wHome.coerceIn(0f, 1f),
+            wPeople.coerceIn(0f, 1f),
+            wTimeline.coerceIn(0f, 1f)
+        )
+    }
+
+    /**
      * Calculates deterministic position (left) and width for the 3-slot sliding pill
      * where `progress` is in `0f..2f` (`0f` = Home, `1f` = Timeline, `2f` = People).
      */

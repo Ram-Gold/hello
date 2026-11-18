@@ -2,9 +2,13 @@ package com.example.hello.ui.quickaction.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import com.example.hello.ui.components.LocalReducedMotion
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -72,10 +76,25 @@ import java.time.format.DateTimeFormatter
 fun FlowBLogEncounterSheet(
     uiState: QuickActionUiState,
     onEvent: (QuickActionUiEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    predictiveBackProgress: Float = 0f
 ) {
+    val isReducedMotion = LocalReducedMotion.current
     val haptics = LocalHelloHaptics.current
     var showDatePicker by remember { mutableStateOf(false) }
+    val stageTransitionState = remember { SeekableTransitionState(uiState.selectedContact) }
+    LaunchedEffect(uiState.selectedContact, predictiveBackProgress, isReducedMotion) {
+        if (predictiveBackProgress > 0f && uiState.selectedContact != null && !isReducedMotion) {
+            stageTransitionState.seekTo(fraction = predictiveBackProgress.coerceIn(0f, 1f), targetState = null)
+        } else if (stageTransitionState.currentState != uiState.selectedContact || stageTransitionState.targetState != uiState.selectedContact) {
+            if (isReducedMotion) {
+                stageTransitionState.snapTo(uiState.selectedContact)
+            } else {
+                stageTransitionState.animateTo(uiState.selectedContact)
+            }
+        }
+    }
+    val stageTransition = rememberTransition(stageTransitionState, label = "flowBStageTransition")
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -207,12 +226,14 @@ fun FlowBLogEncounterSheet(
             }
         }
 
-        AnimatedContent(
-            targetState = uiState.selectedContact,
+        stageTransition.AnimatedContent(
             transitionSpec = {
-                fadeIn(tween(110)) togetherWith fadeOut(tween(80))
-            },
-            label = "flowBStageTransition"
+                if (isReducedMotion) {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                } else {
+                    fadeIn(tween(110)) togetherWith fadeOut(tween(80))
+                }
+            }
         ) { selectedContact ->
             if (selectedContact == null) {
                 ContactSelectorContent(

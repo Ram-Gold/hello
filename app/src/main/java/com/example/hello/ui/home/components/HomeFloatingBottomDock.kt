@@ -2,6 +2,7 @@ package com.example.hello.ui.home.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -14,6 +15,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,10 +51,13 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
@@ -81,6 +86,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.theme.MotionTokens
 import kotlin.math.roundToInt
 
@@ -94,9 +101,11 @@ fun HomeFloatingBottomDock(
     modifier: Modifier = Modifier,
     peopleTabLabel: String = "People",
     addContactLabel: String = "Add Contact",
-    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween()
+    pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween(),
+    overridePillProgress: Float? = null
 ) {
     // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
+    val haptics = LocalHelloHaptics.current
     val isDark = isSystemInDarkTheme()
     val warmShadowAmbient = if (isDark) Color(0x80000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
     val warmShadowSpot = if (isDark) Color(0xB3000000) else DockMotionConfig.WARM_SHADOW_SPOT
@@ -161,7 +170,10 @@ fun HomeFloatingBottomDock(
                     SpeedDialChip(
                         label = "Met Again",
                         icon = Icons.Rounded.EditNote,
-                        onClick = { onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER) }
+                        onClick = {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onSpeedDialAction(SpeedDialAction.LOG_ENCOUNTER)
+                        }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_STACK_GAP_DP.dp))
                 }
@@ -183,7 +195,10 @@ fun HomeFloatingBottomDock(
                     SpeedDialChip(
                         label = addContactLabel,
                         icon = Icons.Rounded.PersonAdd,
-                        onClick = { onSpeedDialAction(SpeedDialAction.NEW_CONTACT) }
+                        onClick = {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onSpeedDialAction(SpeedDialAction.NEW_CONTACT)
+                        }
                     )
                     Spacer(modifier = Modifier.height(DockMotionConfig.SPEED_DIAL_FAB_GAP_DP.dp))
                 }
@@ -215,6 +230,7 @@ fun HomeFloatingBottomDock(
                         peopleTabLabel = peopleTabLabel,
                         dimensions = dimensions,
                         pillAnimationSpec = pillAnimationSpec,
+                        overridePillProgress = overridePillProgress,
                         isSpeedDialOpen = isSpeedDialOpen,
                         onToggleSpeedDial = onToggleSpeedDial,
                         onTabSelect = onTabSelect
@@ -262,6 +278,7 @@ private fun DockTabsLayer(
     peopleTabLabel: String,
     dimensions: ThreeTabDockDimensions,
     pillAnimationSpec: AnimationSpec<Float>,
+    overridePillProgress: Float?,
     isSpeedDialOpen: Boolean,
     onToggleSpeedDial: () -> Unit,
     onTabSelect: (HomeNavTab) -> Unit
@@ -271,11 +288,27 @@ private fun DockTabsLayer(
         HomeNavTab.PEOPLE -> 1f
         HomeNavTab.TIMELINE -> 2f
     }
-    val pillProgressState = animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = pillAnimationSpec,
-        label = "dockSlidingPillProgress"
-    )
+    var lastStableTab by remember { mutableStateOf(selectedTab) }
+    var previousTab by remember { mutableStateOf(selectedTab) }
+    if (lastStableTab != selectedTab) {
+        previousTab = lastStableTab
+        lastStableTab = selectedTab
+    }
+    val pillAnimatable = remember { Animatable(targetProgress) }
+    LaunchedEffect(overridePillProgress) {
+        if (overridePillProgress != null) {
+            pillAnimatable.snapTo(overridePillProgress.coerceIn(0f, 2f))
+        }
+    }
+    LaunchedEffect(targetProgress, overridePillProgress, pillAnimationSpec) {
+        if (overridePillProgress == null && pillAnimatable.targetValue != targetProgress) {
+            pillAnimatable.animateTo(targetProgress, animationSpec = pillAnimationSpec)
+            previousTab = selectedTab
+        }
+    }
+    val pillProgressState = pillAnimatable.asState()
+    val transitionFromTab = if (overridePillProgress != null) selectedTab else previousTab
+    val transitionToTab = if (overridePillProgress != null) HomeNavTab.HOME else selectedTab
 
     val touchSlot0WidthDp = if (selectedTab == HomeNavTab.HOME) dimensions.activePillWidthDp else dimensions.inactiveSlotWidthDp
     val touchSlot1WidthDp = if (selectedTab == HomeNavTab.PEOPLE) dimensions.activePillWidthDp else dimensions.inactiveSlotWidthDp
@@ -308,10 +341,11 @@ private fun DockTabsLayer(
     ) {
         // Foreground Single TabsRow (constant-width active pill + icon-only inactive slots)
         TabsRow(
-            selectedTab = selectedTab,
             peopleLabel = peopleTabLabel,
             dimensions = dimensions,
-            pillProgressProvider = { pillProgressState.value }
+            pillProgressProvider = { pillProgressState.value },
+            fromTab = transitionFromTab,
+            toTab = transitionToTab
         )
 
         // Interactive Touch Layer on top (48dp+ accessible touch target)
@@ -385,15 +419,23 @@ private fun DockTabsLayer(
 
 @Composable
 private fun TabsRow(
-    selectedTab: HomeNavTab,
     peopleLabel: String = "People",
     dimensions: ThreeTabDockDimensions,
     pillProgressProvider: () -> Float,
+    fromTab: HomeNavTab,
+    toTab: HomeNavTab,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     val activePillWidthPx = with(density) { dimensions.activePillWidthDp.dp.toPx() }
     val inactiveSlotWidthPx = with(density) { dimensions.inactiveSlotWidthDp.dp.toPx() }
+    val weightsProvider: () -> Triple<Float, Float, Float> = {
+        DockMotionConfig.resolveThreeTabLabelWeights(
+            progress = pillProgressProvider(),
+            fromTab = fromTab,
+            toTab = toTab
+        )
+    }
 
     Layout(
         content = {
@@ -405,8 +447,7 @@ private fun TabsRow(
                 NavTabItemContent(
                     tab = HomeNavTab.HOME,
                     customLabel = null,
-                    isSelected = selectedTab == HomeNavTab.HOME,
-                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.HOME, isSelected = selectedTab == HomeNavTab.HOME)
+                    selectionWeightProvider = { weightsProvider().first }
                 )
             }
 
@@ -418,8 +459,7 @@ private fun TabsRow(
                 NavTabItemContent(
                     tab = HomeNavTab.PEOPLE,
                     customLabel = peopleLabel,
-                    isSelected = selectedTab == HomeNavTab.PEOPLE,
-                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.PEOPLE, isSelected = selectedTab == HomeNavTab.PEOPLE)
+                    selectionWeightProvider = { weightsProvider().second }
                 )
             }
 
@@ -431,8 +471,7 @@ private fun TabsRow(
                 NavTabItemContent(
                     tab = HomeNavTab.TIMELINE,
                     customLabel = null,
-                    isSelected = selectedTab == HomeNavTab.TIMELINE,
-                    icon = DockMotionConfig.resolveTabIcon(HomeNavTab.TIMELINE, isSelected = selectedTab == HomeNavTab.TIMELINE)
+                    selectionWeightProvider = { weightsProvider().third }
                 )
             }
         },
@@ -471,23 +510,15 @@ private fun TabsRow(
 private fun NavTabItemContent(
     tab: HomeNavTab,
     customLabel: String?,
-    isSelected: Boolean,
-    icon: ImageVector,
+    selectionWeightProvider: () -> Float,
     modifier: Modifier = Modifier
 ) {
     val displayLabel = customLabel ?: tab.label
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(
-            durationMillis = DockMotionConfig.SCREEN_FADE_DURATION_MS,
-            easing = MotionTokens.M3EmphasizedEasing
-        ),
-        label = "navTabContentColor"
-    )
+    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val activeColor = MaterialTheme.colorScheme.onSecondaryContainer
+    val weight = selectionWeightProvider().coerceIn(0f, 1f)
+    val contentColor = lerp(inactiveColor, activeColor, weight)
+    val icon = DockMotionConfig.resolveTabIcon(tab, isSelected = weight >= 0.5f)
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -506,32 +537,38 @@ private fun NavTabItemContent(
                     .aspectRatio(1f)
             )
 
-            AnimatedVisibility(
-                visible = isSelected,
-                enter = fadeIn(animationSpec = MotionTokens.tabTransitionTween()) +
-                        expandHorizontally(
-                            animationSpec = MotionTokens.tabTransitionSizeTween(),
-                            expandFrom = Alignment.Start
-                        ),
-                exit = fadeOut(animationSpec = MotionTokens.tabTransitionTween()) +
-                       shrinkHorizontally(
-                           animationSpec = MotionTokens.tabTransitionSizeTween(),
-                           shrinkTowards = Alignment.Start
-                       )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = displayLabel,
-                        maxLines = 1,
-                        softWrap = false,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = contentColor
-                    )
+            Layout(
+                content = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.graphicsLayer {
+                            val w = selectionWeightProvider().coerceIn(0f, 1f)
+                            alpha = ((w - 0.12f) / 0.88f).coerceIn(0f, 1f)
+                        }
+                    ) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = displayLabel,
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = contentColor
+                        )
+                    }
+                },
+                modifier = Modifier.clipToBounds()
+            ) { measurables, constraints ->
+                val placeable = measurables[0].measure(
+                    constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
+                )
+                val w = selectionWeightProvider().coerceIn(0f, 1f)
+                val revealedWidth = (placeable.width * w).roundToInt()
+                layout(revealedWidth, placeable.height) {
+                    if (revealedWidth > 0) {
+                        placeable.place(0, 0)
+                    }
                 }
             }
         }

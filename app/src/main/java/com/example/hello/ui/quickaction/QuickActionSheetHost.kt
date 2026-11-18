@@ -1,8 +1,8 @@
 package com.example.hello.ui.quickaction
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -21,12 +21,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.hello.ui.components.LocalReducedMotion
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
+import com.example.hello.ui.navigation.predictiveSheetDismiss
+import com.example.hello.ui.navigation.resolveSheetScrimAlpha
 import com.example.hello.ui.quickaction.components.FlowAAddContactCard
 import com.example.hello.ui.quickaction.components.FlowBLogEncounterSheet
 import com.example.hello.ui.quickaction.components.LocationExplainerDialog
@@ -51,32 +60,63 @@ fun QuickActionSheetHost(
         )
     }
 
-    // Intercept system back when sheet is open
-    BackHandler(enabled = uiState.isOpen) {
-        when {
-            uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0 -> {
-                onEvent(QuickActionUiEvent.OnPreviousStep)
-            }
-            uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null -> {
-                onEvent(QuickActionUiEvent.OnClearSelectedContact)
-            }
-            else -> {
-                onEvent(QuickActionUiEvent.OnDismiss)
-            }
+    val isReducedMotion = LocalReducedMotion.current
+    var innerStepBackProgress by remember { mutableFloatStateOf(0f) }
+    var sheetDismissProgress by remember { mutableFloatStateOf(0f) }
+    var isPredictiveDismissing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isOpen) {
+        if (uiState.isOpen) {
+            isPredictiveDismissing = false
+            sheetDismissProgress = 0f
+            innerStepBackProgress = 0f
         }
     }
+
+    val isInnerStep = (uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0) ||
+        (uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null)
+
+    // Scrub inner step crossfade when stepping back, or dismiss sheet vertically at step 0
+    ScrubbablePredictiveBackHandler(
+        enabled = uiState.isOpen && isInnerStep,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = { innerStepBackProgress = it },
+        finishOnCommit = false,
+        onCommit = {
+            when {
+                uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0 -> {
+                    onEvent(QuickActionUiEvent.OnPreviousStep)
+                }
+                uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null -> {
+                    onEvent(QuickActionUiEvent.OnClearSelectedContact)
+                }
+            }
+        }
+    )
+
+    ScrubbablePredictiveBackHandler(
+        enabled = uiState.isOpen && !isInnerStep,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = { sheetDismissProgress = it },
+        finishOnCommit = true,
+        baseFinishDurationMs = 140,
+        onCommit = {
+            isPredictiveDismissing = true
+            onEvent(QuickActionUiEvent.OnDismiss)
+        }
+    )
 
     Box(modifier = modifier.fillMaxSize()) {
         // Scrim backdrop
         AnimatedVisibility(
             visible = uiState.isOpen,
             enter = fadeIn(tween(120)),
-            exit = fadeOut(tween(100))
+            exit = if (isPredictiveDismissing || isReducedMotion) ExitTransition.None else fadeOut(tween(100))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.32f))
+                    .background(Color.Black.copy(alpha = resolveSheetScrimAlpha(sheetDismissProgress, maxAlpha = 0.32f)))
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
@@ -93,10 +133,14 @@ fun QuickActionSheetHost(
                 initialOffsetY = { it / 2 },
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = 700f)
             ) + fadeIn(tween(90)),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(120)
-            ) + fadeOut(tween(90)),
+            exit = if (isPredictiveDismissing || isReducedMotion) {
+                ExitTransition.None
+            } else {
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(120)
+                ) + fadeOut(tween(90))
+            },
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             Surface(
@@ -106,6 +150,7 @@ fun QuickActionSheetHost(
                 shadowElevation = 12.dp,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .predictiveSheetDismiss { sheetDismissProgress }
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
@@ -131,14 +176,16 @@ fun QuickActionSheetHost(
                     QuickActionMode.FLOW_A_ADD_CONTACT -> {
                         FlowAAddContactCard(
                             uiState = uiState,
-                            onEvent = onEvent
+                            onEvent = onEvent,
+                            predictiveBackProgress = innerStepBackProgress
                         )
                     }
 
                     QuickActionMode.FLOW_B_LOG_ENCOUNTER -> {
                         FlowBLogEncounterSheet(
                             uiState = uiState,
-                            onEvent = onEvent
+                            onEvent = onEvent,
+                            predictiveBackProgress = innerStepBackProgress
                         )
                     }
                 }

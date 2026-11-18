@@ -1,8 +1,8 @@
 package com.example.hello.ui.quickaction
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +36,13 @@ import com.example.hello.data.preferences.helloDataStore
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
+import com.example.hello.ui.components.LocalReducedMotion
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
+import com.example.hello.ui.haptics.rememberHelloHaptics
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
+import com.example.hello.ui.navigation.predictiveSheetDismiss
+import com.example.hello.ui.navigation.resolveSheetScrimAlpha
 import com.example.hello.ui.quickaction.components.FlowAAddContactCard
 import com.example.hello.ui.quickaction.components.LocationExplainerDialog
 import com.example.hello.ui.theme.HelloTheme
@@ -66,25 +76,51 @@ class QuickCaptureActivity : ComponentActivity() {
             }
             val dynamicColor = userPreferences?.dynamicColor ?: false
             val themeStyle = userPreferences?.themeStyle ?: ThemeStyle.MONOCHROME
+            val isReducedMotion = userPreferences?.reduceAnimations == true
+
+            val helloHaptics = rememberHelloHaptics()
 
             HelloTheme(darkTheme = isDark, dynamicColor = dynamicColor, themeStyle = themeStyle) {
-                val uiState by viewModel.uiState.collectAsState()
+                CompositionLocalProvider(
+                    LocalHelloHaptics provides helloHaptics,
+                    LocalReducedMotion provides isReducedMotion
+                ) {
+                    val uiState by viewModel.uiState.collectAsState()
+                    var innerStepBackProgress by remember { mutableFloatStateOf(0f) }
+                    var sheetDismissProgress by remember { mutableFloatStateOf(0f) }
 
-                // Intercept back button to step backward or dismiss immediately
-                BackHandler {
-                    if (uiState.currentStepIndex > 0) {
-                        viewModel.onEvent(QuickActionUiEvent.OnPreviousStep)
-                    } else {
-                        finish()
-                    }
-                }
+                    // Step back inside Flow A when currentStepIndex > 0
+                    ScrubbablePredictiveBackHandler(
+                        enabled = uiState.currentStepIndex > 0,
+                        isReducedMotion = isReducedMotion,
+                        onProgressChanged = { innerStepBackProgress = it },
+                        finishOnCommit = false,
+                        onCommit = {
+                            viewModel.onEvent(QuickActionUiEvent.OnPreviousStep)
+                        }
+                    )
 
-                // If save completes and flow closes, finish activity
-                LaunchedEffect(uiState.isOpen) {
-                    if (!uiState.isOpen) {
-                        finish()
+                    // Dismiss card vertically downward when at step 0
+                    ScrubbablePredictiveBackHandler(
+                        enabled = uiState.currentStepIndex == 0,
+                        isReducedMotion = isReducedMotion,
+                        onProgressChanged = { sheetDismissProgress = it },
+                        finishOnCommit = true,
+                        baseFinishDurationMs = 140,
+                        onCommit = {
+                            finishWithoutExitFlash()
+                        }
+                    )
+
+                    // If save completes and flow closes, trigger completion haptic before finishing
+                    LaunchedEffect(uiState.isOpen) {
+                        if (!uiState.isOpen) {
+                            if (uiState.userMessage != null) {
+                                helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                            }
+                            finish()
+                        }
                     }
-                }
 
                 // In-App Location Explainer Dialog if triggered
                 if (uiState.showLocationExplainer) {
@@ -103,7 +139,7 @@ class QuickCaptureActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.36f))
+                            .background(Color.Black.copy(alpha = resolveSheetScrimAlpha(sheetDismissProgress, maxAlpha = 0.36f)))
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
@@ -121,6 +157,7 @@ class QuickCaptureActivity : ComponentActivity() {
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
+                            .predictiveSheetDismiss { sheetDismissProgress }
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
@@ -130,6 +167,7 @@ class QuickCaptureActivity : ComponentActivity() {
                     ) {
                         FlowAAddContactCard(
                             uiState = uiState,
+                            predictiveBackProgress = innerStepBackProgress,
                             onEvent = { event ->
                                 when (event) {
                                     is QuickActionUiEvent.OnDismiss -> {
@@ -143,7 +181,18 @@ class QuickCaptureActivity : ComponentActivity() {
                         )
                     }
                 }
+                }
             }
+        }
+    }
+
+    private fun finishWithoutExitFlash() {
+        finish()
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
         }
     }
 }

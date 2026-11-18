@@ -1,13 +1,23 @@
 package com.example.hello.ui.onboarding
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.hello.ui.components.LocalReducedMotion
+import com.example.hello.ui.navigation.normalizePredictiveBackProgress
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,9 +84,43 @@ fun OnboardingScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Intercept system Back when on Step 1 or 2 to retreat linearly
-    BackHandler(enabled = uiState.currentStep > 0) {
-        onEvent(OnboardingUiEvent.OnPreviousStep)
+    val isReducedMotion = LocalReducedMotion.current
+    val scope = rememberCoroutineScope()
+    val stepTransitionState = remember { SeekableTransitionState(uiState.currentStep) }
+
+    LaunchedEffect(uiState.currentStep, isReducedMotion) {
+        if (stepTransitionState.currentState != uiState.currentStep) {
+            if (isReducedMotion) {
+                stepTransitionState.snapTo(uiState.currentStep)
+            } else {
+                stepTransitionState.animateTo(uiState.currentStep)
+            }
+        }
+    }
+
+    val stepTransition = rememberTransition(stepTransitionState, label = "OnboardingStepTransition")
+
+    // Intercept system Back when on Step 1 or 2 to scrub/retreat linearly
+    PredictiveBackHandler(enabled = uiState.currentStep > 0) { progressFlow ->
+        val prevStep = (uiState.currentStep - 1).coerceAtLeast(0)
+        try {
+            progressFlow.collect { backEvent ->
+                val p = normalizePredictiveBackProgress(backEvent.progress, isReducedMotion)
+                if (p > 0f) {
+                    stepTransitionState.seekTo(fraction = p, targetState = prevStep)
+                }
+            }
+            onEvent(OnboardingUiEvent.OnPreviousStep)
+        } catch (e: CancellationException) {
+            scope.launch {
+                if (isReducedMotion) {
+                    stepTransitionState.snapTo(uiState.currentStep)
+                } else {
+                    stepTransitionState.animateTo(uiState.currentStep)
+                }
+            }
+            throw e
+        }
     }
 
     Scaffold(
@@ -130,18 +174,18 @@ fun OnboardingScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                AnimatedContent(
-                    targetState = uiState.currentStep,
+                stepTransition.AnimatedContent(
                     transitionSpec = {
-                        if (targetState > initialState) {
+                        if (isReducedMotion) {
+                            fadeIn(snap()) togetherWith fadeOut(snap())
+                        } else if (targetState > initialState) {
                             slideInHorizontally { it / 3 } + fadeIn() togetherWith
                                 slideOutHorizontally { -it / 3 } + fadeOut()
                         } else {
                             slideInHorizontally { -it / 3 } + fadeIn() togetherWith
                                 slideOutHorizontally { it / 3 } + fadeOut()
                         }
-                    },
-                    label = "OnboardingStepContent"
+                    }
                 ) { step ->
                     when (step) {
                         0 -> OnboardingWelcomeStep(modifier = Modifier.fillMaxSize())

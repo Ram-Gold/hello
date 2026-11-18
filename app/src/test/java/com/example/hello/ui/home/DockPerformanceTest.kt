@@ -1,5 +1,6 @@
 package com.example.hello.ui.home
 
+import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.home.components.DockMotionConfig
 import com.example.hello.ui.theme.MotionTokens
 import org.junit.Assert.assertEquals
@@ -545,5 +546,46 @@ class DockPerformanceTest {
         assertEquals(52, inactiveWidth)
         assertTrue("Active pill touch target exceeds 48dp accessibility standard", activeWidth >= 48)
         assertTrue("Inactive slot touch target exceeds 48dp accessibility standard", inactiveWidth >= 48)
+    }
+
+    @Test
+    fun dockLabelWeights_syncContinuouslyWithPillProgressAndSuppressMiddleTabOnSkip() {
+        // Adjacent predictive back: People (1f) -> Home (0f)
+        val (hStart, pStart, tStart) = DockMotionConfig.resolveThreeTabLabelWeights(
+            progress = 1.0f,
+            fromTab = HomeNavTab.PEOPLE,
+            toTab = HomeNavTab.HOME
+        )
+        assertEquals(0f, hStart, 0.001f)
+        assertEquals(1f, pStart, 0.001f)
+        assertEquals(0f, tStart, 0.001f)
+
+        val (hMid, pMid, tMid) = DockMotionConfig.resolveThreeTabLabelWeights(
+            progress = 0.5f,
+            fromTab = HomeNavTab.PEOPLE,
+            toTab = HomeNavTab.HOME
+        )
+        assertEquals(0.5f, hMid, 0.001f)
+        assertEquals(0.5f, pMid, 0.001f)
+        assertEquals(0f, tMid, 0.001f)
+
+        // Non-adjacent predictive back: Timeline (2f) -> Home (0f) must NOT pop People's label at 1.0f
+        val (hSkipMid, pSkipMid, tSkipMid) = DockMotionConfig.resolveThreeTabLabelWeights(
+            progress = 1.0f,
+            fromTab = HomeNavTab.TIMELINE,
+            toTab = HomeNavTab.HOME
+        )
+        assertEquals(0f, hSkipMid, 0.001f)
+        assertEquals(0f, pSkipMid, 0.001f)
+        assertEquals(0f, tSkipMid, 0.001f)
+
+        val (hSkipNearHome, pSkipNearHome, tSkipNearHome) = DockMotionConfig.resolveThreeTabLabelWeights(
+            progress = 0.25f,
+            fromTab = HomeNavTab.TIMELINE,
+            toTab = HomeNavTab.HOME
+        )
+        assertEquals(0.75f, hSkipNearHome, 0.001f)
+        assertEquals(0f, pSkipNearHome, 0.001f)
+        assertEquals(0f, tSkipNearHome, 0.001f)
     }
 }

@@ -1,7 +1,6 @@
 package com.example.hello.ui.contacts
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -105,6 +104,8 @@ import com.example.hello.ui.contacts.components.PullToActionArchiveHeader
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.home.components.DoodleAvatar
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
+import com.example.hello.ui.navigation.predictiveSelectionTrayExit
 import com.example.hello.ui.settings.shapeFor
 import com.example.hello.ui.theme.ContactExitMotionTokens
 import com.example.hello.ui.theme.HelloTheme
@@ -122,6 +123,8 @@ fun ContactsScreen(
     onAddContactClick: () -> Unit = {},
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     isReducedMotion: Boolean = false,
+    selectionBackProgress: Float = 0f,
+    registerSelectionBackHandler: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -130,6 +133,8 @@ fun ContactsScreen(
     val pullToActionState = rememberPullToActionState()
     val haptics = LocalHelloHaptics.current
     val exitingContacts = remember { androidx.compose.runtime.mutableStateMapOf<String, ContactExitType>() }
+    var localSelectionBackProgress by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val effectiveSelectionBackProgress = if (registerSelectionBackHandler) localSelectionBackProgress else selectionBackProgress
 
     val pullNestedScrollConnection = remember(pullToActionState, listState, uiState.isSelectionMode, haptics) {
         PullToActionNestedScrollConnection(
@@ -140,14 +145,19 @@ fun ContactsScreen(
                 listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
             },
             onTrigger = {
-                haptics.perform(SemanticHapticType.THRESHOLD_ACTIVATION)
+                haptics.perform(SemanticHapticType.MODE_TOGGLE)
                 onNavigateToArchivedContacts()
             }
         )
     }
 
-    BackHandler(enabled = uiState.isSelectionMode) {
-        onEvent(ContactsUiEvent.OnClearSelection)
+    if (registerSelectionBackHandler) {
+        ScrubbablePredictiveBackHandler(
+            enabled = uiState.isSelectionMode,
+            isReducedMotion = isReducedMotion,
+            onProgressChanged = { localSelectionBackProgress = it },
+            onCommit = { onEvent(ContactsUiEvent.OnClearSelection) }
+        )
     }
 
     Box(
@@ -305,6 +315,7 @@ fun ContactsScreen(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 16.dp)
+                .predictiveSelectionTrayExit { effectiveSelectionBackProgress }
         ) {
             ContactSelectionActionTray(
                 onShareClick = {
@@ -344,7 +355,7 @@ fun ContactsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                            haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
                             val toArchive = uiState.selectedContactIds.toList()
                             toArchive.forEach { id -> exitingContacts[id] = ContactExitType.ARCHIVE }
                             coroutineScope.launch {

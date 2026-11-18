@@ -1,7 +1,6 @@
 package com.example.hello.ui.detail
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,7 +57,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -68,11 +69,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.ContactSummary
+import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
 import com.example.hello.ui.detail.components.PropertiesPanel
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
+import com.example.hello.ui.navigation.predictiveSelectionTrayExit
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 
@@ -90,10 +94,15 @@ fun PersonDetailScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = LocalHelloHaptics.current
+    val isReducedMotion = LocalReducedMotion.current
+    var selectionBackProgress by remember { mutableFloatStateOf(0f) }
 
-    BackHandler(enabled = uiState.isSelectionMode) {
-        onEvent(PersonDetailUiEvent.OnClearSelection)
-    }
+    ScrubbablePredictiveBackHandler(
+        enabled = uiState.isSelectionMode,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = { selectionBackProgress = it },
+        onCommit = { onEvent(PersonDetailUiEvent.OnClearSelection) }
+    )
 
     LaunchedEffect(uiState.userMessage) {
         uiState.userMessage?.let { msg ->
@@ -177,7 +186,10 @@ fun PersonDetailScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onEvent(PersonDetailUiEvent.OnToggleFavorite) }) {
+                        IconButton(onClick = {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onEvent(PersonDetailUiEvent.OnToggleFavorite)
+                        }) {
                             Icon(
                                 imageVector = if (uiState.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                                 contentDescription = if (uiState.isFavorite) "Remove from favorites" else "Add to favorites",
@@ -254,7 +266,10 @@ fun PersonDetailScreen(
                             selectedEncounterIds = uiState.selectedEncounterIds,
                             isSelectionMode = uiState.isSelectionMode,
                             onEncounterClick = { onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(it)) },
-                            onEncounterLongClick = { onEvent(PersonDetailUiEvent.OnEncounterLongClick(it)) }
+                            onEncounterLongClick = {
+                                haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                                onEvent(PersonDetailUiEvent.OnEncounterLongClick(it))
+                            }
                         )
                     }
 
@@ -271,6 +286,7 @@ fun PersonDetailScreen(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
+                        .predictiveSelectionTrayExit { selectionBackProgress }
                 ) {
                     TimelineSelectionActionTray(
                         onDeleteClick = { onEvent(PersonDetailUiEvent.OnRequestDeleteSelected) },

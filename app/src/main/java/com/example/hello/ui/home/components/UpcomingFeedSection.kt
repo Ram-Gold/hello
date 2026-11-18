@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.UpcomingAlert
 import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 
 @Composable
 fun UpcomingFeedSection(
@@ -58,6 +60,7 @@ fun UpcomingFeedSection(
     onReminderSnooze: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = LocalHelloHaptics.current
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -116,7 +119,10 @@ fun UpcomingFeedSection(
                 ) { alert ->
                     UpcomingAlertCard(
                         alert = alert,
-                        onDone = { onReminderDone(alert.id) },
+                        onDone = {
+                            haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                            onReminderDone(alert.id)
+                        },
                         onSnooze = { onReminderSnooze(alert.id) }
                     )
                 }

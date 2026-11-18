@@ -2,7 +2,10 @@ package com.example.hello.ui.quickaction.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -73,6 +76,7 @@ import com.example.hello.domain.model.CaptureComponent
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
@@ -84,13 +88,30 @@ import java.time.LocalDate
 fun FlowAAddContactCard(
     uiState: QuickActionUiState,
     onEvent: (QuickActionUiEvent) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    predictiveBackProgress: Float = 0f
 ) {
+    val isReducedMotion = LocalReducedMotion.current
     val focusRequester = remember { FocusRequester() }
     val activeComponents = uiState.activeFlowPreset?.activeComponents.orEmpty()
     val currentStep = uiState.currentStepIndex.coerceIn(0, (activeComponents.size - 1).coerceAtLeast(0))
     val currentComp = activeComponents.getOrNull(currentStep)
+    val prevComp = if (currentStep > 0) activeComponents.getOrNull(currentStep - 1) else null
     val isLastStep = currentStep >= activeComponents.size - 1
+
+    val stepTransitionState = remember { SeekableTransitionState(currentComp) }
+    LaunchedEffect(currentComp, predictiveBackProgress, isReducedMotion) {
+        if (predictiveBackProgress > 0f && prevComp != null && !isReducedMotion) {
+            stepTransitionState.seekTo(fraction = predictiveBackProgress.coerceIn(0f, 1f), targetState = prevComp)
+        } else if (stepTransitionState.currentState != currentComp || stepTransitionState.targetState != currentComp) {
+            if (isReducedMotion) {
+                stepTransitionState.snapTo(currentComp)
+            } else {
+                stepTransitionState.animateTo(currentComp)
+            }
+        }
+    }
+    val stepTransition = rememberTransition(stepTransitionState, label = "modularStepTransition")
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -249,12 +270,14 @@ fun FlowAAddContactCard(
         }
 
         // Modular Step Card
-        AnimatedContent(
-            targetState = currentComp,
+        stepTransition.AnimatedContent(
             transitionSpec = {
-                fadeIn(tween(110)) togetherWith fadeOut(tween(80))
-            },
-            label = "modularStepTransition"
+                if (isReducedMotion) {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                } else {
+                    fadeIn(tween(110)) togetherWith fadeOut(tween(80))
+                }
+            }
         ) { comp ->
             if (comp != null) {
                 Column(

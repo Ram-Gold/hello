@@ -1,9 +1,11 @@
 package com.example.hello.ui
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,11 +30,13 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +54,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
@@ -116,6 +122,8 @@ import com.example.hello.ui.navigation.SettingsRoute
 import com.example.hello.ui.navigation.SettingsTagsRoute
 import com.example.hello.ui.navigation.SettingsTerminologyRoute
 import com.example.hello.ui.navigation.TimelineRoute
+import com.example.hello.ui.navigation.PredictiveBackPopHandoff
+import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
 import com.example.hello.ui.navigation.aospSharedAxisEnter
 import com.example.hello.ui.navigation.aospSharedAxisExit
 import com.example.hello.ui.navigation.aospSharedAxisPopEnter
@@ -123,6 +131,7 @@ import com.example.hello.ui.navigation.aospSharedAxisPopExit
 import com.example.hello.ui.navigation.enterTransition
 import com.example.hello.ui.navigation.exitTransition
 import com.example.hello.ui.navigation.floatingDockVisibilitySpec
+import com.example.hello.ui.navigation.interpolateTabProgressForPredictiveBack
 import com.example.hello.ui.navigation.isMainRootRoute
 import com.example.hello.ui.navigation.mainRootEnterTransition
 import com.example.hello.ui.navigation.mainRootExitTransition
@@ -130,8 +139,12 @@ import com.example.hello.ui.navigation.navigateSafely
 import com.example.hello.ui.navigation.navigateToTopLevelSafely
 import com.example.hello.ui.navigation.popEnterTransition
 import com.example.hello.ui.navigation.popExitTransition
+import com.example.hello.ui.navigation.predictiveDeeperRoutePopExit
 import com.example.hello.ui.navigation.resolveActiveTransitionTabs
+import com.example.hello.ui.navigation.resolveDepthFractionWithPredictiveBack
+import com.example.hello.ui.navigation.resolveDockVisibilityWithPredictiveBack
 import com.example.hello.ui.navigation.shouldHideFloatingDock
+import com.example.hello.ui.navigation.shouldUseRootBridgeForBack
 import com.example.hello.ui.onboarding.OnboardingScreen
 import com.example.hello.ui.onboarding.OnboardingViewModel
 import com.example.hello.ui.quickaction.QuickActionSheetHost
@@ -214,6 +227,21 @@ fun MainAppShell(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val previousRoute = navController.previousBackStackEntry?.destination?.route
+    val isReducedMotion = userPreferences?.reduceAnimations == true
+
+    var rootTabBackProgress by remember { mutableFloatStateOf(0f) }
+    var deeperRouteBackProgress by remember { mutableFloatStateOf(0f) }
+    var selectionBackProgress by remember { mutableFloatStateOf(0f) }
+    val popHandoff = remember { PredictiveBackPopHandoff() }
+
+    LaunchedEffect(currentRoute) {
+        rootTabBackProgress = 0f
+        selectionBackProgress = 0f
+        if (!popHandoff.hasActiveCommit()) {
+            deeperRouteBackProgress = 0f
+        }
+    }
 
     // Deep link from FollowUp notification content tap
     LaunchedEffect(initialContactId, hasCompletedOnboarding) {
@@ -266,12 +294,30 @@ fun MainAppShell(
             )
         }
     }
-    val isReducedMotion = userPreferences?.reduceAnimations == true
-    val dockVisibilityProgressState = animateFloatAsState(
-        targetValue = if (shouldHideDock) 0f else 1f,
-        animationSpec = floatingDockVisibilitySpec(isReducedMotion),
-        label = "DockVisibilityProgress"
-    )
+    val targetDockVisibility = if (shouldHideDock) 0f else 1f
+    val dockVisibilityAnimatable = remember { Animatable(targetDockVisibility) }
+    val activeDockScrub = maxOf(deeperRouteBackProgress, selectionBackProgress).coerceIn(0f, 1f)
+    LaunchedEffect(activeDockScrub, deeperRouteBackProgress, selectionBackProgress, targetDockVisibility, isReducedMotion) {
+        if (activeDockScrub > 0f && !isReducedMotion) {
+            dockVisibilityAnimatable.snapTo(
+                resolveDockVisibilityWithPredictiveBack(
+                    animatedDockVisibility = targetDockVisibility,
+                    deeperBackProgress = deeperRouteBackProgress,
+                    selectionBackProgress = selectionBackProgress
+                )
+            )
+        } else if (dockVisibilityAnimatable.value != targetDockVisibility || dockVisibilityAnimatable.targetValue != targetDockVisibility) {
+            if (isReducedMotion) {
+                dockVisibilityAnimatable.snapTo(targetDockVisibility)
+            } else {
+                dockVisibilityAnimatable.animateTo(
+                    targetValue = targetDockVisibility,
+                    animationSpec = floatingDockVisibilitySpec(false)
+                )
+            }
+        }
+    }
+    val dockVisibilityProgressState = dockVisibilityAnimatable.asState()
     val shouldRenderDock by remember(shouldHideDock) {
         derivedStateOf {
             !shouldHideDock || dockVisibilityProgressState.value > 0.01f
@@ -382,9 +428,17 @@ fun MainAppShell(
                         contactsViewModel = contactsViewModel,
                         quickActionViewModel = quickActionViewModel,
                         terminologyState = terminologyState,
-                        isReducedMotion = isReducedMotion
+                        isReducedMotion = isReducedMotion,
+                        rootTabBackProgress = rootTabBackProgress,
+                        deeperRouteBackProgress = deeperRouteBackProgress,
+                        selectionBackProgress = selectionBackProgress
                     )
                 }
+
+                val useRootBridgeForCurrentRoute = shouldUseRootBridgeForBack(
+                    currentRoute = currentRoute,
+                    previousRoute = previousRoute
+                )
 
                 MainAppNavHost(
                     navController = navController,
@@ -394,7 +448,27 @@ fun MainAppShell(
                     contactsViewModel = contactsViewModel,
                     preferredTerminology = preferredTerminology,
                     snackbarHostState = snackbarHostState,
-                    userPreferences = userPreferences
+                    userPreferences = userPreferences,
+                    useRootBridgeForCurrentRoute = useRootBridgeForCurrentRoute,
+                    deeperRouteBackProgress = deeperRouteBackProgress,
+                    popHandoff = popHandoff,
+                    onDeeperRouteBackProgress = { deeperRouteBackProgress = it },
+                    onDeeperRouteBackCommit = { entryId ->
+                        popHandoff.markCommitted(entryId)
+                        navController.popBackStack()
+                    }
+                )
+
+                RootTabBackCoordinator(
+                    currentRoute = currentRoute,
+                    isContactsSelectionMode = isContactsSelectionMode,
+                    isTimelineSelectionMode = isTimelineSelectionMode,
+                    isReducedMotion = isReducedMotion,
+                    onRootTabBackProgress = { rootTabBackProgress = it },
+                    onRootTabBackCommit = { navController.popBackStack() },
+                    onSelectionBackProgress = { selectionBackProgress = it },
+                    onClearContactsSelection = { contactsViewModel.onEvent(ContactsUiEvent.OnClearSelection) },
+                    onClearTimelineSelection = { timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection) }
                 )
 
                 // Scrim & Floating Bottom Navigation Dock scoped to prevent NavHost recomposition
@@ -404,6 +478,13 @@ fun MainAppShell(
                     activeTab = activeTab,
                     shouldRenderDock = shouldRenderDock,
                     dockVisibilityProgressState = dockVisibilityProgressState,
+                    overridePillProgress = if (rootTabBackProgress > 0f && isMainRootRoute(currentRoute) && activeTab != HomeNavTab.HOME) {
+                        interpolateTabProgressForPredictiveBack(
+                            currentTab = activeTab,
+                            targetTab = HomeNavTab.HOME,
+                            backProgress = rootTabBackProgress
+                        )
+                    } else null,
                     dockHeightPx = dockHeightPx,
                     onDockHeightChanged = { if (it > 0) dockHeightPx = it },
                     homeViewModel = homeViewModel,
@@ -435,33 +516,80 @@ private fun WarmRootTabsHost(
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
     terminologyState: State<RelationshipTerminology>,
-    isReducedMotion: Boolean = false
+    isReducedMotion: Boolean = false,
+    rootTabBackProgress: Float = 0f,
+    deeperRouteBackProgress: Float = 0f,
+    selectionBackProgress: Float = 0f
 ) {
     val targetProgress = when (activeTab) {
         HomeNavTab.HOME -> 0f
         HomeNavTab.PEOPLE -> 1f
         HomeNavTab.TIMELINE -> 2f
     }
-    val slideFractionState = animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = MotionTokens.tabTransitionTween(),
-        label = "RootTabSlideFraction"
-    )
-    val fadeFractionState = animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = MotionTokens.screenFadeSpec(),
-        label = "RootTabFadeFraction"
-    )
+    val slideAnimatable = remember { Animatable(targetProgress) }
+    val fadeAnimatable = remember { Animatable(targetProgress) }
+    val isTabPredictiveBack = rootTabBackProgress > 0f && isMainRootRoute(currentRoute) && activeTab != HomeNavTab.HOME && !isReducedMotion
+
+    LaunchedEffect(isTabPredictiveBack, rootTabBackProgress, activeTab, isReducedMotion) {
+        if (isTabPredictiveBack) {
+            val scrubbed = interpolateTabProgressForPredictiveBack(
+                currentTab = activeTab,
+                targetTab = HomeNavTab.HOME,
+                backProgress = rootTabBackProgress
+            )
+            slideAnimatable.snapTo(scrubbed)
+            fadeAnimatable.snapTo(scrubbed)
+        } else {
+            if (slideAnimatable.value != targetProgress || slideAnimatable.targetValue != targetProgress) {
+                launch {
+                    if (isReducedMotion) {
+                        slideAnimatable.snapTo(targetProgress)
+                    } else {
+                        slideAnimatable.animateTo(targetProgress, animationSpec = MotionTokens.tabTransitionTween())
+                    }
+                }
+            }
+            if (fadeAnimatable.value != targetProgress || fadeAnimatable.targetValue != targetProgress) {
+                launch {
+                    if (isReducedMotion) {
+                        fadeAnimatable.snapTo(targetProgress)
+                    } else {
+                        fadeAnimatable.animateTo(targetProgress, animationSpec = MotionTokens.screenFadeSpec())
+                    }
+                }
+            }
+        }
+    }
+    val slideFractionState = slideAnimatable.asState()
+    val fadeFractionState = fadeAnimatable.asState()
 
     val isDeeperRoute = currentRoute != null && !isMainRootRoute(currentRoute)
-    val depthFractionState = animateFloatAsState(
-        targetValue = if (isDeeperRoute) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = MotionTokens.AOSP_TRANSITION_DURATION,
-            easing = MotionTokens.M3EmphasizedEasing
-        ),
-        label = "RootDepthFraction"
-    )
+    val targetDepth = if (isDeeperRoute) 1f else 0f
+    val depthAnimatable = remember { Animatable(targetDepth) }
+    LaunchedEffect(isDeeperRoute, deeperRouteBackProgress, targetDepth, isReducedMotion) {
+        if (isDeeperRoute && deeperRouteBackProgress > 0f && !isReducedMotion) {
+            depthAnimatable.snapTo(
+                resolveDepthFractionWithPredictiveBack(
+                    isDeeperRoute = true,
+                    animatedDepthFraction = 1f,
+                    deeperBackProgress = deeperRouteBackProgress
+                )
+            )
+        } else if (depthAnimatable.value != targetDepth || depthAnimatable.targetValue != targetDepth) {
+            if (isReducedMotion) {
+                depthAnimatable.snapTo(targetDepth)
+            } else {
+                depthAnimatable.animateTo(
+                    targetValue = targetDepth,
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.AOSP_TRANSITION_DURATION,
+                        easing = MotionTokens.M3EmphasizedEasing
+                    )
+                )
+            }
+        }
+    }
+    val depthFractionState = depthAnimatable.asState()
 
     val onNavigateToPeople = remember(navController) {
         {
@@ -580,7 +708,8 @@ private fun WarmRootTabsHost(
                 onContactClick = onContactClick,
                 onAddContactClick = onAddContactClick,
                 terminology = terminologyState.value,
-                isReducedMotion = isReducedMotion
+                isReducedMotion = isReducedMotion,
+                selectionBackProgress = if (activeTab == HomeNavTab.PEOPLE) selectionBackProgress else 0f
             )
         }
 
@@ -605,7 +734,8 @@ private fun WarmRootTabsHost(
                 timelineViewModel = timelineViewModel,
                 onContactClick = onContactClick,
                 onLogEncounterForContact = onLogEncounterForContact,
-                onLogEncounterClick = onLogEncounterClick
+                onLogEncounterClick = onLogEncounterClick,
+                selectionBackProgress = if (activeTab == HomeNavTab.TIMELINE) selectionBackProgress else 0f
             )
         }
     }
@@ -616,7 +746,8 @@ private fun TimelineTabDestination(
     timelineViewModel: TimelineViewModel,
     onContactClick: (String) -> Unit,
     onLogEncounterForContact: (String, String?) -> Unit,
-    onLogEncounterClick: () -> Unit
+    onLogEncounterClick: () -> Unit,
+    selectionBackProgress: Float = 0f
 ) {
     val timelineUiState by timelineViewModel.uiState.collectAsState()
     ScreenDepthWrapper(isDepthVisible = false) {
@@ -625,7 +756,9 @@ private fun TimelineTabDestination(
             onEvent = timelineViewModel::onEvent,
             onContactClick = onContactClick,
             onLogEncounterForContact = onLogEncounterForContact,
-            onLogEncounterClick = onLogEncounterClick
+            onLogEncounterClick = onLogEncounterClick,
+            selectionBackProgress = selectionBackProgress,
+            registerSelectionBackHandler = false
         )
     }
 }
@@ -666,7 +799,8 @@ private fun PeopleTabDestination(
     onContactClick: (String) -> Unit,
     onAddContactClick: () -> Unit,
     terminology: RelationshipTerminology,
-    isReducedMotion: Boolean = false
+    isReducedMotion: Boolean = false,
+    selectionBackProgress: Float = 0f
 ) {
     val contactsUiState by contactsViewModel.uiState.collectAsState()
     ScreenDepthWrapper(isDepthVisible = false) {
@@ -678,7 +812,9 @@ private fun PeopleTabDestination(
             onContactClick = onContactClick,
             onAddContactClick = onAddContactClick,
             terminology = terminology,
-            isReducedMotion = isReducedMotion
+            isReducedMotion = isReducedMotion,
+            selectionBackProgress = selectionBackProgress,
+            registerSelectionBackHandler = false
         )
     }
 }
@@ -692,13 +828,20 @@ private fun MainAppNavHost(
     contactsViewModel: ContactsViewModel,
     preferredTerminology: RelationshipTerminology,
     snackbarHostState: SnackbarHostState,
-    userPreferences: UserPreferences?
+    userPreferences: UserPreferences?,
+    useRootBridgeForCurrentRoute: Boolean,
+    deeperRouteBackProgress: Float,
+    popHandoff: PredictiveBackPopHandoff,
+    onDeeperRouteBackProgress: (Float) -> Unit,
+    onDeeperRouteBackCommit: (String) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val helloHaptics = LocalHelloHaptics.current
     val isReducedMotion = userPreferences?.reduceAnimations == true
     val motionDuration = if (isReducedMotion) 0 else MotionTokens.AOSP_TRANSITION_DURATION
+    val useRootBridgeState = rememberUpdatedState(useRootBridgeForCurrentRoute)
+    val deeperBackProgressState = rememberUpdatedState(deeperRouteBackProgress)
 
     val settingsViewModel = remember {
         val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
@@ -829,163 +972,163 @@ private fun MainAppNavHost(
                 // Visual content is kept warm in WarmRootTabsHost for 0ms first-frame latency
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() },
-                        onNavigateToTerminology = { navController.navigateSafely(SettingsTerminologyRoute.ROUTE_NAME) },
-                        onNavigateToFlows = { navController.navigateSafely(SettingsFlowsRoute.ROUTE_NAME) },
-                        onNavigateToTags = { navController.navigateSafely(SettingsTagsRoute.ROUTE_NAME) },
-                        onNavigateToData = { navController.navigateSafely(SettingsDataRoute.ROUTE_NAME) },
-                        onNavigateToAppearance = { navController.navigateSafely(SettingsAppearanceRoute.ROUTE_NAME) },
-                        onNavigateToPreferences = { navController.navigateSafely(SettingsPreferencesRoute.ROUTE_NAME) },
-                        onNavigateToAbout = { navController.navigateSafely(SettingsAboutRoute.ROUTE_NAME) }
-                    )
-                }
+                SettingsScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTerminology = { navController.navigateSafely(SettingsTerminologyRoute.ROUTE_NAME) },
+                    onNavigateToFlows = { navController.navigateSafely(SettingsFlowsRoute.ROUTE_NAME) },
+                    onNavigateToTags = { navController.navigateSafely(SettingsTagsRoute.ROUTE_NAME) },
+                    onNavigateToData = { navController.navigateSafely(SettingsDataRoute.ROUTE_NAME) },
+                    onNavigateToAppearance = { navController.navigateSafely(SettingsAppearanceRoute.ROUTE_NAME) },
+                    onNavigateToPreferences = { navController.navigateSafely(SettingsPreferencesRoute.ROUTE_NAME) },
+                    onNavigateToAbout = { navController.navigateSafely(SettingsAboutRoute.ROUTE_NAME) }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsFlowsRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsFlowsScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsFlowsScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsTerminologyRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsTerminologyScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsTerminologyScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsTagsRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsTagsScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsTagsScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsDataRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsDataScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsDataScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsAppearanceRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsAppearanceScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsAppearanceScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsPreferencesRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val settingsUiState by settingsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsPreferencesScreen(
-                        uiState = settingsUiState,
-                        onEvent = settingsViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsPreferencesScreen(
+                    uiState = settingsUiState,
+                    onEvent = settingsViewModel::onEvent,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = SettingsAboutRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    SettingsAboutScreen(
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                SettingsAboutScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
-            composable(
+            settingsBridgedComposable(
                 route = ArchivedContactsRoute.ROUTE_NAME,
-                enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
-                exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
-                popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
-                popExitTransition = { SettingsMotionConfig.settingsPopExitTransition(isReducedMotion) }
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 val contactsUiState by contactsViewModel.uiState.collectAsState()
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    ArchivedContactsScreen(
-                        contacts = contactsUiState.archivedContacts,
-                        onRestoreContact = { contactsViewModel.onEvent(ContactsUiEvent.OnRestoreContact(it)) },
-                        onNavigateBack = { navController.popBackStack() },
-                        terminology = preferredTerminology,
-                        isReducedMotion = isReducedMotion
-                    )
-                }
+                ArchivedContactsScreen(
+                    contacts = contactsUiState.archivedContacts,
+                    onRestoreContact = { contactsViewModel.onEvent(ContactsUiEvent.OnRestoreContact(it)) },
+                    onNavigateBack = { navController.popBackStack() },
+                    terminology = preferredTerminology,
+                    isReducedMotion = isReducedMotion
+                )
             }
 
             composable(
@@ -994,35 +1137,48 @@ private fun MainAppNavHost(
                 enterTransition = { PersonDetailMotionConfig.detailEnterTransition(isReducedMotion) },
                 exitTransition = { PersonDetailMotionConfig.detailExitTransition(isReducedMotion) },
                 popEnterTransition = { PersonDetailMotionConfig.detailPopEnterTransition(isReducedMotion) },
-                popExitTransition = { PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion) }
+                popExitTransition = {
+                    if (popHandoff.shouldSkipPopExit(initialState.id)) ExitTransition.None
+                    else PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion)
+                }
             ) { backStackEntry ->
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
-                    val detailViewModel = remember(contactId) {
-                        PersonDetailViewModel(contactId = contactId, repository = quickActionViewModel.repository)
-                    }
-                    val detailUiState by detailViewModel.uiState.collectAsState()
+                DeeperRouteBackWrapper(
+                    entryId = backStackEntry.id,
+                    popHandoff = popHandoff,
+                    useRootBridge = useRootBridgeState.value,
+                    isReducedMotion = isReducedMotion,
+                    backProgress = deeperBackProgressState.value,
+                    onBackProgress = onDeeperRouteBackProgress,
+                    onBackCommit = { onDeeperRouteBackCommit(backStackEntry.id) }
+                ) {
+                    ScreenDepthWrapper(isDepthVisible = false) {
+                        val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
+                        val detailViewModel = remember(contactId) {
+                            PersonDetailViewModel(contactId = contactId, repository = quickActionViewModel.repository)
+                        }
+                        val detailUiState by detailViewModel.uiState.collectAsState()
 
-                    PersonDetailScreen(
-                        uiState = detailUiState,
-                        onEvent = detailViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() },
-                        onEditClick = { navController.navigateSafely(PersonEditRoute.createRoute(contactId)) },
-                        onLogEncounterClick = {
-                            val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
-                                ?: detailUiState.contactSummary
-                                ?: ContactSummary(
-                                    id = contactId,
-                                    name = detailUiState.contact?.name ?: "Contact",
-                                    contextSubtitle = "",
-                                    avatarInitials = extractAlphanumericInitials(detailUiState.contact?.name ?: "")
-                                )
-                            quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(PersonDetailMotionConfig.DETAIL_Z_INDEX)
-                    )
+                        PersonDetailScreen(
+                            uiState = detailUiState,
+                            onEvent = detailViewModel::onEvent,
+                            onNavigateBack = { navController.popBackStack() },
+                            onEditClick = { navController.navigateSafely(PersonEditRoute.createRoute(contactId)) },
+                            onLogEncounterClick = {
+                                val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
+                                    ?: detailUiState.contactSummary
+                                    ?: ContactSummary(
+                                        id = contactId,
+                                        name = detailUiState.contact?.name ?: "Contact",
+                                        contextSubtitle = "",
+                                        avatarInitials = extractAlphanumericInitials(detailUiState.contact?.name ?: "")
+                                    )
+                                quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(PersonDetailMotionConfig.DETAIL_Z_INDEX)
+                        )
+                    }
                 }
             }
 
@@ -1032,62 +1188,75 @@ private fun MainAppNavHost(
                 enterTransition = { PersonDetailMotionConfig.detailEnterTransition(isReducedMotion) },
                 exitTransition = { PersonDetailMotionConfig.detailExitTransition(isReducedMotion) },
                 popEnterTransition = { PersonDetailMotionConfig.detailPopEnterTransition(isReducedMotion) },
-                popExitTransition = { PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion) }
+                popExitTransition = {
+                    if (popHandoff.shouldSkipPopExit(initialState.id)) ExitTransition.None
+                    else PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion)
+                }
             ) { backStackEntry ->
-                ScreenDepthWrapper(isDepthVisible = false) {
-                    val contactId = backStackEntry.arguments?.getString(PersonEditRoute.ARG_CONTACT_ID) ?: ""
-                    val editViewModel = remember(contactId) {
-                        PersonEditViewModel(
-                            contactId = contactId,
-                            repository = quickActionViewModel.repository,
-                            avatarStorage = AvatarStorageManager(context)
+                DeeperRouteBackWrapper(
+                    entryId = backStackEntry.id,
+                    popHandoff = popHandoff,
+                    useRootBridge = useRootBridgeState.value,
+                    isReducedMotion = isReducedMotion,
+                    backProgress = deeperBackProgressState.value,
+                    onBackProgress = onDeeperRouteBackProgress,
+                    onBackCommit = { onDeeperRouteBackCommit(backStackEntry.id) }
+                ) {
+                    ScreenDepthWrapper(isDepthVisible = false) {
+                        val contactId = backStackEntry.arguments?.getString(PersonEditRoute.ARG_CONTACT_ID) ?: ""
+                        val editViewModel = remember(contactId) {
+                            PersonEditViewModel(
+                                contactId = contactId,
+                                repository = quickActionViewModel.repository,
+                                avatarStorage = AvatarStorageManager(context)
+                            )
+                        }
+                        val editUiState by editViewModel.uiState.collectAsState()
+
+                        PersonEditScreen(
+                            uiState = editUiState,
+                            onEvent = editViewModel::onEvent,
+                            onNavigateBack = { navController.popBackStack() },
+                            onSaveSuccess = {
+                                scope.launch {
+                                    snackbarHostState.showHelloToast(
+                                        message = "Contact updated",
+                                        durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                                    )
+                                }
+                                navController.popBackStack()
+                            },
+                            onLifecycleSuccess = { isArchived ->
+                                scope.launch {
+                                    val msg = if (isArchived) "Contact archived" else "Contact deleted"
+                                    val result = snackbarHostState.showHelloToast(
+                                        message = msg,
+                                        actionLabel = "Undo",
+                                        durationMs = TOAST_DURATION_ACTIONABLE_MS
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                                        val restored = if (isArchived) {
+                                            quickActionViewModel.repository.undoLastArchive()
+                                        } else {
+                                            quickActionViewModel.repository.undoLastDeleteContact()
+                                        }
+                                        if (restored) {
+                                            snackbarHostState.showHelloToast(
+                                                message = "Contact restored",
+                                                durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                                            )
+                                        }
+                                    }
+                                }
+                                if (!navController.popBackStack(PersonDetailRoute.ROUTE_PATTERN, inclusive = true)) {
+                                    if (!navController.popBackStack(PeopleRoute.ROUTE_NAME, inclusive = false)) {
+                                        navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
+                                    }
+                                }
+                            }
                         )
                     }
-                    val editUiState by editViewModel.uiState.collectAsState()
-
-                    PersonEditScreen(
-                        uiState = editUiState,
-                        onEvent = editViewModel::onEvent,
-                        onNavigateBack = { navController.popBackStack() },
-                        onSaveSuccess = {
-                            scope.launch {
-                                snackbarHostState.showHelloToast(
-                                    message = "Contact updated",
-                                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
-                                )
-                            }
-                            navController.popBackStack()
-                        },
-                        onLifecycleSuccess = { isArchived ->
-                            scope.launch {
-                                val msg = if (isArchived) "Contact archived" else "Contact deleted"
-                                val result = snackbarHostState.showHelloToast(
-                                    message = msg,
-                                    actionLabel = "Undo",
-                                    durationMs = TOAST_DURATION_ACTIONABLE_MS
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-                                    val restored = if (isArchived) {
-                                        quickActionViewModel.repository.undoLastArchive()
-                                    } else {
-                                        quickActionViewModel.repository.undoLastDeleteContact()
-                                    }
-                                    if (restored) {
-                                        snackbarHostState.showHelloToast(
-                                            message = "Contact restored",
-                                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
-                                        )
-                                    }
-                                }
-                            }
-                            if (!navController.popBackStack(PersonDetailRoute.ROUTE_PATTERN, inclusive = true)) {
-                                if (!navController.popBackStack(PeopleRoute.ROUTE_NAME, inclusive = false)) {
-                                    navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
-                                }
-                            }
-                        }
-                    )
                 }
             }
         }
@@ -1105,12 +1274,129 @@ private fun MainAppNavHost(
 }
 
 @Composable
+private fun RootTabBackCoordinator(
+    currentRoute: String?,
+    isContactsSelectionMode: Boolean,
+    isTimelineSelectionMode: Boolean,
+    isReducedMotion: Boolean,
+    onRootTabBackProgress: (Float) -> Unit,
+    onRootTabBackCommit: () -> Unit,
+    onSelectionBackProgress: (Float) -> Unit,
+    onClearContactsSelection: () -> Unit,
+    onClearTimelineSelection: () -> Unit
+) {
+    val isContactsSelectionActive = currentRoute == PeopleRoute.ROUTE_NAME && isContactsSelectionMode
+    val isTimelineSelectionActive = currentRoute == TimelineRoute.ROUTE_NAME && isTimelineSelectionMode
+    val isSelectionActive = isContactsSelectionActive || isTimelineSelectionActive
+    val isSecondaryRootTab = currentRoute == PeopleRoute.ROUTE_NAME || currentRoute == TimelineRoute.ROUTE_NAME
+
+    ScrubbablePredictiveBackHandler(
+        enabled = isSecondaryRootTab && !isSelectionActive,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = onRootTabBackProgress,
+        finishOnCommit = false,
+        onCommit = onRootTabBackCommit
+    )
+
+    ScrubbablePredictiveBackHandler(
+        enabled = isSelectionActive,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = onSelectionBackProgress,
+        finishOnCommit = false,
+        onCommit = {
+            if (isContactsSelectionActive) onClearContactsSelection()
+            else if (isTimelineSelectionActive) onClearTimelineSelection()
+        }
+    )
+}
+
+@Composable
+private fun DeeperRouteBackWrapper(
+    entryId: String,
+    popHandoff: PredictiveBackPopHandoff,
+    useRootBridge: Boolean,
+    isReducedMotion: Boolean,
+    backProgress: Float,
+    onBackProgress: (Float) -> Unit,
+    onBackCommit: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    DisposableEffect(entryId) {
+        onDispose {
+            if (popHandoff.onExitingEntryDisposed(entryId)) {
+                onBackProgress(0f)
+            }
+        }
+    }
+    val isCommittedExit = popHandoff.shouldSkipPopExit(entryId)
+    ScrubbablePredictiveBackHandler(
+        enabled = useRootBridge && !isCommittedExit,
+        isReducedMotion = isReducedMotion,
+        onProgressChanged = onBackProgress,
+        finishOnCommit = true,
+        onCommit = onBackCommit
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (useRootBridge || isCommittedExit) {
+                    Modifier.predictiveDeeperRoutePopExit {
+                        if (isCommittedExit) 1f else backProgress
+                    }
+                } else {
+                    Modifier
+                }
+            )
+    ) {
+        content()
+    }
+}
+
+private fun NavGraphBuilder.settingsBridgedComposable(
+    route: String,
+    isReducedMotion: Boolean,
+    popHandoff: PredictiveBackPopHandoff,
+    useRootBridge: () -> Boolean,
+    deeperBackProgress: () -> Float,
+    onDeeperBackProgress: (Float) -> Unit,
+    onDeeperBackCommit: (String) -> Unit,
+    content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
+) {
+    composable(
+        route = route,
+        enterTransition = { SettingsMotionConfig.settingsEnterTransition(isReducedMotion) },
+        exitTransition = { SettingsMotionConfig.settingsExitTransition(isReducedMotion) },
+        popEnterTransition = { SettingsMotionConfig.settingsPopEnterTransition(isReducedMotion) },
+        popExitTransition = {
+            if (popHandoff.shouldSkipPopExit(initialState.id)) ExitTransition.None
+            else SettingsMotionConfig.settingsPopExitTransition(isReducedMotion)
+        }
+    ) { backStackEntry ->
+        DeeperRouteBackWrapper(
+            entryId = backStackEntry.id,
+            popHandoff = popHandoff,
+            useRootBridge = useRootBridge(),
+            isReducedMotion = isReducedMotion,
+            backProgress = deeperBackProgress(),
+            onBackProgress = onDeeperBackProgress,
+            onBackCommit = { onDeeperBackCommit(backStackEntry.id) }
+        ) {
+            ScreenDepthWrapper(isDepthVisible = false) {
+                content(backStackEntry)
+            }
+        }
+    }
+}
+
+@Composable
 private fun FloatingDockOverlay(
     navController: NavHostController,
     currentRoute: String?,
     activeTab: HomeNavTab,
     shouldRenderDock: Boolean,
     dockVisibilityProgressState: State<Float>,
+    overridePillProgress: Float? = null,
     dockHeightPx: Int,
     onDockHeightChanged: (Int) -> Unit,
     homeViewModel: HomeViewModel,
@@ -1120,6 +1406,10 @@ private fun FloatingDockOverlay(
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val isSpeedDialOpen = homeUiState.isSpeedDialOpen
+
+    androidx.activity.compose.BackHandler(enabled = isSpeedDialOpen && isMainRootRoute(currentRoute)) {
+        homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
+    }
 
     // Scrim to dismiss the 2-button Speed Dial column when tapping outside on root tabs
     AnimatedVisibility(
@@ -1167,6 +1457,7 @@ private fun FloatingDockOverlay(
             },
             peopleTabLabel = preferredTerminology.pluralTitle,
             addContactLabel = preferredTerminology.addActionTitle(),
+            overridePillProgress = overridePillProgress,
             modifier = modifier
                 .onSizeChanged { size ->
                     if (size.height > 0) {
@@ -1291,7 +1582,9 @@ private fun SnackbarFeedbackCollector(
     }
     LaunchedEffect(quickActionUiState.userMessage) {
         quickActionUiState.userMessage?.let {
-            helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+            if (!quickActionUiState.isOpen) {
+                helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+            }
             snackbarHostState.showHelloToast(it, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
             quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
         }

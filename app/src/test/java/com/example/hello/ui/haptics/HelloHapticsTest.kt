@@ -1,5 +1,8 @@
 package com.example.hello.ui.haptics
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import org.junit.Assert.assertEquals
@@ -120,6 +123,104 @@ class HelloHapticsTest {
             ),
             testHaptics.events
         )
+    }
+
+    @Test
+    fun defaultHelloHaptics_api30Plus_prefersViewHapticFeedbackConstants() {
+        val performedConstants = mutableListOf<Int>()
+        val recordingComposeHaptic = RecordingHapticFeedback()
+        val haptics = DefaultHelloHaptics(
+            vibrator = null,
+            hapticFeedback = recordingComposeHaptic,
+            view = null,
+            isEnabled = true,
+            sdkInt = Build.VERSION_CODES.R,
+            performViewFeedback = { _, constant ->
+                performedConstants.add(constant)
+                true
+            },
+            hasViewTarget = true
+        )
+
+        SemanticHapticType.values().forEach { haptics.perform(it) }
+
+        assertEquals(
+            listOf(
+                HapticFeedbackConstants.GESTURE_START,
+                HapticFeedbackConstants.CLOCK_TICK,
+                HapticFeedbackConstants.CONFIRM,
+                HapticFeedbackConstants.CONTEXT_CLICK,
+                HapticFeedbackConstants.REJECT
+            ),
+            performedConstants
+        )
+        assertTrue(
+            "Compose fallback should not run when View haptic feedback succeeds",
+            recordingComposeHaptic.performedFeedback.isEmpty()
+        )
+    }
+
+    @Test
+    fun defaultHelloHaptics_preApi30_usesViewForAvailableConstantsAndFallsBackOtherwise() {
+        val performedConstants = mutableListOf<Int>()
+        val recordingComposeHaptic = RecordingHapticFeedback()
+        val haptics = DefaultHelloHaptics(
+            vibrator = null,
+            hapticFeedback = recordingComposeHaptic,
+            view = null,
+            isEnabled = true,
+            sdkInt = Build.VERSION_CODES.Q,
+            performViewFeedback = { _, constant ->
+                performedConstants.add(constant)
+                true
+            },
+            hasViewTarget = true
+        )
+
+        haptics.perform(SemanticHapticType.MODE_TOGGLE)
+        haptics.perform(SemanticHapticType.EDIT_ENTRY)
+        haptics.perform(SemanticHapticType.THRESHOLD_ACTIVATION)
+        haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+        haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+
+        assertEquals(
+            listOf(
+                HapticFeedbackConstants.CLOCK_TICK,
+                HapticFeedbackConstants.CONTEXT_CLICK
+            ),
+            performedConstants
+        )
+        assertEquals(
+            listOf(
+                HapticFeedbackType.LongPress,
+                HapticFeedbackType.TextHandleMove,
+                HapticFeedbackType.LongPress
+            ),
+            recordingComposeHaptic.performedFeedback
+        )
+    }
+
+    @Test
+    fun defaultHelloHaptics_whenDisabled_suppressesViewAndFallbackHaptics() {
+        val performedConstants = mutableListOf<Int>()
+        val recordingComposeHaptic = RecordingHapticFeedback()
+        val haptics = DefaultHelloHaptics(
+            vibrator = null,
+            hapticFeedback = recordingComposeHaptic,
+            view = null,
+            isEnabled = false,
+            sdkInt = Build.VERSION_CODES.R,
+            performViewFeedback = { _, constant ->
+                performedConstants.add(constant)
+                true
+            },
+            hasViewTarget = true
+        )
+
+        SemanticHapticType.values().forEach { haptics.perform(it) }
+
+        assertTrue(performedConstants.isEmpty())
+        assertTrue(recordingComposeHaptic.performedFeedback.isEmpty())
     }
 }
 
