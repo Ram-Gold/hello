@@ -18,8 +18,8 @@ class SelectableAvatarBadgeTest {
         assertEquals(140, MotionTokens.AVATAR_SELECTION_EXIT_DURATION_MS)
         assertEquals(140, MotionTokens.AVATAR_SELECTION_FADE_IN_DURATION_MS)
         assertEquals(100, MotionTokens.AVATAR_SELECTION_FADE_OUT_DURATION_MS)
-        assertEquals(0.85f, MotionTokens.AVATAR_SELECTION_INITIAL_SCALE, 0.001f)
-        assertEquals(0.85f, MotionTokens.AVATAR_SELECTION_EXIT_SCALE, 0.001f)
+        assertEquals(0.45f, MotionTokens.AVATAR_SELECTION_INITIAL_SCALE, 0.001f)
+        assertEquals(0.45f, MotionTokens.AVATAR_SELECTION_EXIT_SCALE, 0.001f)
         assertSame(FastOutSlowInEasing, MotionTokens.AvatarSelectionEasing)
     }
 
@@ -40,6 +40,14 @@ class SelectableAvatarBadgeTest {
         assertNotEquals(ExitTransition.None, SelectableAvatarBadgeDefaults.exitTransition)
         assertNotEquals(EnterTransition.None, SelectableAvatarBadgeDefaults.enterTransition(isReducedMotion = false))
         assertNotEquals(ExitTransition.None, SelectableAvatarBadgeDefaults.exitTransition(isReducedMotion = false))
+        assertTrue(
+            "Enter transition must include Scale from center",
+            SelectableAvatarBadgeDefaults.enterTransition.toString().contains("Scale(")
+        )
+        assertTrue(
+            "Exit transition must include Scale to center",
+            SelectableAvatarBadgeDefaults.exitTransition.toString().contains("Scale(")
+        )
     }
 
     @Test

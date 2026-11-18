@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.hello.ui.home.components.DoodleAvatar
@@ -54,7 +55,8 @@ object SelectableAvatarBadgeDefaults {
                 durationMillis = ENTER_DURATION_MS,
                 easing = EasingCurve
             ),
-            initialScale = INITIAL_SCALE
+            initialScale = INITIAL_SCALE,
+            transformOrigin = TransformOrigin.Center
         ) + fadeIn(
             animationSpec = tween(
                 durationMillis = FADE_IN_DURATION_MS,
@@ -70,7 +72,8 @@ object SelectableAvatarBadgeDefaults {
                 durationMillis = EXIT_DURATION_MS,
                 easing = EasingCurve
             ),
-            targetScale = TARGET_EXIT_SCALE
+            targetScale = TARGET_EXIT_SCALE,
+            transformOrigin = TransformOrigin.Center
         ) + fadeOut(
             animationSpec = tween(
                 durationMillis = FADE_OUT_DURATION_MS
@@ -85,8 +88,8 @@ object SelectableAvatarBadgeDefaults {
 /**
  * Composable that wraps [DoodleAvatar] with an animated ease-out selection checkmark overlay.
  *
- * When [isSelected] is true, an accent-colored badge with [Icons.Rounded.Check] smoothly
- * scales and fades in. When unselected, it cleanly scales down and fades out.
+ * When [isSelected] is true, an opaque black badge with [Icons.Rounded.Check] smoothly
+ * scales up from the center and fades in. When unselected, it cleanly scales down and fades out.
  */
 @Composable
 fun SelectableAvatarBadge(
@@ -98,8 +101,8 @@ fun SelectableAvatarBadge(
     shape: Shape = CircleShape,
     photoUri: String? = null,
     isReducedMotion: Boolean = false,
-    badgeContainerColor: Color = MaterialTheme.colorScheme.primary,
-    badgeContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    badgeContainerColor: Color = Color.Black,
+    badgeContentColor: Color = Color.White,
     contentDescription: String? = if (isSelected) "Selected" else null
 ) {
     SelectableAvatarBadge(
@@ -133,8 +136,8 @@ fun SelectableAvatarBadge(
     size: Dp = 48.dp,
     shape: Shape = CircleShape,
     isReducedMotion: Boolean = false,
-    badgeContainerColor: Color = MaterialTheme.colorScheme.primary,
-    badgeContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    badgeContainerColor: Color = Color.Black,
+    badgeContentColor: Color = Color.White,
     contentDescription: String? = if (isSelected) "Selected" else null,
     enterTransition: EnterTransition = SelectableAvatarBadgeDefaults.enterTransition(isReducedMotion),
     exitTransition: ExitTransition = SelectableAvatarBadgeDefaults.exitTransition(isReducedMotion),
