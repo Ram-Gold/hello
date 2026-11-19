@@ -148,10 +148,17 @@ class NavigationTransitionTest {
     }
 
     @Test
-    fun shouldHideFloatingDock_hidesOnNonRootRoutesAndShowsOnHomeTimelineAndPeople() {
+    fun shouldHideFloatingDock_hidesOnNonRootNonDetailRoutesAndShowsOnRootAndPersonDetail() {
         assertFalse(shouldHideFloatingDock(HomeRoute.ROUTE_NAME))
         assertFalse(shouldHideFloatingDock(TimelineRoute.ROUTE_NAME))
         assertFalse(shouldHideFloatingDock(PeopleRoute.ROUTE_NAME))
+        // ADR-0034: PersonDetailRoute keeps the shell dock vertically visible and morphs it in place into Profile Encounter Pill
+        assertFalse(shouldHideFloatingDock(PersonDetailRoute.createRoute("123")))
+        assertFalse(shouldHideFloatingDock(PersonDetailRoute.ROUTE_PATTERN))
+        // Timeline Selection Mode on PersonDetailRoute hides the Profile Encounter Pill
+        assertTrue(shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isDetailSelectionMode = true))
+        assertTrue(shouldHideFloatingDock(PersonDetailRoute.ROUTE_PATTERN, isDetailSelectionMode = true))
+
         assertTrue(shouldHideFloatingDock(SettingsRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsTerminologyRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsTagsRoute.ROUTE_NAME))
@@ -159,9 +166,25 @@ class NavigationTransitionTest {
         assertTrue(shouldHideFloatingDock(SettingsAppearanceRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsPreferencesRoute.ROUTE_NAME))
         assertTrue(shouldHideFloatingDock(SettingsAboutRoute.ROUTE_NAME))
-        assertTrue(shouldHideFloatingDock(PersonDetailRoute.createRoute("123")))
         assertTrue(shouldHideFloatingDock(PersonEditRoute.createRoute("123")))
         assertTrue(shouldHideFloatingDock(OnboardingRoute.ROUTE_NAME))
+    }
+
+    @Test
+    fun shouldMorphDockToProfilePill_targetsPersonDetailAndPreservesShapeAcrossEdit() {
+        assertFalse(shouldMorphDockToProfilePill(HomeRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(PeopleRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(TimelineRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(SettingsRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(ArchivedContactsRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(OnboardingRoute.ROUTE_NAME))
+        assertFalse(shouldMorphDockToProfilePill(null))
+
+        assertTrue(shouldMorphDockToProfilePill(PersonDetailRoute.ROUTE_PATTERN))
+        assertTrue(shouldMorphDockToProfilePill(PersonDetailRoute.createRoute("123")))
+        // Preserves pill shape while sliding down/up across PersonDetail <-> PersonEdit
+        assertTrue(shouldMorphDockToProfilePill(PersonEditRoute.ROUTE_PATTERN))
+        assertTrue(shouldMorphDockToProfilePill(PersonEditRoute.createRoute("123")))
     }
 
     @Test
@@ -198,14 +221,24 @@ class NavigationTransitionTest {
             shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isTimelineSelectionMode = true)
         )
 
-        // Non-root routes must ALWAYS hide the dock regardless of selection mode
-        assertTrue(
-            "Non-root routes must always hide dock",
+        // PersonDetailRoute only hides when detail selection mode is active (root selection flags never hide it)
+        assertFalse(
+            "PersonDetailRoute keeps morphed Profile Encounter Pill visible when not in detail selection mode",
             shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isContactsSelectionMode = false)
         )
-        assertTrue(
-            "Non-root routes must always hide dock even if selection mode is true",
+        assertFalse(
+            "Contacts selection flag from root tab must not hide Profile Encounter Pill on PersonDetailRoute",
             shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isContactsSelectionMode = true)
+        )
+        assertTrue(
+            "Detail Timeline Selection Mode must hide Profile Encounter Pill on PersonDetailRoute",
+            shouldHideFloatingDock(PersonDetailRoute.createRoute("123"), isDetailSelectionMode = true)
+        )
+
+        // Other non-root routes (e.g. PersonEdit, Settings) always hide the dock
+        assertTrue(
+            "PersonEditRoute must always hide dock",
+            shouldHideFloatingDock(PersonEditRoute.createRoute("123"), isContactsSelectionMode = false)
         )
 
         // Active tab parameter support: currentRoute takes strict precedence over lagging activeTab
@@ -300,17 +333,19 @@ class NavigationTransitionTest {
     }
 
     @Test
-    fun shouldHideFloatingDock_evaluatesToFalse_whenReturningToPeopleRouteFromDetailOrEdit() {
-        // While on PersonDetail screen, dock is hidden
+    fun shouldHideFloatingDock_morphsInPlaceOnDetailAndHidesOnlyOnEditOrDetailSelection() {
+        // While on PersonDetail screen, dock stays vertically visible and morphs into Profile Encounter Pill (ADR-0034)
         val detailRoute = PersonDetailRoute.createRoute("contact-42")
-        assertTrue(
-            "Floating dock must be hidden on PersonDetailRoute",
+        assertFalse(
+            "Floating dock must stay visible (morphed) on PersonDetailRoute",
             shouldHideFloatingDock(detailRoute, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
-        assertTrue(
-            "Floating dock must be hidden on PersonDetailRoute pattern",
+        assertFalse(
+            "Floating dock must stay visible (morphed) on PersonDetailRoute pattern",
             shouldHideFloatingDock(PersonDetailRoute.ROUTE_PATTERN, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
+        assertTrue(shouldMorphDockToProfilePill(detailRoute))
+        assertTrue(shouldMorphDockToProfilePill(PersonDetailRoute.ROUTE_PATTERN))
 
         // While on PersonEdit screen, dock is hidden
         val editRoute = PersonEditRoute.createRoute("contact-42")
@@ -323,21 +358,18 @@ class NavigationTransitionTest {
             shouldHideFloatingDock(PersonEditRoute.ROUTE_PATTERN, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
 
-        // Returning from PersonEdit to PersonDetail: dock remains hidden
-        assertTrue(
-            "Floating dock remains hidden on PersonDetail when returning from edit",
+        // Returning from PersonEdit to PersonDetail: Profile Encounter Pill restores
+        assertFalse(
+            "Profile Encounter Pill restores on PersonDetail when returning from edit",
             shouldHideFloatingDock(detailRoute, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
 
-        // Returning from PersonDetail or PersonEdit to PeopleRoute: dock visibility is restored
+        // Returning from PersonDetail or PersonEdit to PeopleRoute: dock is visible and unmorphed
         assertFalse(
-            "Floating dock must be restored to visible when returning to PeopleRoute from PersonDetail",
+            "Floating dock must be visible when returning to PeopleRoute from PersonDetail",
             shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
-        assertFalse(
-            "Floating dock must be restored to visible when returning to PeopleRoute from PersonEdit directly (save/delete/archive)",
-            shouldHideFloatingDock(PeopleRoute.ROUTE_NAME, isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
-        )
+        assertFalse(shouldMorphDockToProfilePill(PeopleRoute.ROUTE_NAME))
     }
 
     @Test
@@ -354,5 +386,21 @@ class NavigationTransitionTest {
         assertTrue("Reduced motion spec must be a SnapSpec", reducedSpec is SnapSpec<*>)
         val snapSpec = reducedSpec as SnapSpec<Float>
         assertEquals(0, snapSpec.delay)
+    }
+
+    @Test
+    fun profileMorphSpec_respectsReducedMotionAndSyncsWith350msDetailTransition() {
+        val standardSpec = floatingDockProfileMorphSpec(isReducedMotion = false)
+        assertTrue("Standard morph spec must be a TweenSpec", standardSpec is TweenSpec<*>)
+        val tweenSpec = standardSpec as TweenSpec<Float>
+        assertEquals(MotionTokens.DETAIL_SLIDE_DURATION_MS, tweenSpec.durationMillis)
+
+        // Partial interruption scales remaining duration proportionally
+        val interruptedSpec = floatingDockProfileMorphSpec(isReducedMotion = false, remainingFraction = 0.5f)
+        assertTrue(interruptedSpec is TweenSpec<*>)
+        assertEquals(175, (interruptedSpec as TweenSpec<Float>).durationMillis)
+
+        val reducedSpec = floatingDockProfileMorphSpec(isReducedMotion = true)
+        assertTrue("Reduced motion morph spec must be a SnapSpec", reducedSpec is SnapSpec<*>)
     }
 }

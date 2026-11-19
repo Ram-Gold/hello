@@ -27,7 +27,17 @@ object DockMotionConfig {
     // Visual geometry and drop shadow elevation
     const val DOCK_HEIGHT_DP = 60
     const val DOCK_FAB_SIZE_DP = 60
+    const val DOCK_FAB_GAP_DP = 14
     const val DOCK_FAB_CORNER_RADIUS_DP = 20
+    const val PROFILE_MORPH_MAX_BLUR_DP = 12
+    const val PROFILE_MORPH_BLUR_MARGIN_DP = 18
+    const val PROFILE_MORPH_LABEL_FEATHER_DP = 18f
+    const val PROFILE_MORPH_FAB_ICON_SIZE_DP = 28f
+    const val PROFILE_MORPH_PILL_ICON_SIZE_DP = 22f
+    const val PROFILE_MORPH_LABEL_SLIDE_DP = 20f
+    const val PROFILE_ENCOUNTER_PILL_LABEL = "Catching up?"
+    const val PROFILE_MORPH_DURATION_MS = MotionTokens.DETAIL_SLIDE_DURATION_MS
+
     const val SPEED_DIAL_CHIP_HEIGHT_DP = DOCK_HEIGHT_DP
     const val SPEED_DIAL_CHIP_CORNER_RADIUS_DP = SPEED_DIAL_CHIP_HEIGHT_DP / 2
     const val SPEED_DIAL_CHIP_HORIZONTAL_PADDING_DP = 20
@@ -435,7 +445,141 @@ object DockMotionConfig {
         relationshipPillWidth = pillWidth,
         progress = progress
     )
+
+    /**
+     * Returns the total horizontal footprint of the root Floating Bottom Dock unit:
+     * `[3-tab navigation pill] + [14dp gap] + [60dp Quick-Add FAB]`.
+     * The Profile Encounter Pill stretches to this exact footprint on Contact Profile Screen (ADR-0034).
+     */
+    fun calculateTotalDockFootprintWidthDp(dockWidthDp: Int): Int =
+        dockWidthDp + DOCK_FAB_GAP_DP + DOCK_FAB_SIZE_DP
+
+    /**
+     * Computes deterministic frame geometry for the whole-navbar unclipped blur + solid opaque
+     * right-to-left pill sweep between the root Floating Bottom Dock (`progress = 0f`) and the
+     * Contact Profile Encounter Pill (`"+ Catching up?"`, `progress = 1f`) per ADR-0034 & `/animate`:
+     *
+     * - **Locked 60dp Height**: Neither surface slides downward or shrinks vertically.
+     * - **Entering / Exiting (`MotionTokens.StrongEaseOut`)**: Whole-navbar blur, fade, shadow,
+     *   and `"+ Catching up?"` label reveal use strong ease-out in the active direction of travel
+     *   (`isReversing = false` on push, `isReversing = true` on pop) for immediate responsiveness.
+     * - **On-Screen Morph (`MotionTokens.StrongEaseInOut`)**: Solid right-to-left pill sweep,
+     *   corner rounding (`20dp -> 30dp`), and `+` icon scale refinement use symmetric ease-in-out.
+     */
+    fun calculateProfileMorphState(
+        progress: Float,
+        dockWidthDp: Float,
+        isReversing: Boolean = false
+    ): ProfileMorphState {
+        val p = progress.coerceIn(0f, 1f)
+        val totalWidth = dockWidthDp + DOCK_FAB_GAP_DP + DOCK_FAB_SIZE_DP
+        val dockHeight = DOCK_HEIGHT_DP.toFloat()
+        val startCornerRadius = DOCK_FAB_CORNER_RADIUS_DP.toFloat()
+        val pillRadius = dockHeight / 2f
+        val easeOut = MotionTokens.StrongEaseOut
+        val easeInOut = MotionTokens.StrongEaseInOut
+
+        fun phase(value: Float, start: Float, end: Float): Float =
+            ((value - start) / (end - start)).coerceIn(0f, 1f)
+
+        return if (!isReversing) {
+            val navBlurT = easeOut.transform(phase(p, 0.00f, 0.45f))
+            val navPillBlurDp = PROFILE_MORPH_MAX_BLUR_DP * navBlurT
+            val navPillAlpha = (1f - easeOut.transform(phase(p, 0.15f, 0.55f))).coerceIn(0f, 1f)
+            val navShadowAlpha = (1f - easeOut.transform(phase(p, 0.00f, 0.26f))).coerceIn(0f, 1f)
+
+            val roundT = easeInOut.transform(phase(p, 0.00f, 0.34f))
+            val pillCornerRadiusDp = startCornerRadius + (pillRadius - startCornerRadius) * roundT
+
+            val sweepT = easeInOut.transform(phase(p, 0.00f, 0.85f))
+            val pillLeftDp = ((dockWidthDp + DOCK_FAB_GAP_DP) * (1f - sweepT))
+                .coerceIn(0f, dockWidthDp + DOCK_FAB_GAP_DP)
+            val pillWidthDp = totalWidth - pillLeftDp
+            val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
+
+            val iconScaleT = easeInOut.transform(phase(p, 0.12f, 0.48f))
+            val plusIconSizeDp = PROFILE_MORPH_FAB_ICON_SIZE_DP +
+                (PROFILE_MORPH_PILL_ICON_SIZE_DP - PROFILE_MORPH_FAB_ICON_SIZE_DP) * iconScaleT
+            val labelRevealWeight = easeOut.transform(phase(p, 0.45f, 0.96f))
+            val labelAlpha = easeOut.transform(phase(p, 0.50f, 0.92f))
+            val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP *
+                (1f - easeOut.transform(phase(p, 0.45f, 0.98f)))
+
+            ProfileMorphState(
+                navPillAlpha = navPillAlpha,
+                navShadowAlpha = navShadowAlpha,
+                navPillBlurDp = navPillBlurDp,
+                pillLeftDp = pillLeftDp,
+                pillWidthDp = pillWidthDp,
+                pillHeightDp = dockHeight,
+                pillCornerRadiusDp = pillCornerRadiusDp,
+                pillCenterXDp = pillCenterXDp,
+                plusIconSizeDp = plusIconSizeDp,
+                labelRevealWeight = labelRevealWeight,
+                labelAlpha = labelAlpha,
+                labelSlideOffsetDp = labelSlideOffsetDp
+            )
+        } else {
+            val r = (1f - p).coerceIn(0f, 1f)
+            val labelExitT = easeOut.transform(phase(r, 0.00f, 0.38f))
+            val labelRevealWeight = (1f - labelExitT).coerceIn(0f, 1f)
+            val labelAlpha = (1f - easeOut.transform(phase(r, 0.00f, 0.34f))).coerceIn(0f, 1f)
+            val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * labelExitT
+
+            val sweepBackT = easeInOut.transform(phase(r, 0.12f, 0.94f))
+            val pillLeftDp = ((dockWidthDp + DOCK_FAB_GAP_DP) * sweepBackT)
+                .coerceIn(0f, dockWidthDp + DOCK_FAB_GAP_DP)
+            val pillWidthDp = totalWidth - pillLeftDp
+            val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
+
+            val roundBackT = easeInOut.transform(phase(r, 0.60f, 1.00f))
+            val pillCornerRadiusDp = pillRadius + (startCornerRadius - pillRadius) * roundBackT
+
+            val iconBackT = easeInOut.transform(phase(r, 0.45f, 0.85f))
+            val plusIconSizeDp = PROFILE_MORPH_PILL_ICON_SIZE_DP +
+                (PROFILE_MORPH_FAB_ICON_SIZE_DP - PROFILE_MORPH_PILL_ICON_SIZE_DP) * iconBackT
+
+            val navPillAlpha = easeOut.transform(phase(r, 0.38f, 0.82f))
+            val navPillBlurDp = PROFILE_MORPH_MAX_BLUR_DP *
+                (1f - easeOut.transform(phase(r, 0.42f, 1.00f)))
+            val navShadowAlpha = easeOut.transform(phase(r, 0.72f, 1.00f))
+
+            ProfileMorphState(
+                navPillAlpha = navPillAlpha,
+                navShadowAlpha = navShadowAlpha,
+                navPillBlurDp = navPillBlurDp,
+                pillLeftDp = pillLeftDp,
+                pillWidthDp = pillWidthDp,
+                pillHeightDp = dockHeight,
+                pillCornerRadiusDp = pillCornerRadiusDp,
+                pillCenterXDp = pillCenterXDp,
+                plusIconSizeDp = plusIconSizeDp,
+                labelRevealWeight = labelRevealWeight,
+                labelAlpha = labelAlpha,
+                labelSlideOffsetDp = labelSlideOffsetDp
+            )
+        }
+    }
 }
+
+/**
+ * Snapshot of all continuous geometry and visual properties for the whole-navbar soft blur
+ * and solid right-to-left Floating Bottom Dock to Profile Encounter Pill morph (ADR-0034).
+ */
+data class ProfileMorphState(
+    val navPillAlpha: Float,
+    val navShadowAlpha: Float,
+    val navPillBlurDp: Float,
+    val pillLeftDp: Float,
+    val pillWidthDp: Float,
+    val pillHeightDp: Float,
+    val pillCornerRadiusDp: Float,
+    val pillCenterXDp: Float,
+    val plusIconSizeDp: Float,
+    val labelRevealWeight: Float,
+    val labelAlpha: Float,
+    val labelSlideOffsetDp: Float
+)
 
 /**
  * Pre-configured dimensions for a dock with balanced, tab-specific pill widths.

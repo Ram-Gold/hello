@@ -13,7 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -281,5 +283,80 @@ class PredictiveBackUiTest {
         composeTestRule.waitForIdle()
         val peopleWidthSkip = composeTestRule.onNodeWithText("People", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.width
         assertEquals(0f, peopleWidthSkip, 0.5f)
+    }
+
+    @Test
+    fun floatingBottomDock_profileMorphMovesShrinksStretchesAndTriggersEncounterCallback() {
+        var morphProgress by mutableStateOf(0f)
+        var isProfileMode by mutableStateOf(false)
+        var encounterClickCount = 0
+
+        composeTestRule.setContent {
+            HelloTheme {
+                HomeFloatingBottomDock(
+                    selectedTab = HomeNavTab.PEOPLE,
+                    onTabSelect = {},
+                    isSpeedDialOpen = false,
+                    onToggleSpeedDial = {},
+                    onSpeedDialAction = {},
+                    profileMorphProgressProvider = { morphProgress },
+                    isProfileEncounterMode = isProfileMode,
+                    onProfileEncounterClick = { encounterClickCount++ }
+                )
+            }
+        }
+
+        // 0.0: Root FAB on right, "Catching up?" collapsed
+        composeTestRule.waitForIdle()
+        val fabBoundsStart = composeTestRule.onNodeWithContentDescription("Quick capture").fetchSemanticsNode().boundsInRoot
+        val labelWidthStart = composeTestRule.onNodeWithText("Catching up?", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.width
+        assertEquals(0f, labelWidthStart, 0.5f)
+
+        // 0.45: Action button stays right-anchored at full 60dp height and sweeps right-to-left
+        morphProgress = 0.45f
+        isProfileMode = true
+        composeTestRule.waitForIdle()
+        val midBounds = composeTestRule.onNodeWithContentDescription("Catching up? Log encounter").fetchSemanticsNode().boundsInRoot
+        assertEquals(
+            "Action button right edge must stay anchored during liquid right-to-left swallow",
+            fabBoundsStart.right,
+            midBounds.right,
+            2f
+        )
+        assertEquals(
+            "Action button height must remain locked at 60dp (no vertical shrink or drop)",
+            fabBoundsStart.height,
+            midBounds.height,
+            2f
+        )
+        assertTrue(
+            "Action button left edge must sweep right-to-left",
+            midBounds.left < fabBoundsStart.left
+        )
+        assertTrue(
+            "Action button must expand wider as it absorbs the 3-tab dock",
+            midBounds.width > fabBoundsStart.width
+        )
+
+        // 1.0: Stretched Profile Encounter Pill with "+ Catching up?" visible and clickable
+        morphProgress = 1f
+        composeTestRule.waitForIdle()
+        val pillBoundsEnd = composeTestRule.onNodeWithContentDescription("Catching up? Log encounter").fetchSemanticsNode().boundsInRoot
+        val labelWidthEnd = composeTestRule.onNodeWithText("Catching up?", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.width
+        assertTrue(
+            "Profile Encounter Pill must stretch significantly wider than the root FAB",
+            pillBoundsEnd.width > fabBoundsStart.width * 3f
+        )
+        assertEquals(
+            "Profile Encounter Pill height must match root Quick-Add FAB height",
+            fabBoundsStart.height,
+            pillBoundsEnd.height,
+            2f
+        )
+        assertTrue("Catching up? label must expand at full morph", labelWidthEnd > 30f)
+
+        composeTestRule.onNodeWithContentDescription("Catching up? Log encounter").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(1, encounterClickCount)
     }
 }

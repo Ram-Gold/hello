@@ -65,8 +65,12 @@ _Avoid_: Field, Form Item, Input Widget
 ## Presentation & Navigation
 
 **Floating Bottom Dock**:
-The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Timeline Tab, and Relationship Tab) alongside the companion Quick-Add Floating Action Button. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
+The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Timeline Tab, and Relationship Tab) alongside the companion Quick-Add Floating Action Button on root destinations, and morphs in place into the Profile Encounter Pill when navigating to the Contact Profile Screen. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
 _Avoid_: Navbar, Bottom bar, Tab bar
+
+**Profile Encounter Pill**:
+The bottom-docked primary action button (`+ Catching up?`) on the Contact Profile Screen that morphs in place from the Floating Bottom Dock's Quick-Add Floating Action Button to log a new Encounter for the viewed Contact.
+_Avoid_: Log Meet button, Profile FAB, Inline Log Met button, Catch-up bar
 
 **Toast Pill**:
 A crisp, floating tactile notification card (`RoundedCornerShape(8.dp)` with 1dp border) rendered as an inverted high-contrast surface (`#121212` in light mode, `#FFFFFF` in dark mode) to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs semantic leading icons (Archive, Delete, Star, CheckCircle, Info) and a bottom countdown line with concise message copy and a right-anchored action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`).

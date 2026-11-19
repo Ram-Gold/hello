@@ -96,34 +96,51 @@ class PersonDetailNavigationTest {
             shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
 
-        // Navigate to PersonDetail
+        // Navigate to PersonDetail: dock remains vertically visible and morphs in place into Profile Encounter Pill (ADR-0034)
         backStack.add(PersonDetailRoute.createRoute("contact-123"))
-        assertTrue(
-            "Floating dock must be hidden on PersonDetail",
+        assertFalse(
+            "Floating dock must stay visible (morphed) on PersonDetail",
             shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
+        assertTrue(
+            "Floating dock must morph to Profile Encounter Pill on PersonDetail",
+            shouldMorphDockToProfilePill(backStack.last())
+        )
+        assertTrue(
+            "Profile Encounter Pill must hide when Timeline Selection Mode is active on PersonDetail",
+            shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE, isDetailSelectionMode = true)
+        )
 
-        // Navigate to PersonEdit
+        // Navigate to PersonEdit: hides the morphed pill vertically while keeping pill shape
         backStack.add(PersonEditRoute.createRoute("contact-123"))
         assertTrue(
             "Floating dock must be hidden on PersonEdit",
             shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
+        assertTrue(
+            "Pill shape must be preserved while sliding out on PersonEdit",
+            shouldMorphDockToProfilePill(backStack.last())
+        )
 
         // Case A: Save / Cancel on PersonEdit pops back to PersonDetail
         backStack.removeAt(backStack.lastIndex)
         assertEquals(PersonDetailRoute.createRoute("contact-123"), backStack.last())
-        assertTrue(
-            "Floating dock remains hidden on PersonDetail after popping PersonEdit",
+        assertFalse(
+            "Profile Encounter Pill must restore on PersonDetail after popping PersonEdit",
             shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
         )
+        assertTrue(shouldMorphDockToProfilePill(backStack.last()))
 
         // Back from PersonDetail pops back to PeopleRoute
         backStack.removeAt(backStack.lastIndex)
         assertEquals(PeopleRoute.ROUTE_NAME, backStack.last())
         assertFalse(
-            "Floating dock must be restored on PeopleRoute after popping PersonDetail",
+            "Floating dock must be visible on PeopleRoute after popping PersonDetail",
             shouldHideFloatingDock(backStack.last(), isContactsSelectionMode = false, activeTab = HomeNavTab.PEOPLE)
+        )
+        assertFalse(
+            "Floating dock must un-morph on PeopleRoute after popping PersonDetail",
+            shouldMorphDockToProfilePill(backStack.last())
         )
 
         // Case B: Archive / Delete on PersonEdit pops both PersonEdit and PersonDetail back to PeopleRoute

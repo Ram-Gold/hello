@@ -116,4 +116,73 @@ class PredictiveBackMotionTest {
         handoff.onExitingEntryDisposed("detail-entry-1")
         assertFalse(handoff.shouldSkipPopExit("detail-entry-1"))
     }
+
+    @Test
+    fun resolveProfileMorphProgressWithPredictiveBack_scrubsInLockstepOnlyForProfileToRoot() {
+        // PersonDetail -> Root Tab (not in selection mode): reverses 1f -> 0f in 1:1 lockstep
+        assertEquals(
+            1f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = true,
+                isDetailSelectionMode = false,
+                targetMorphProgress = 1f,
+                deeperBackProgress = 0f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0.6f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = true,
+                isDetailSelectionMode = false,
+                targetMorphProgress = 1f,
+                deeperBackProgress = 0.4f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = true,
+                isDetailSelectionMode = false,
+                targetMorphProgress = 1f,
+                deeperBackProgress = 1f
+            ),
+            0.001f
+        )
+
+        // Timeline Selection Mode on PersonDetail: must keep pill morphed (1f) while dock hides/restores
+        assertEquals(
+            1f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = true,
+                isDetailSelectionMode = true,
+                targetMorphProgress = 1f,
+                deeperBackProgress = 0.5f
+            ),
+            0.001f
+        )
+
+        // Other routes (Settings, Home, PersonEdit): preserves targetMorphProgress unchanged
+        assertEquals(
+            0f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = false,
+                isDetailSelectionMode = false,
+                targetMorphProgress = 0f,
+                deeperBackProgress = 0.5f
+            ),
+            0.001f
+        )
+        assertEquals(
+            1f,
+            resolveProfileMorphProgressWithPredictiveBack(
+                isPersonDetailRoute = false,
+                isDetailSelectionMode = false,
+                targetMorphProgress = 1f,
+                deeperBackProgress = 0.5f
+            ),
+            0.001f
+        )
+    }
 }

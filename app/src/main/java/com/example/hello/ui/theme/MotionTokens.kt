@@ -37,9 +37,11 @@ object MotionTokens {
     const val SCREEN_FADE_SPRING_STIFFNESS = 500f
     const val SCREEN_FADE_MIN_ALPHA = 0.0f
 
-    // 3. Tab Label / Icon Color Crossfade & Bar Hide
+    // 3. Tab Label / Icon Color Crossfade, Bar Hide & Speed Dial Scrim
     const val TAB_COLOR_TWEEN_DURATION_MS = 160
     const val NAV_BAR_HIDE_DURATION_MS = 220
+    const val SCRIM_FADE_IN_DURATION_MS = 180
+    const val SCRIM_FADE_OUT_DURATION_MS = 140
 
     // 4. Interactive Shortcut Badge Press Feedback ("X contacts ->", "<- Home")
     const val BADGE_PRESS_SPRING_DAMPING = Spring.DampingRatioMediumBouncy
@@ -70,7 +72,13 @@ object MotionTokens {
     val BottomNavEasing = M3EmphasizedEasing
     val M3Easing = M3EmphasizedEasing
     val EaseInOut = M3EmphasizedEasing
-    val NavBarHideEasing = LinearOutSlowInEasing
+
+    // /animate canonical curves (Emil Kowalski design engineering tokens):
+    // Strong ease-out for entering/exiting UI and immediate tactile responsiveness
+    val StrongEaseOut = CubicBezierEasing(0.23f, 1.0f, 0.32f, 1.0f)
+    // Strong ease-in-out for on-screen movement and shape morphing
+    val StrongEaseInOut = CubicBezierEasing(0.77f, 0.0f, 0.175f, 1.0f)
+    val NavBarHideEasing = StrongEaseOut
 
     // Decelerate for elements entering the screen — mirror of EmphasizedAccelerateEasing
     val EmphasizedDecelerateEasing = CubicBezierEasing(0.2f, 0.85f, 0.7f, 1f)

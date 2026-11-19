@@ -77,6 +77,25 @@ fun resolveDockVisibilityWithPredictiveBack(
 }
 
 /**
+ * Computes effective Floating Bottom Dock -> Profile Encounter Pill morph progress (`0f..1f`)
+ * during predictive back from [PersonDetailRoute] to a root tab (ADR-0034).
+ *
+ * When swiping back from Contact Profile (outside Timeline Selection Mode), reverses the morph
+ * (`1f -> 0f`) in 1:1 lockstep with [deeperBackProgress] while keeping the dock vertically stationary.
+ */
+fun resolveProfileMorphProgressWithPredictiveBack(
+    isPersonDetailRoute: Boolean,
+    isDetailSelectionMode: Boolean,
+    targetMorphProgress: Float,
+    deeperBackProgress: Float
+): Float {
+    val clampedTarget = targetMorphProgress.coerceIn(0f, 1f)
+    if (!isPersonDetailRoute || isDetailSelectionMode) return clampedTarget
+    val clampedBack = deeperBackProgress.coerceIn(0f, 1f)
+    return (clampedTarget * (1f - clampedBack)).coerceIn(0f, 1f)
+}
+
+/**
  * Computes canonical left-to-right hierarchical horizontal translation (`+X`) for a deeper
  * route popping off-screen during predictive back.
  */

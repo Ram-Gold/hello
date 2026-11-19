@@ -588,4 +588,162 @@ class DockPerformanceTest {
         assertEquals(0f, pSkipNearHome, 0.001f)
         assertEquals(0f, tSkipNearHome, 0.001f)
     }
+
+    @Test
+    fun profileMorph_totalFootprintMatchesRootDockAndFabAcrossTerminologies() {
+        val cases = listOf(
+            "People" to 300,      // 226 + 14 + 60
+            "Friends" to 300,     // 226 + 14 + 60
+            "Contacts" to 304,    // 230 + 14 + 60
+            "Connections" to 320  // 246 + 14 + 60
+        )
+        for ((label, expectedTotal) in cases) {
+            val dims = DockMotionConfig.resolveThreeTabDockDimensions(label)
+            assertEquals(
+                "Total dock footprint for $label must equal dockWidth + 14dp gap + 60dp FAB",
+                expectedTotal,
+                DockMotionConfig.calculateTotalDockFootprintWidthDp(dims.dockWidthDp)
+            )
+        }
+        assertEquals("Catching up?", DockMotionConfig.PROFILE_ENCOUNTER_PILL_LABEL)
+    }
+
+    @Test
+    fun profileMorph_wholeNavbarSoftBlurAndSolidRightToLeftSweepAtLockedHeight() {
+        val dims = DockMotionConfig.resolveThreeTabDockDimensions("People")
+        val dockWidth = dims.dockWidthDp.toFloat() // 226f
+        val totalWidth = DockMotionConfig.calculateTotalDockFootprintWidthDp(dims.dockWidthDp).toFloat() // 300f
+
+        // 0.0: Root dock resting state (exact 60dp squircle FAB on right, crisp unblurred 3-tab pill)
+        val start = DockMotionConfig.calculateProfileMorphState(progress = 0f, dockWidthDp = dockWidth)
+        assertEquals(1f, start.navPillAlpha, 0.001f)
+        assertEquals(1f, start.navShadowAlpha, 0.001f)
+        assertEquals(0f, start.navPillBlurDp, 0.001f)
+        assertEquals(totalWidth - 60f, start.pillLeftDp, 0.001f)
+        assertEquals(60f, start.pillWidthDp, 0.001f)
+        assertEquals(60f, start.pillHeightDp, 0.001f)
+        assertEquals(20f, start.pillCornerRadiusDp, 0.001f)
+        assertEquals(totalWidth - 30f, start.pillCenterXDp, 0.001f)
+        assertEquals(28f, start.plusIconSizeDp, 0.001f)
+        assertEquals(0f, start.labelRevealWeight, 0.001f)
+        assertEquals(0f, start.labelAlpha, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_MORPH_LABEL_SLIDE_DP, start.labelSlideOffsetDp, 0.001f)
+
+        // Very early (0.04): Whole-navbar blur begins immediately on frame 1 while staying visible
+        val early = DockMotionConfig.calculateProfileMorphState(progress = 0.04f, dockWidthDp = dockWidth)
+        assertTrue("Whole-navbar blur must begin immediately", early.navPillBlurDp > 0.5f)
+        assertEquals("Whole-navbar stays opaque at start so blur is visible", 1f, early.navPillAlpha, 0.001f)
+        assertEquals(60f, early.pillHeightDp, 0.001f)
+
+        // Mid-blur / early sweep (0.30): Whole navbar heavily blurred & fading with ease-out, shadow dissolved, solid '+' pill sweeping
+        val midBlur = DockMotionConfig.calculateProfileMorphState(progress = 0.30f, dockWidthDp = dockWidth)
+        assertTrue("Whole navbar must be strongly blurred by 0.30", midBlur.navPillBlurDp > 8f)
+        assertTrue("Whole navbar must be smoothly fading out with ease-out", midBlur.navPillAlpha in 0.08f..0.75f)
+        assertEquals("Navbar shadow must dissolve early so no sharp shadow box lingers", 0f, midBlur.navShadowAlpha, 0.001f)
+        assertEquals(60f, midBlur.pillHeightDp, 0.001f)
+        assertEquals(totalWidth, midBlur.pillLeftDp + midBlur.pillWidthDp, 0.01f)
+        assertTrue("Solid '+' pill must be sweeping right-to-left", midBlur.pillLeftDp < totalWidth - 60f)
+
+        // Peak blur / dissolve finish (0.56): Blurred navbar has completely melted away before pill finishes expanding
+        val postDissolve = DockMotionConfig.calculateProfileMorphState(progress = 0.56f, dockWidthDp = dockWidth)
+        assertEquals(DockMotionConfig.PROFILE_MORPH_MAX_BLUR_DP.toFloat(), postDissolve.navPillBlurDp, 0.001f)
+        assertEquals("Whole navbar must be dissolved by 0.56", 0f, postDissolve.navPillAlpha, 0.001f)
+        assertEquals(30f, postDissolve.pillCornerRadiusDp, 0.001f)
+
+        // Phase 3 (0.76): "+ Catching up?" glides in from right to left inside solid expanding pill with StrongEaseOut
+        val revealMid = DockMotionConfig.calculateProfileMorphState(progress = 0.76f, dockWidthDp = dockWidth)
+        assertEquals(60f, revealMid.pillHeightDp, 0.001f)
+        assertTrue("Label reveal weight must expand strongly under ease-out", revealMid.labelRevealWeight in 0.65f..0.99f)
+        assertTrue("Label alpha must fade in strongly under ease-out", revealMid.labelAlpha in 0.65f..0.99f)
+        assertTrue("Label must still be gliding right-to-left toward 0dp offset", revealMid.labelSlideOffsetDp in 0.2f..8f)
+
+        // 1.0: Final Profile Encounter Pill resting state ("+ Catching up?" spanning total dock footprint at 60dp height)
+        val end = DockMotionConfig.calculateProfileMorphState(progress = 1f, dockWidthDp = dockWidth)
+        assertEquals(0f, end.navPillAlpha, 0.001f)
+        assertEquals(0f, end.navShadowAlpha, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_MORPH_MAX_BLUR_DP.toFloat(), end.navPillBlurDp, 0.001f)
+        assertEquals(0f, end.pillLeftDp, 0.001f)
+        assertEquals(totalWidth, end.pillWidthDp, 0.001f)
+        assertEquals(60f, end.pillHeightDp, 0.001f)
+        assertEquals(30f, end.pillCornerRadiusDp, 0.001f)
+        assertEquals(totalWidth / 2f, end.pillCenterXDp, 0.001f)
+        assertEquals(22f, end.plusIconSizeDp, 0.001f)
+        assertEquals(1f, end.labelRevealWeight, 0.001f)
+        assertEquals(1f, end.labelAlpha, 0.001f)
+        assertEquals(0f, end.labelSlideOffsetDp, 0.001f)
+
+        // Out-of-bounds clamping
+        assertEquals(start, DockMotionConfig.calculateProfileMorphState(progress = -0.5f, dockWidthDp = dockWidth))
+        assertEquals(end, DockMotionConfig.calculateProfileMorphState(progress = 1.5f, dockWidthDp = dockWidth))
+    }
+
+    @Test
+    fun navbarMotionTokens_alignWithAnimateStrongEaseOutAndEaseInOutCurves() {
+        assertEquals(
+            "Navbar hide/show easing must use StrongEaseOut",
+            MotionTokens.StrongEaseOut,
+            MotionTokens.NavBarHideEasing
+        )
+        assertTrue(MotionTokens.StrongEaseOut.transform(0.25f) > 0.55f)
+        assertTrue(MotionTokens.StrongEaseInOut.transform(0.5f) in 0.40f..0.75f)
+        assertTrue(MotionTokens.StrongEaseInOut.transform(0.2f) < 0.15f)
+        assertTrue(MotionTokens.StrongEaseInOut.transform(0.8f) > 0.85f)
+    }
+
+    @Test
+    fun profileMorph_reverseDirectionUsesEaseOutForExitAndRestoresExactEndpoints() {
+        val dims = DockMotionConfig.resolveThreeTabDockDimensions("People")
+        val dockWidth = dims.dockWidthDp.toFloat()
+        val totalWidth = DockMotionConfig.calculateTotalDockFootprintWidthDp(dims.dockWidthDp).toFloat()
+
+        // Reverse at 0.90 (r = 0.10 into exit): label exits immediately with StrongEaseOut
+        val revEarly = DockMotionConfig.calculateProfileMorphState(progress = 0.90f, dockWidthDp = dockWidth, isReversing = true)
+        assertTrue("Label alpha must drop responsively on exit", revEarly.labelAlpha < 0.45f)
+        assertTrue("Label must slide outward right", revEarly.labelSlideOffsetDp > 10f)
+
+        val revAtOne = DockMotionConfig.calculateProfileMorphState(progress = 1f, dockWidthDp = dockWidth, isReversing = true)
+        assertEquals(totalWidth, revAtOne.pillWidthDp, 0.001f)
+        assertEquals(1f, revAtOne.labelAlpha, 0.001f)
+        assertEquals(0f, revAtOne.navPillAlpha, 0.001f)
+
+        val revAtZero = DockMotionConfig.calculateProfileMorphState(progress = 0f, dockWidthDp = dockWidth, isReversing = true)
+        assertEquals(60f, revAtZero.pillWidthDp, 0.001f)
+        assertEquals(0f, revAtZero.labelAlpha, 0.001f)
+        assertEquals(1f, revAtZero.navPillAlpha, 0.001f)
+        assertEquals(1f, revAtZero.navShadowAlpha, 0.001f)
+        assertEquals(0f, revAtZero.navPillBlurDp, 0.001f)
+    }
+
+    @Test
+    fun profileMorph_sweepsMonotonicallyRightToLeftWithLockedHeightAndRightAnchor() {
+        val dims = DockMotionConfig.resolveThreeTabDockDimensions("People")
+        val dockWidth = dims.dockWidthDp.toFloat()
+        val totalWidth = DockMotionConfig.calculateTotalDockFootprintWidthDp(dims.dockWidthDp).toFloat()
+        var previousLeft = Float.MAX_VALUE
+        var previousCenterX = Float.MAX_VALUE
+        for (step in 0..100) {
+            val state = DockMotionConfig.calculateProfileMorphState(step / 100f, dockWidth)
+            assertEquals("Pill height must stay locked at 60dp at step=$step", 60f, state.pillHeightDp, 0.001f)
+            assertEquals(
+                "Right edge must remain anchored at totalWidth at step=$step",
+                totalWidth,
+                state.pillLeftDp + state.pillWidthDp,
+                0.01f
+            )
+            assertTrue(
+                "Left edge must sweep monotonically right-to-left (step=$step, prev=$previousLeft, cur=${state.pillLeftDp})",
+                state.pillLeftDp <= previousLeft + 0.001f
+            )
+            assertTrue(
+                "CenterX must move monotonically right-to-left (step=$step, prev=$previousCenterX, cur=${state.pillCenterXDp})",
+                state.pillCenterXDp <= previousCenterX + 0.001f
+            )
+            assertTrue(
+                "Corner radius must never exceed half of pill height",
+                state.pillCornerRadiusDp <= (state.pillHeightDp / 2f) + 0.001f
+            )
+            previousLeft = state.pillLeftDp
+            previousCenterX = state.pillCenterXDp
+        }
+    }
 }

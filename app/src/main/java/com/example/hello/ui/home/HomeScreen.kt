@@ -132,8 +132,18 @@ fun HomeScreen(
                 // Scrim to dismiss Speed Dial when tapping outside
                 AnimatedVisibility(
                     visible = uiState.isSpeedDialOpen,
-                    enter = fadeIn(animationSpec = tween(200)),
-                    exit = fadeOut(animationSpec = tween(150))
+                    enter = fadeIn(
+                        animationSpec = tween(
+                            durationMillis = com.example.hello.ui.theme.MotionTokens.SCRIM_FADE_IN_DURATION_MS,
+                            easing = com.example.hello.ui.theme.MotionTokens.StrongEaseOut
+                        )
+                    ),
+                    exit = fadeOut(
+                        animationSpec = tween(
+                            durationMillis = com.example.hello.ui.theme.MotionTokens.SCRIM_FADE_OUT_DURATION_MS,
+                            easing = com.example.hello.ui.theme.MotionTokens.StrongEaseOut
+                        )
+                    )
                 ) {
                     Box(
                         modifier = Modifier

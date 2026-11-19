@@ -3,6 +3,7 @@ package com.example.hello.ui.navigation
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -103,21 +104,49 @@ fun mainRootRouteIndex(route: String?): Int? = when (route) {
 }
 
 /**
- * Determines whether the floating bottom navigation dock should be hidden for [currentRoute]
+ * Returns true if [route] represents the Contact Profile Screen (`PersonDetailRoute`).
+ */
+fun isPersonDetailRoute(route: String?): Boolean {
+    if (route == null) return false
+    return route == PersonDetailRoute.ROUTE_PATTERN || route.startsWith("detail/")
+}
+
+/**
+ * Returns true if [route] represents the Contact Edit Screen (`PersonEditRoute`).
+ */
+fun isPersonEditRoute(route: String?): Boolean {
+    if (route == null) return false
+    return route == PersonEditRoute.ROUTE_PATTERN || route.startsWith("edit/")
+}
+
+/**
+ * Returns true when the Floating Bottom Dock should be in its morphed Profile Encounter Pill
+ * shape (`"+ Catching up?"`) per ADR-0034. Preserves the pill shape on `PersonEditRoute` so
+ * transitions between `PersonDetailRoute` and `PersonEditRoute` slide the pill cleanly without
+ * flickering back to the 3-tab dock.
+ */
+fun shouldMorphDockToProfilePill(currentRoute: String?): Boolean =
+    isPersonDetailRoute(currentRoute) || isPersonEditRoute(currentRoute)
+
+/**
+ * Determines whether the floating bottom navigation dock should be hidden vertically for [currentRoute]
  * and the active selection state.
  *
- * Selection mode on one root tab does not suppress the dock on a different root tab.
- * Visible on [HomeRoute], [PeopleRoute], and [TimelineRoute] (and while route is null during initial composition);
- * hidden on deeper or supporting screens ([SettingsRoute], [PersonDetailRoute], [PersonEditRoute], [OnboardingRoute]),
- * or when the active root tab is in selection mode.
+ * Selection mode on one surface does not suppress the dock on a different surface.
+ * Vertically visible on [HomeRoute], [PeopleRoute], [TimelineRoute], and [PersonDetailRoute]
+ * (where it morphs in place into the Profile Encounter Pill per ADR-0034); hidden on deeper or
+ * supporting screens ([SettingsRoute], [PersonEditRoute], [ArchivedContactsRoute], [OnboardingRoute]),
+ * or when the active surface is in selection mode.
  */
 fun shouldHideFloatingDock(
     currentRoute: String?,
     isContactsSelectionMode: Boolean = false,
     isTimelineSelectionMode: Boolean = false,
-    activeTab: HomeNavTab? = null
+    activeTab: HomeNavTab? = null,
+    isDetailSelectionMode: Boolean = false
 ): Boolean {
     if (currentRoute == null) return false
+    if (isPersonDetailRoute(currentRoute)) return isDetailSelectionMode
     if (!isMainRootRoute(currentRoute)) return true
 
     val isScopedSelectionMode = when (currentRoute) {
@@ -142,6 +171,27 @@ fun floatingDockVisibilitySpec(isReducedMotion: Boolean = false): FiniteAnimatio
             easing = MotionTokens.NavBarHideEasing
         )
     }
+}
+
+/**
+ * Returns the animation specification for the 3-phase in-place Floating Bottom Dock to Profile
+ * Encounter Pill morph (ADR-0034). Uses linear timeline progression across [MotionTokens.DETAIL_SLIDE_DURATION_MS]
+ * so per-phase easing inside `DockMotionConfig.calculateProfileMorphState` distributes time evenly
+ * across all three morph phases and mirrors 1:1 predictive back scrubbing.
+ */
+fun floatingDockProfileMorphSpec(
+    isReducedMotion: Boolean = false,
+    remainingFraction: Float = 1f
+): FiniteAnimationSpec<Float> {
+    if (isReducedMotion) return snap()
+    val clampedFraction = remainingFraction.coerceIn(0f, 1f)
+    val durationMs = (MotionTokens.DETAIL_SLIDE_DURATION_MS * clampedFraction)
+        .toInt()
+        .coerceAtLeast(1)
+    return tween(
+        durationMillis = durationMs,
+        easing = LinearEasing
+    )
 }
 
 /**

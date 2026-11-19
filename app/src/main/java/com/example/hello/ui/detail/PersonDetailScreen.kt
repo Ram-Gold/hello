@@ -87,12 +87,15 @@ fun PersonDetailScreen(
     onEvent: (PersonDetailUiEvent) -> Unit,
     onNavigateBack: () -> Unit,
     onEditClick: () -> Unit,
-    onLogEncounterClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onLogEncounterClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    externalSnackbarHostState: SnackbarHostState? = null,
+    onSelectionBackProgressChanged: (Float) -> Unit = {}
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val snackbarHostState = externalSnackbarHostState ?: localSnackbarHostState
     val haptics = LocalHelloHaptics.current
     val isReducedMotion = LocalReducedMotion.current
     var selectionBackProgress by remember { mutableFloatStateOf(0f) }
@@ -100,8 +103,15 @@ fun PersonDetailScreen(
     ScrubbablePredictiveBackHandler(
         enabled = uiState.isSelectionMode,
         isReducedMotion = isReducedMotion,
-        onProgressChanged = { selectionBackProgress = it },
-        onCommit = { onEvent(PersonDetailUiEvent.OnClearSelection) }
+        onProgressChanged = { progress ->
+            selectionBackProgress = progress
+            onSelectionBackProgressChanged(progress)
+        },
+        onCommit = {
+            selectionBackProgress = 0f
+            onSelectionBackProgressChanged(0f)
+            onEvent(PersonDetailUiEvent.OnClearSelection)
+        }
     )
 
     LaunchedEffect(uiState.userMessage) {
@@ -216,10 +226,18 @@ fun PersonDetailScreen(
             }
         },
         snackbarHost = {
-            HelloToastHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + HelloToastDefaults.BOTTOM_MARGIN_DP)
-            )
+            if (externalSnackbarHostState == null) {
+                val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val bottomClearance = if (uiState.isSelectionMode) {
+                    navBarBottomPadding + HelloToastDefaults.BOTTOM_MARGIN_DP
+                } else {
+                    84.dp + navBarBottomPadding + HelloToastDefaults.BOTTOM_MARGIN_DP
+                }
+                HelloToastHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(bottom = bottomClearance)
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -274,7 +292,7 @@ fun PersonDetailScreen(
                     }
 
                     item(key = "bottom_spacer") {
-                        Spacer(modifier = Modifier.height(48.dp))
+                        Spacer(modifier = Modifier.height(120.dp))
                     }
                 }
 

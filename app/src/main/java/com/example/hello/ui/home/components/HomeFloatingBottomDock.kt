@@ -1,29 +1,27 @@
 package com.example.hello.ui.home.components
 
+import android.graphics.Bitmap
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,20 +34,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,36 +55,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.SpeedDialAction
+import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
+import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @Composable
@@ -102,10 +111,15 @@ fun HomeFloatingBottomDock(
     peopleTabLabel: String = "People",
     addContactLabel: String = "Add Contact",
     pillAnimationSpec: AnimationSpec<Float> = MotionTokens.tabTransitionTween(),
-    overridePillProgress: Float? = null
+    overridePillProgress: Float? = null,
+    profileMorphProgressProvider: () -> Float = { 0f },
+    isProfileMorphReversing: () -> Boolean = { false },
+    isProfileEncounterMode: Boolean = false,
+    onProfileEncounterClick: () -> Unit = {}
 ) {
-    // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal
+    // 1. Organic Floating Pill Navigation Dock with Draw-Phase Clip-Path Reveal & In-Place Profile Morph (ADR-0034)
     val haptics = LocalHelloHaptics.current
+    val isReducedMotion = LocalReducedMotion.current
     val isDark = isSystemInDarkTheme()
     val warmShadowAmbient = if (isDark) Color(0x80000000) else DockMotionConfig.WARM_SHADOW_AMBIENT
     val warmShadowSpot = if (isDark) Color(0xB3000000) else DockMotionConfig.WARM_SHADOW_SPOT
@@ -124,26 +138,65 @@ fun HomeFloatingBottomDock(
     val dimensions = remember(peopleTabLabel) {
         DockMotionConfig.resolveThreeTabDockDimensions(peopleTabLabel)
     }
+    val totalFootprintWidthDp = remember(dimensions.dockWidthDp) {
+        DockMotionConfig.calculateTotalDockFootprintWidthDp(dimensions.dockWidthDp)
+    }
 
-    // Separate Rounded-Square Quick-Add FAB with matching elevation & spring rotation
+    // Separate Rounded-Square Quick-Add FAB with matching elevation & ease-out rotation (snaps under reduced motion)
     val fabRotation by animateFloatAsState(
-        targetValue = if (isSpeedDialOpen) 45f else 0f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+        targetValue = if (isSpeedDialOpen && !isProfileEncounterMode) 45f else 0f,
+        animationSpec = if (isReducedMotion) snap() else tween(durationMillis = 200, easing = MotionTokens.StrongEaseOut),
         label = "fabRotate"
     )
+
+    val morphPillShape = remember(dimensions.dockWidthDp, profileMorphProgressProvider, isProfileMorphReversing) {
+        object : Shape {
+            override fun createOutline(
+                size: Size,
+                layoutDirection: LayoutDirection,
+                density: Density
+            ): Outline {
+                val state = DockMotionConfig.calculateProfileMorphState(
+                    progress = profileMorphProgressProvider(),
+                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                    isReversing = isProfileMorphReversing()
+                )
+                val radiusPx = with(density) { state.pillCornerRadiusDp.dp.toPx() }
+                    .coerceAtMost(minOf(size.width, size.height) / 2f)
+                return Outline.Rounded(
+                    RoundRect(
+                        left = 0f,
+                        top = 0f,
+                        right = size.width,
+                        bottom = size.height,
+                        cornerRadius = CornerRadius(radiusPx, radiusPx)
+                    )
+                )
+            }
+        }
+    }
 
     val fabBorderModifier = if (DockMotionConfig.HAS_DOCK_BORDER) {
         Modifier.border(
             width = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP.dp)
+            shape = morphPillShape
         )
     } else {
         Modifier
     }
 
+    val actionInteractionSource = remember { MutableInteractionSource() }
+    val isActionPressed by actionInteractionSource.collectIsPressedAsState()
+    val actionPressScale by animateFloatAsState(
+        targetValue = if (isActionPressed && !isReducedMotion) 0.96f else 1f,
+        animationSpec = if (isReducedMotion) snap() else tween(durationMillis = 140, easing = MotionTokens.StrongEaseOut),
+        label = "actionPillPressScale"
+    )
+    val showSpeedDialChips = isSpeedDialOpen && !isProfileEncounterMode
+
     // Bottom Row: [ Floating Navigation Dock ] + [ 1:1 Squircle Quick-Add FAB ]
-    // with right-aligned Speed Dial Chips stacked directly above the FAB
+    // morphing in place into the centered "+ Catching up?" Profile Encounter Pill on Contact Profile
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -156,15 +209,23 @@ fun HomeFloatingBottomDock(
         ) {
             // Upper Chip: Met Again (Log Encounter Action)
             AnimatedVisibility(
-                visible = isSpeedDialOpen,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 380f)
-                ) + fadeIn(animationSpec = spring(stiffness = 400f)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f)
-                ) + fadeOut(animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f))
+                visible = showSpeedDialChips,
+                enter = if (isReducedMotion) {
+                    fadeIn(animationSpec = tween(durationMillis = 120, easing = MotionTokens.StrongEaseOut))
+                } else {
+                    slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(durationMillis = 220, easing = MotionTokens.StrongEaseOut)
+                    ) + fadeIn(animationSpec = tween(durationMillis = 180, easing = MotionTokens.StrongEaseOut))
+                },
+                exit = if (isReducedMotion) {
+                    fadeOut(animationSpec = tween(durationMillis = 100, easing = MotionTokens.StrongEaseOut))
+                } else {
+                    slideOutVertically(
+                        targetOffsetY = { it / 2 },
+                        animationSpec = tween(durationMillis = 160, easing = MotionTokens.StrongEaseOut)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 140, easing = MotionTokens.StrongEaseOut))
+                }
             ) {
                 Column(horizontalAlignment = Alignment.End) {
                     SpeedDialChip(
@@ -181,15 +242,23 @@ fun HomeFloatingBottomDock(
 
             // Lower Chip: Add Contact / Friend / Connection (New Contact Action)
             AnimatedVisibility(
-                visible = isSpeedDialOpen,
-                enter = slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 420f)
-                ) + fadeIn(animationSpec = spring(stiffness = 500f)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it / 2 },
-                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f)
-                ) + fadeOut(animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f))
+                visible = showSpeedDialChips,
+                enter = if (isReducedMotion) {
+                    fadeIn(animationSpec = tween(durationMillis = 120, easing = MotionTokens.StrongEaseOut))
+                } else {
+                    slideInVertically(
+                        initialOffsetY = { it / 2 },
+                        animationSpec = tween(durationMillis = 190, easing = MotionTokens.StrongEaseOut)
+                    ) + fadeIn(animationSpec = tween(durationMillis = 150, easing = MotionTokens.StrongEaseOut))
+                },
+                exit = if (isReducedMotion) {
+                    fadeOut(animationSpec = tween(durationMillis = 100, easing = MotionTokens.StrongEaseOut))
+                } else {
+                    slideOutVertically(
+                        targetOffsetY = { it / 3 },
+                        animationSpec = tween(durationMillis = 150, easing = MotionTokens.StrongEaseOut)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 130, easing = MotionTokens.StrongEaseOut))
+                }
             ) {
                 Column(horizontalAlignment = Alignment.End) {
                     SpeedDialChip(
@@ -204,68 +273,330 @@ fun HomeFloatingBottomDock(
                 }
             }
 
-            // Bottom Unit: [ Floating Navigation Dock Surface ] [ 14dp Spacer ] [ Quick-Add FAB ]
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Floating Navigation Dock Surface
-                Surface(
-                    modifier = Modifier
-                        .width(dimensions.dockWidthDp.dp)
-                        .height(DockMotionConfig.DOCK_HEIGHT_DP.dp)
-                        .shadow(
-                            elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
-                            shape = RoundedCornerShape(30.dp),
-                            ambientColor = warmShadowAmbient,
-                            spotColor = warmShadowSpot
+            // Bottom Unit: Invariant total footprint (dockWidth + 14dp + 60dp) x 60dp
+            // Whole-navbar unclipped blur + 100% solid opaque right-to-left '+' pill sweep (ADR-0034)
+            val resolvedNavSurfaceColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+            val primaryPillColor = MaterialTheme.colorScheme.primary
+            val blurMarginDp = DockMotionConfig.PROFILE_MORPH_BLUR_MARGIN_DP.dp
+            val navGraphicsLayer = rememberGraphicsLayer()
+            var blurredNavBitmap by remember(isDark) {
+                mutableStateOf<ImageBitmap?>(null)
+            }
+            var navLayerSize by remember { mutableStateOf(IntSize.Zero) }
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                LaunchedEffect(isProfileEncounterMode, selectedTab, peopleTabLabel, isDark, navLayerSize) {
+                    if (navLayerSize.width > 0 && navLayerSize.height > 0) {
+                        if (!isProfileEncounterMode) {
+                            kotlinx.coroutines.delay(420)
+                        }
+                        runCatching {
+                            val snapshot = navGraphicsLayer.toImageBitmap()
+                            blurredNavBitmap = withContext(Dispatchers.Default) {
+                                createSoftBlurredBitmap(snapshot)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Layout(
+                content = {
+                    // Child 0: Resting shadow under 3-tab navbar (dissolves early with StrongEaseOut so no crisp shadow frame lingers)
+                    Box(
+                        modifier = Modifier
+                            .width(dimensions.dockWidthDp.dp)
+                            .height(DockMotionConfig.DOCK_HEIGHT_DP.dp)
+                            .graphicsLayer {
+                                val morphState = DockMotionConfig.calculateProfileMorphState(
+                                    progress = profileMorphProgressProvider(),
+                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                    isReversing = isProfileMorphReversing()
+                                )
+                                alpha = morphState.navShadowAlpha
+                                shadowElevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp.toPx()
+                                ambientShadowColor = warmShadowAmbient
+                                spotShadowColor = warmShadowSpot
+                                shape = RoundedCornerShape(30.dp)
+                                clip = true
+                            }
+                            .background(resolvedNavSurfaceColor)
+                    )
+
+                    // Child 1: Whole 3-Tab Navbar Pill (surface + icons blurred together inside unclipped +18dp margin)
+                    Box(
+                        modifier = Modifier
+                            .width(dimensions.dockWidthDp.dp + blurMarginDp * 2)
+                            .height(DockMotionConfig.DOCK_HEIGHT_DP.dp + blurMarginDp * 2)
+                            .graphicsLayer {
+                                val morphState = DockMotionConfig.calculateProfileMorphState(
+                                    progress = profileMorphProgressProvider(),
+                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                    isReversing = isProfileMorphReversing()
+                                )
+                                alpha = morphState.navPillAlpha
+                                clip = false
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val blurPx = morphState.navPillBlurDp.dp.toPx()
+                                    renderEffect = if (blurPx > 0.25f) {
+                                        BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+                            .drawWithContent {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    drawContent()
+                                } else {
+                                    val newSize = IntSize(size.width.roundToInt(), size.height.roundToInt())
+                                    if (newSize != navLayerSize && newSize.width > 0 && newSize.height > 0) {
+                                        navLayerSize = newSize
+                                    }
+                                    val morphState = DockMotionConfig.calculateProfileMorphState(
+                                        progress = profileMorphProgressProvider(),
+                                        dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                        isReversing = isProfileMorphReversing()
+                                    )
+                                    val blurFraction = (morphState.navPillBlurDp / DockMotionConfig.PROFILE_MORPH_MAX_BLUR_DP.toFloat())
+                                        .coerceIn(0f, 1f)
+                                    val cachedBlur = blurredNavBitmap
+                                    if (blurFraction <= 0.005f || cachedBlur == null) {
+                                        navGraphicsLayer.alpha = 1f
+                                        navGraphicsLayer.record {
+                                            this@drawWithContent.drawContent()
+                                        }
+                                        drawLayer(navGraphicsLayer)
+                                    } else {
+                                        // Crossfade crisp recorded padded navbar into unclipped blurred bitmap (melts right edge & icons together)
+                                        navGraphicsLayer.alpha = (1f - blurFraction).coerceIn(0f, 1f)
+                                        drawLayer(navGraphicsLayer)
+                                        drawImage(
+                                            image = cachedBlur,
+                                            dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                                            alpha = blurFraction
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(blurMarginDp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(30.dp))
+                                .background(resolvedNavSurfaceColor)
+                                .then(dockBorderModifier)
+                        ) {
+                            DockTabsLayer(
+                                selectedTab = selectedTab,
+                                peopleTabLabel = peopleTabLabel,
+                                dimensions = dimensions,
+                                pillAnimationSpec = if (isReducedMotion) snap() else pillAnimationSpec,
+                                overridePillProgress = overridePillProgress,
+                                isSpeedDialOpen = isSpeedDialOpen,
+                                onToggleSpeedDial = onToggleSpeedDial,
+                                onTabSelect = onTabSelect,
+                                isInteractive = !isProfileEncounterMode
+                            )
+                        }
+                    }
+
+                    // Child 2: 100% Solid Opaque Right-Anchored '+' Pill (sweeps right-to-left at locked 60dp height)
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val morphState = DockMotionConfig.calculateProfileMorphState(
+                                    progress = profileMorphProgressProvider(),
+                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                    isReversing = isProfileMorphReversing()
+                                )
+                                val maxRadiusDp = minOf(morphState.pillWidthDp, morphState.pillHeightDp) / 2f
+                                val radiusDp = morphState.pillCornerRadiusDp.coerceAtMost(maxRadiusDp)
+                                scaleX = actionPressScale
+                                scaleY = actionPressScale
+                                shadowElevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp.toPx()
+                                ambientShadowColor = warmShadowAmbient
+                                spotShadowColor = warmShadowSpot
+                                shape = RoundedCornerShape(radiusDp.dp)
+                                clip = true
+                            }
+                            .background(primaryPillColor)
+                            .then(fabBorderModifier)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = when {
+                                    isProfileEncounterMode -> "${DockMotionConfig.PROFILE_ENCOUNTER_PILL_LABEL} Log encounter"
+                                    isSpeedDialOpen -> "Close speed dial"
+                                    else -> "Quick capture"
+                                }
+                            }
+                            .clickable(
+                                interactionSource = actionInteractionSource,
+                                indication = LocalIndication.current,
+                                onClick = {
+                                    if (isProfileEncounterMode || profileMorphProgressProvider() >= 0.5f) {
+                                        haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                                        onProfileEncounterClick()
+                                    } else {
+                                        onToggleSpeedDial()
+                                    }
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MorphActionPillContent(
+                            fabRotation = fabRotation,
+                            profileMorphProgressProvider = profileMorphProgressProvider,
+                            isProfileMorphReversing = isProfileMorphReversing,
+                            dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
-                        .clip(RoundedCornerShape(30.dp))
-                        .then(dockBorderModifier),
-                    shape = RoundedCornerShape(30.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp
+                    }
+                },
+                modifier = Modifier
+                    .width(totalFootprintWidthDp.dp)
+                    .height(DockMotionConfig.DOCK_HEIGHT_DP.dp)
+            ) { measurables, constraints ->
+                val morphState = DockMotionConfig.calculateProfileMorphState(
+                    progress = profileMorphProgressProvider(),
+                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                    isReversing = isProfileMorphReversing()
+                )
+                val dockWidthPx = dimensions.dockWidthDp.dp.roundToPx().coerceAtMost(constraints.maxWidth)
+                val blurMarginPx = blurMarginDp.roundToPx()
+                val navShadowPlaceable = measurables[0].measure(
+                    Constraints.fixed(width = dockWidthPx, height = constraints.maxHeight)
+                )
+                val navDockPlaceable = measurables[1].measure(
+                    Constraints.fixed(
+                        width = dockWidthPx + (blurMarginPx * 2),
+                        height = constraints.maxHeight + (blurMarginPx * 2)
+                    )
+                )
+                val pillWidthPx = morphState.pillWidthDp.dp.roundToPx().coerceIn(1, constraints.maxWidth)
+                val pillHeightPx = morphState.pillHeightDp.dp.roundToPx().coerceIn(1, constraints.maxHeight)
+                val actionPillPlaceable = measurables[2].measure(
+                    Constraints.fixed(width = pillWidthPx, height = pillHeightPx)
+                )
+                val pillLeftPx = (constraints.maxWidth - pillWidthPx).coerceAtLeast(0)
+                val pillTopPx = ((constraints.maxHeight - pillHeightPx) / 2f).roundToInt()
+
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    if (morphState.navShadowAlpha > 0.001f) {
+                        navShadowPlaceable.placeRelative(0, 0)
+                    }
+                    if (morphState.navPillAlpha > 0.001f) {
+                        navDockPlaceable.placeRelative(-blurMarginPx, -blurMarginPx)
+                    }
+                    actionPillPlaceable.placeRelative(pillLeftPx, pillTopPx)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorphActionPillContent(
+    fabRotation: Float,
+    profileMorphProgressProvider: () -> Float,
+    isProfileMorphReversing: () -> Boolean,
+    dockWidthDp: Float,
+    contentColor: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Add,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier
+                .size(24.dp)
+                .graphicsLayer {
+                    val progress = profileMorphProgressProvider().coerceIn(0f, 1f)
+                    val state = DockMotionConfig.calculateProfileMorphState(
+                        progress = progress,
+                        dockWidthDp = dockWidthDp,
+                        isReversing = isProfileMorphReversing()
+                    )
+                    val scale = state.plusIconSizeDp / 24f
+                    scaleX = scale
+                    scaleY = scale
+                    rotationZ = fabRotation * (1f - progress)
+                }
+        )
+
+        Layout(
+            content = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.graphicsLayer {
+                        val state = DockMotionConfig.calculateProfileMorphState(
+                            progress = profileMorphProgressProvider(),
+                            dockWidthDp = dockWidthDp,
+                            isReversing = isProfileMorphReversing()
+                        )
+                        alpha = state.labelAlpha
+                        translationX = state.labelSlideOffsetDp.dp.toPx()
+                    }
                 ) {
-                    DockTabsLayer(
-                        selectedTab = selectedTab,
-                        peopleTabLabel = peopleTabLabel,
-                        dimensions = dimensions,
-                        pillAnimationSpec = pillAnimationSpec,
-                        overridePillProgress = overridePillProgress,
-                        isSpeedDialOpen = isSpeedDialOpen,
-                        onToggleSpeedDial = onToggleSpeedDial,
-                        onTabSelect = onTabSelect
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = DockMotionConfig.PROFILE_ENCOUNTER_PILL_LABEL,
+                        maxLines = 1,
+                        softWrap = false,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = contentColor
                     )
                 }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                // 1:1 Squircle Quick-Add FAB (stationary beside dock at bottom right)
-                FloatingActionButton(
-                    onClick = onToggleSpeedDial,
-                    modifier = Modifier
-                        .size(DockMotionConfig.DOCK_FAB_SIZE_DP.dp)
-                        .shadow(
-                            elevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp,
-                            shape = RoundedCornerShape(DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP.dp),
-                            ambientColor = warmShadowAmbient,
-                            spotColor = warmShadowSpot
+            },
+            modifier = Modifier
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                    clip = true
+                }
+                .drawWithContent {
+                    drawContent()
+                    val state = DockMotionConfig.calculateProfileMorphState(
+                        progress = profileMorphProgressProvider(),
+                        dockWidthDp = dockWidthDp,
+                        isReversing = isProfileMorphReversing()
+                    )
+                    if (state.labelRevealWeight in 0.001f..0.999f && size.width > 1f) {
+                        val featherPx = DockMotionConfig.PROFILE_MORPH_LABEL_FEATHER_DP.dp.toPx()
+                            .coerceAtMost(size.width * 0.6f)
+                        val fadeStart = ((size.width - featherPx) / size.width).coerceIn(0f, 1f)
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black,
+                                    fadeStart to Color.Black,
+                                    1.0f to Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = size.width
+                            ),
+                            blendMode = BlendMode.DstIn
                         )
-                        .then(fabBorderModifier),
-                    shape = RoundedCornerShape(DockMotionConfig.DOCK_FAB_CORNER_RADIUS_DP.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 0.dp,
-                        pressedElevation = (DockMotionConfig.DOCK_PRESSED_SHADOW_ELEVATION_DP - DockMotionConfig.DOCK_SHADOW_ELEVATION_DP).dp
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = if (isSpeedDialOpen) "Close speed dial" else "Quick capture",
-                        modifier = Modifier
-                            .size(28.dp)
-                            .rotate(fabRotation)
-                    )
+                    }
+                }
+        ) { measurables, constraints ->
+            val placeable = measurables[0].measure(
+                constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
+            )
+            val state = DockMotionConfig.calculateProfileMorphState(
+                progress = profileMorphProgressProvider(),
+                dockWidthDp = dockWidthDp,
+                isReversing = isProfileMorphReversing()
+            )
+            val revealedWidth = (placeable.width * state.labelRevealWeight).roundToInt()
+            layout(revealedWidth, placeable.height) {
+                if (revealedWidth > 0) {
+                    placeable.place(0, 0)
                 }
             }
         }
@@ -281,7 +612,8 @@ private fun DockTabsLayer(
     overridePillProgress: Float?,
     isSpeedDialOpen: Boolean,
     onToggleSpeedDial: () -> Unit,
-    onTabSelect: (HomeNavTab) -> Unit
+    onTabSelect: (HomeNavTab) -> Unit,
+    isInteractive: Boolean = true
 ) {
     val targetProgress = when (selectedTab) {
         HomeNavTab.HOME -> 0f
@@ -363,6 +695,7 @@ private fun DockTabsLayer(
                         selected = selectedTab == HomeNavTab.HOME
                     }
                     .clickable(
+                        enabled = isInteractive,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
@@ -383,6 +716,7 @@ private fun DockTabsLayer(
                         selected = selectedTab == HomeNavTab.PEOPLE
                     }
                     .clickable(
+                        enabled = isInteractive,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
@@ -403,6 +737,7 @@ private fun DockTabsLayer(
                         selected = selectedTab == HomeNavTab.TIMELINE
                     }
                     .clickable(
+                        enabled = isInteractive,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
@@ -516,9 +851,8 @@ private fun NavTabItemContent(
     val displayLabel = customLabel ?: tab.label
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
     val activeColor = MaterialTheme.colorScheme.onSecondaryContainer
-    val weight = selectionWeightProvider().coerceIn(0f, 1f)
-    val contentColor = lerp(inactiveColor, activeColor, weight)
-    val icon = DockMotionConfig.resolveTabIcon(tab, isSelected = weight >= 0.5f)
+    val outlinedIcon = remember(tab) { DockMotionConfig.tabOutlinedIcon(tab) }
+    val filledIcon = remember(tab) { DockMotionConfig.tabFilledIcon(tab) }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -528,14 +862,34 @@ private fun NavTabItemContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = displayLabel,
-                tint = contentColor,
+            // Draw-phase crossfade between Outlined & Filled icons (zero per-frame recompositions)
+            Box(
                 modifier = Modifier
                     .size(22.dp)
-                    .aspectRatio(1f)
-            )
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = outlinedIcon,
+                    contentDescription = displayLabel,
+                    tint = inactiveColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = (1f - selectionWeightProvider().coerceIn(0f, 1f))
+                        }
+                )
+                Icon(
+                    imageVector = filledIcon,
+                    contentDescription = null,
+                    tint = activeColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = selectionWeightProvider().coerceIn(0f, 1f)
+                        }
+                )
+            }
 
             Layout(
                 content = {
@@ -554,7 +908,7 @@ private fun NavTabItemContent(
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = contentColor
+                            color = activeColor
                         )
                     }
                 },
@@ -618,12 +972,104 @@ private fun SpeedDialChip(
     }
 }
 
+/**
+ * Generates a softly blurred [ImageBitmap] using a progressive bilinear downsample/upsample pyramid.
+ * Runs across all Android versions (API 24+) without deprecated RenderScript dependencies.
+ */
+private fun createSoftBlurredBitmap(source: ImageBitmap): ImageBitmap {
+    val srcAndroid = source.asAndroidBitmap()
+    val softwareSrc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        srcAndroid.config == Bitmap.Config.HARDWARE
+    ) {
+        srcAndroid.copy(Bitmap.Config.ARGB_8888, false)
+    } else {
+        srcAndroid
+    }
+    val origW = softwareSrc.width.coerceAtLeast(1)
+    val origH = softwareSrc.height.coerceAtLeast(1)
+    val pass1 = Bitmap.createScaledBitmap(softwareSrc, (origW / 3).coerceAtLeast(2), (origH / 3).coerceAtLeast(2), true)
+    val pass2 = Bitmap.createScaledBitmap(pass1, (origW / 6).coerceAtLeast(2), (origH / 6).coerceAtLeast(2), true)
+    val pass3 = Bitmap.createScaledBitmap(pass2, (origW / 3).coerceAtLeast(2), (origH / 3).coerceAtLeast(2), true)
+    val finalBmp = Bitmap.createScaledBitmap(pass3, origW, origH, true)
+    if (softwareSrc !== srcAndroid) softwareSrc.recycle()
+    if (pass1 !== softwareSrc) pass1.recycle()
+    if (pass2 !== pass1) pass2.recycle()
+    if (pass3 !== pass2) pass3.recycle()
+    return finalBmp.asImageBitmap()
+}
+
 @Preview(name = "Speed Dial Chip Preview", showBackground = true)
 @Composable
 private fun SpeedDialChipPreview() {
-    SpeedDialChip(
-        label = "Add Contact",
-        icon = Icons.Rounded.PersonAdd,
-        onClick = {}
-    )
+    HelloTheme {
+        SpeedDialChip(
+            label = "Add Contact",
+            icon = Icons.Rounded.PersonAdd,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(name = "Profile Morph — 0.0 Root Dock", showBackground = true, widthDp = 390)
+@Composable
+private fun ProfileMorphRootDockPreview() {
+    HelloTheme {
+        HomeFloatingBottomDock(
+            selectedTab = HomeNavTab.PEOPLE,
+            onTabSelect = {},
+            isSpeedDialOpen = false,
+            onToggleSpeedDial = {},
+            onSpeedDialAction = {},
+            profileMorphProgressProvider = { 0f },
+            isProfileEncounterMode = false
+        )
+    }
+}
+
+@Preview(name = "Profile Morph — 0.16 Liquid Bridge", showBackground = true, widthDp = 390)
+@Composable
+private fun ProfileMorphLiquidBridgePreview() {
+    HelloTheme {
+        HomeFloatingBottomDock(
+            selectedTab = HomeNavTab.PEOPLE,
+            onTabSelect = {},
+            isSpeedDialOpen = false,
+            onToggleSpeedDial = {},
+            onSpeedDialAction = {},
+            profileMorphProgressProvider = { 0.16f },
+            isProfileEncounterMode = true
+        )
+    }
+}
+
+@Preview(name = "Profile Morph — 0.52 Right-to-Left Swallow", showBackground = true, widthDp = 390)
+@Composable
+private fun ProfileMorphSwallowPreview() {
+    HelloTheme {
+        HomeFloatingBottomDock(
+            selectedTab = HomeNavTab.PEOPLE,
+            onTabSelect = {},
+            isSpeedDialOpen = false,
+            onToggleSpeedDial = {},
+            onSpeedDialAction = {},
+            profileMorphProgressProvider = { 0.52f },
+            isProfileEncounterMode = true
+        )
+    }
+}
+
+@Preview(name = "Profile Morph — 1.0 Catching Up Pill", showBackground = true, widthDp = 390)
+@Composable
+private fun ProfileMorphPillPreview() {
+    HelloTheme {
+        HomeFloatingBottomDock(
+            selectedTab = HomeNavTab.PEOPLE,
+            onTabSelect = {},
+            isSpeedDialOpen = false,
+            onToggleSpeedDial = {},
+            onSpeedDialAction = {},
+            profileMorphProgressProvider = { 1f },
+            isProfileEncounterMode = true
+        )
+    }
 }

@@ -21,12 +21,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -57,7 +54,7 @@ import java.time.temporal.ChronoUnit
 fun LivingTimeline(
     encounters: List<Encounter>,
     placesMap: Map<String, Place>,
-    onLogEncounterClick: () -> Unit,
+    onLogEncounterClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     birthday: LocalDate? = null,
     selectedEncounterIds: Set<String> = emptySet(),
@@ -70,7 +67,7 @@ fun LivingTimeline(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Section Header Row with "+ Log Encounter" Action
+        // Section Header Row (Encounter logging now hosted by the bottom Profile Encounter Pill per ADR-0034)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,27 +88,6 @@ fun LivingTimeline(
                     text = "${encounters.size} ${if (encounters.size == 1) "encounter" else "encounters"} recorded",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Button(
-                onClick = onLogEncounterClick,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Log Met",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }

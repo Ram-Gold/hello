@@ -130,9 +130,11 @@ import com.example.hello.ui.navigation.aospSharedAxisPopEnter
 import com.example.hello.ui.navigation.aospSharedAxisPopExit
 import com.example.hello.ui.navigation.enterTransition
 import com.example.hello.ui.navigation.exitTransition
+import com.example.hello.ui.navigation.floatingDockProfileMorphSpec
 import com.example.hello.ui.navigation.floatingDockVisibilitySpec
 import com.example.hello.ui.navigation.interpolateTabProgressForPredictiveBack
 import com.example.hello.ui.navigation.isMainRootRoute
+import com.example.hello.ui.navigation.isPersonDetailRoute
 import com.example.hello.ui.navigation.mainRootEnterTransition
 import com.example.hello.ui.navigation.mainRootExitTransition
 import com.example.hello.ui.navigation.navigateSafely
@@ -143,7 +145,9 @@ import com.example.hello.ui.navigation.predictiveDeeperRoutePopExit
 import com.example.hello.ui.navigation.resolveActiveTransitionTabs
 import com.example.hello.ui.navigation.resolveDepthFractionWithPredictiveBack
 import com.example.hello.ui.navigation.resolveDockVisibilityWithPredictiveBack
+import com.example.hello.ui.navigation.resolveProfileMorphProgressWithPredictiveBack
 import com.example.hello.ui.navigation.shouldHideFloatingDock
+import com.example.hello.ui.navigation.shouldMorphDockToProfilePill
 import com.example.hello.ui.navigation.shouldUseRootBridgeForBack
 import com.example.hello.ui.onboarding.OnboardingScreen
 import com.example.hello.ui.onboarding.OnboardingViewModel
@@ -233,11 +237,25 @@ fun MainAppShell(
     var rootTabBackProgress by remember { mutableFloatStateOf(0f) }
     var deeperRouteBackProgress by remember { mutableFloatStateOf(0f) }
     var selectionBackProgress by remember { mutableFloatStateOf(0f) }
+    var isDetailSelectionMode by remember { mutableStateOf(false) }
+    var detailSelectionBackProgress by remember { mutableFloatStateOf(0f) }
     val popHandoff = remember { PredictiveBackPopHandoff() }
+    val useRootBridgeForCurrentRoute = shouldUseRootBridgeForBack(
+        currentRoute = currentRoute,
+        previousRoute = previousRoute
+    )
+
+    val activeDetailContactId = if (isPersonDetailRoute(currentRoute)) {
+        navBackStackEntry?.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID)
+    } else null
 
     LaunchedEffect(currentRoute) {
         rootTabBackProgress = 0f
         selectionBackProgress = 0f
+        if (!isPersonDetailRoute(currentRoute)) {
+            isDetailSelectionMode = false
+            detailSelectionBackProgress = 0f
+        }
         if (!popHandoff.hasActiveCommit()) {
             deeperRouteBackProgress = 0f
         }
@@ -267,6 +285,7 @@ fun MainAppShell(
                 contactsViewModel.onEvent(ContactsUiEvent.OnTabDeparture)
             }
             else -> {
+                homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
                 contactsViewModel.onEvent(ContactsUiEvent.OnTabDeparture)
                 timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection)
             }
@@ -282,28 +301,63 @@ fun MainAppShell(
         timelineViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
     }.collectAsState(initial = false)
 
-    // Hide floating dock on non-root destinations or when the currently active root tab is in selection mode.
-    // Selection state on an inactive root tab never suppresses the dock on another tab.
-    val shouldHideDock by remember(currentRoute, activeTab, isContactsSelectionMode, isTimelineSelectionMode) {
+    // Hide floating dock vertically on non-root/non-detail destinations or when the active surface is in selection mode.
+    // On PersonDetailRoute (outside Timeline Selection Mode), the dock stays vertically stationary and morphs in place
+    // into the Profile Encounter Pill ("+ Catching up?") per ADR-0034.
+    val shouldHideDock by remember(
+        currentRoute,
+        activeTab,
+        isContactsSelectionMode,
+        isTimelineSelectionMode,
+        isDetailSelectionMode
+    ) {
         derivedStateOf {
             shouldHideFloatingDock(
                 currentRoute = currentRoute,
                 isContactsSelectionMode = isContactsSelectionMode,
                 isTimelineSelectionMode = isTimelineSelectionMode,
-                activeTab = activeTab
+                activeTab = activeTab,
+                isDetailSelectionMode = isDetailSelectionMode
             )
         }
     }
+    val isProfileDetailRoute = isPersonDetailRoute(currentRoute)
     val targetDockVisibility = if (shouldHideDock) 0f else 1f
+    val targetProfileMorph = if (shouldMorphDockToProfilePill(currentRoute)) 1f else 0f
+
     val dockVisibilityAnimatable = remember { Animatable(targetDockVisibility) }
-    val activeDockScrub = maxOf(deeperRouteBackProgress, selectionBackProgress).coerceIn(0f, 1f)
-    LaunchedEffect(activeDockScrub, deeperRouteBackProgress, selectionBackProgress, targetDockVisibility, isReducedMotion) {
+    val profileMorphAnimatable = remember { Animatable(targetProfileMorph) }
+    var isProfileMorphReversing by remember { mutableStateOf(false) }
+
+    val effectiveSelectionBackProgress = maxOf(selectionBackProgress, detailSelectionBackProgress).coerceIn(0f, 1f)
+    val isProfileToRootBackScrub =
+        isProfileDetailRoute &&
+            !isDetailSelectionMode &&
+            useRootBridgeForCurrentRoute &&
+            deeperRouteBackProgress > 0f &&
+            !isReducedMotion
+    val activeDockScrub = if (isProfileDetailRoute && !isDetailSelectionMode) {
+        0f
+    } else {
+        maxOf(deeperRouteBackProgress, effectiveSelectionBackProgress).coerceIn(0f, 1f)
+    }
+
+    LaunchedEffect(
+        activeDockScrub,
+        deeperRouteBackProgress,
+        effectiveSelectionBackProgress,
+        targetDockVisibility,
+        isReducedMotion,
+        isProfileDetailRoute,
+        isDetailSelectionMode
+    ) {
         if (activeDockScrub > 0f && !isReducedMotion) {
+            val scrubDeeper = if (isProfileDetailRoute) 0f else deeperRouteBackProgress
             dockVisibilityAnimatable.snapTo(
                 resolveDockVisibilityWithPredictiveBack(
                     animatedDockVisibility = targetDockVisibility,
-                    deeperBackProgress = deeperRouteBackProgress,
-                    selectionBackProgress = selectionBackProgress
+                    deeperBackProgress = scrubDeeper,
+                    selectionBackProgress = effectiveSelectionBackProgress
                 )
             )
         } else if (dockVisibilityAnimatable.value != targetDockVisibility || dockVisibilityAnimatable.targetValue != targetDockVisibility) {
@@ -317,7 +371,44 @@ fun MainAppShell(
             }
         }
     }
+
+    LaunchedEffect(
+        isProfileToRootBackScrub,
+        isProfileDetailRoute,
+        isDetailSelectionMode,
+        deeperRouteBackProgress,
+        targetProfileMorph,
+        isReducedMotion
+    ) {
+        if (isProfileToRootBackScrub) {
+            isProfileMorphReversing = true
+            profileMorphAnimatable.snapTo(
+                resolveProfileMorphProgressWithPredictiveBack(
+                    isPersonDetailRoute = true,
+                    isDetailSelectionMode = isDetailSelectionMode,
+                    targetMorphProgress = targetProfileMorph,
+                    deeperBackProgress = deeperRouteBackProgress
+                )
+            )
+        } else if (profileMorphAnimatable.value != targetProfileMorph || profileMorphAnimatable.targetValue != targetProfileMorph) {
+            isProfileMorphReversing = targetProfileMorph < profileMorphAnimatable.value
+            if (isReducedMotion || dockVisibilityAnimatable.value <= 0.01f) {
+                profileMorphAnimatable.snapTo(targetProfileMorph)
+            } else {
+                val remaining = kotlin.math.abs(targetProfileMorph - profileMorphAnimatable.value)
+                profileMorphAnimatable.animateTo(
+                    targetValue = targetProfileMorph,
+                    animationSpec = floatingDockProfileMorphSpec(
+                        isReducedMotion = false,
+                        remainingFraction = remaining
+                    )
+                )
+            }
+        }
+    }
+
     val dockVisibilityProgressState = dockVisibilityAnimatable.asState()
+    val profileMorphProgressState = profileMorphAnimatable.asState()
     val shouldRenderDock by remember(shouldHideDock) {
         derivedStateOf {
             !shouldHideDock || dockVisibilityProgressState.value > 0.01f
@@ -391,13 +482,12 @@ fun MainAppShell(
     val startDestination = if (hasCompletedOnboarding) HomeRoute.ROUTE_NAME else OnboardingRoute.ROUTE_NAME
     val density = LocalDensity.current
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val toastBottomPadding = run {
+    val restingDockHeight = run {
         val measuredDockDp = with(density) { dockHeightPx.toDp() }
-        val restingDockHeight = if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
-        val dockProgress = dockVisibilityProgressState.value
-        val currentDockOffsetDp = restingDockHeight * dockProgress
-        maxOf(navBarBottomPadding, currentDockOffsetDp) + HelloToastDefaults.BOTTOM_MARGIN_DP
+        if (measuredDockDp > 0.dp) measuredDockDp else (84.dp + navBarBottomPadding)
     }
+    val restingToastBottomPadding = maxOf(navBarBottomPadding, restingDockHeight) + HelloToastDefaults.BOTTOM_MARGIN_DP
+    val hiddenToastDeltaDp = (restingDockHeight - navBarBottomPadding).coerceAtLeast(0.dp)
 
     CompositionLocalProvider(
         LocalHelloHaptics provides helloHaptics,
@@ -409,7 +499,11 @@ fun MainAppShell(
             snackbarHost = {
                 HelloToastHost(
                     hostState = snackbarHostState,
-                    modifier = Modifier.padding(bottom = toastBottomPadding)
+                    modifier = Modifier
+                        .padding(bottom = restingToastBottomPadding)
+                        .graphicsLayer {
+                            translationY = (hiddenToastDeltaDp * (1f - dockVisibilityProgressState.value)).toPx()
+                        }
                 )
             }
         ) { innerPadding ->
@@ -435,11 +529,6 @@ fun MainAppShell(
                     )
                 }
 
-                val useRootBridgeForCurrentRoute = shouldUseRootBridgeForBack(
-                    currentRoute = currentRoute,
-                    previousRoute = previousRoute
-                )
-
                 MainAppNavHost(
                     navController = navController,
                     startDestination = startDestination,
@@ -456,7 +545,9 @@ fun MainAppShell(
                     onDeeperRouteBackCommit = { entryId ->
                         popHandoff.markCommitted(entryId)
                         navController.popBackStack()
-                    }
+                    },
+                    onDetailSelectionModeChanged = { isDetailSelectionMode = it },
+                    onDetailSelectionBackProgress = { detailSelectionBackProgress = it }
                 )
 
                 RootTabBackCoordinator(
@@ -471,13 +562,37 @@ fun MainAppShell(
                     onClearTimelineSelection = { timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection) }
                 )
 
-                // Scrim & Floating Bottom Navigation Dock scoped to prevent NavHost recomposition
+                // Scrim & Floating Bottom Navigation Dock / Profile Encounter Pill scoped to prevent NavHost recomposition
                 FloatingDockOverlay(
                     navController = navController,
                     currentRoute = currentRoute,
                     activeTab = activeTab,
                     shouldRenderDock = shouldRenderDock,
                     dockVisibilityProgressState = dockVisibilityProgressState,
+                    profileMorphProgressState = profileMorphProgressState,
+                    isProfileMorphReversing = { isProfileMorphReversing },
+                    isProfileEncounterMode = isProfileDetailRoute,
+                    onProfileEncounterClick = {
+                        val contactId = activeDetailContactId
+                        if (!contactId.isNullOrBlank()) {
+                            val summary = quickActionViewModel.repository.contacts.value.firstOrNull { it.id == contactId }
+                                ?: quickActionViewModel.repository.getContact(contactId)?.let { contact ->
+                                    ContactSummary(
+                                        id = contact.id,
+                                        name = contact.name,
+                                        contextSubtitle = contact.role ?: "",
+                                        avatarInitials = extractAlphanumericInitials(contact.name)
+                                    )
+                                }
+                                ?: ContactSummary(
+                                    id = contactId,
+                                    name = "Contact",
+                                    contextSubtitle = "",
+                                    avatarInitials = ""
+                                )
+                            quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
+                        }
+                    },
                     overridePillProgress = if (rootTabBackProgress > 0f && isMainRootRoute(currentRoute) && activeTab != HomeNavTab.HOME) {
                         interpolateTabProgressForPredictiveBack(
                             currentTab = activeTab,
@@ -833,7 +948,9 @@ private fun MainAppNavHost(
     deeperRouteBackProgress: Float,
     popHandoff: PredictiveBackPopHandoff,
     onDeeperRouteBackProgress: (Float) -> Unit,
-    onDeeperRouteBackCommit: (String) -> Unit
+    onDeeperRouteBackCommit: (String) -> Unit,
+    onDetailSelectionModeChanged: (Boolean) -> Unit,
+    onDetailSelectionBackProgress: (Float) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1142,22 +1259,35 @@ private fun MainAppNavHost(
                     else PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion)
                 }
             ) { backStackEntry ->
+                val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
+                val detailViewModel = remember(contactId) {
+                    PersonDetailViewModel(contactId = contactId, repository = quickActionViewModel.repository)
+                }
+                val detailUiState by detailViewModel.uiState.collectAsState()
+
+                LaunchedEffect(detailUiState.isSelectionMode) {
+                    onDetailSelectionModeChanged(detailUiState.isSelectionMode)
+                    if (!detailUiState.isSelectionMode) {
+                        onDetailSelectionBackProgress(0f)
+                    }
+                }
+                DisposableEffect(backStackEntry.id) {
+                    onDispose {
+                        onDetailSelectionModeChanged(false)
+                        onDetailSelectionBackProgress(0f)
+                    }
+                }
+
                 DeeperRouteBackWrapper(
                     entryId = backStackEntry.id,
                     popHandoff = popHandoff,
-                    useRootBridge = useRootBridgeState.value,
+                    useRootBridge = useRootBridgeState.value && !detailUiState.isSelectionMode,
                     isReducedMotion = isReducedMotion,
                     backProgress = deeperBackProgressState.value,
                     onBackProgress = onDeeperRouteBackProgress,
                     onBackCommit = { onDeeperRouteBackCommit(backStackEntry.id) }
                 ) {
                     ScreenDepthWrapper(isDepthVisible = false) {
-                        val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
-                        val detailViewModel = remember(contactId) {
-                            PersonDetailViewModel(contactId = contactId, repository = quickActionViewModel.repository)
-                        }
-                        val detailUiState by detailViewModel.uiState.collectAsState()
-
                         PersonDetailScreen(
                             uiState = detailUiState,
                             onEvent = detailViewModel::onEvent,
@@ -1174,6 +1304,8 @@ private fun MainAppNavHost(
                                     )
                                 quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
                             },
+                            externalSnackbarHostState = snackbarHostState,
+                            onSelectionBackProgressChanged = onDetailSelectionBackProgress,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .zIndex(PersonDetailMotionConfig.DETAIL_Z_INDEX)
@@ -1396,6 +1528,10 @@ private fun FloatingDockOverlay(
     activeTab: HomeNavTab,
     shouldRenderDock: Boolean,
     dockVisibilityProgressState: State<Float>,
+    profileMorphProgressState: State<Float>,
+    isProfileMorphReversing: () -> Boolean,
+    isProfileEncounterMode: Boolean,
+    onProfileEncounterClick: () -> Unit,
     overridePillProgress: Float? = null,
     dockHeightPx: Int,
     onDockHeightChanged: (Int) -> Unit,
@@ -1414,8 +1550,8 @@ private fun FloatingDockOverlay(
     // Scrim to dismiss the 2-button Speed Dial column when tapping outside on root tabs
     AnimatedVisibility(
         visible = isSpeedDialOpen && isMainRootRoute(currentRoute),
-        enter = fadeIn(animationSpec = tween(200)),
-        exit = fadeOut(animationSpec = tween(150))
+        enter = fadeIn(animationSpec = tween(durationMillis = MotionTokens.SCRIM_FADE_IN_DURATION_MS, easing = MotionTokens.StrongEaseOut)),
+        exit = fadeOut(animationSpec = tween(durationMillis = MotionTokens.SCRIM_FADE_OUT_DURATION_MS, easing = MotionTokens.StrongEaseOut))
     ) {
         Box(
             modifier = Modifier
@@ -1458,6 +1594,10 @@ private fun FloatingDockOverlay(
             peopleTabLabel = preferredTerminology.pluralTitle,
             addContactLabel = preferredTerminology.addActionTitle(),
             overridePillProgress = overridePillProgress,
+            profileMorphProgressProvider = { profileMorphProgressState.value },
+            isProfileMorphReversing = isProfileMorphReversing,
+            isProfileEncounterMode = isProfileEncounterMode,
+            onProfileEncounterClick = onProfileEncounterClick,
             modifier = modifier
                 .onSizeChanged { size ->
                     if (size.height > 0) {
