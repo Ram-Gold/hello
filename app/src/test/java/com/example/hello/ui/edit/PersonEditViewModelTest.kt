@@ -284,4 +284,77 @@ class PersonEditViewModelTest {
         assertTrue(viewModel.uiState.value.isModified)
         assertTrue(viewModel.uiState.value.canSave)
     }
+
+    @Test
+    fun notionistAvatarApplied_stagesPngAndConfigAndCommitsOnSave() = runTest {
+        val viewModel = PersonEditViewModel(
+            contactId = "c-1",
+            repository = repository,
+            avatarStorage = avatarStorage
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val configJson = """{"seed":"opaque123456","hair":"variant05","backgroundColor":"ffddd2"}"""
+        val pngBytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+
+        viewModel.onEvent(
+            PersonEditUiEvent.OnNotionistAvatarApplied(
+                pngBytes = pngBytes,
+                configJson = configJson
+            )
+        )
+
+        val stagedPath = viewModel.uiState.value.photoUri
+        assertNotNull(stagedPath)
+        assertTrue(File(stagedPath!!).exists())
+        assertTrue(File(stagedPath).name.startsWith("staged_"))
+        assertEquals(configJson, viewModel.uiState.value.notionistConfig)
+        assertTrue(viewModel.uiState.value.isModified)
+
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val saved = repository.getContact("c-1")
+        assertNotNull(saved?.photoUri)
+        assertTrue(File(saved!!.photoUri!!).exists())
+        assertTrue(File(saved.photoUri!!).name.startsWith("contact_c-1_"))
+        assertEquals(configJson, saved.notionistConfig)
+    }
+
+    @Test
+    fun switchingFromNotionistToGalleryOrRemoving_clearsNotionistConfig() = runTest {
+        val viewModel = PersonEditViewModel(
+            contactId = "c-1",
+            repository = repository,
+            avatarStorage = avatarStorage
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val configJson = """{"seed":"opaque123456","hair":"variant05","backgroundColor":"ffffff"}"""
+        viewModel.onEvent(
+            PersonEditUiEvent.OnNotionistAvatarApplied(
+                pngBytes = byteArrayOf(1, 2, 3),
+                configJson = configJson
+            )
+        )
+        assertEquals(configJson, viewModel.uiState.value.notionistConfig)
+
+        // Switching to a cropped gallery photo clears notionistConfig
+        viewModel.onEvent(PersonEditUiEvent.OnPhotoCropped(byteArrayOf(4, 5, 6)))
+        assertNull(viewModel.uiState.value.notionistConfig)
+        assertNotNull(viewModel.uiState.value.photoUri)
+
+        // Applying Notionist again then tapping Remove avatar clears both
+        viewModel.onEvent(
+            PersonEditUiEvent.OnNotionistAvatarApplied(
+                pngBytes = byteArrayOf(7, 8, 9),
+                configJson = configJson
+            )
+        )
+        val stagedPath = viewModel.uiState.value.photoUri!!
+        viewModel.onEvent(PersonEditUiEvent.OnRemovePhoto)
+        assertNull(viewModel.uiState.value.photoUri)
+        assertNull(viewModel.uiState.value.notionistConfig)
+        assertFalse(File(stagedPath).exists())
+    }
 }

@@ -109,8 +109,16 @@ The Material 3 Expressive connected surface representing a Contact across the Re
 _Avoid_: People Card, Person Card, Contact Row, Contact Tile
 
 **Contact Avatar**:
-The circular visual identity badge for a Contact across all surfaces, displaying their custom cropped portrait photo when set or falling back to a warm pastel monogram of their initials.
-_Avoid_: Profile Picture, User Icon, Thumbnail, Headshot
+The circular visual identity badge for a Contact across all surfaces, displaying their custom cropped portrait photo or opt-in Notionist Avatar when set, and falling back to a minimalist user icon on a neutral surface otherwise.
+_Avoid_: Profile Picture, Thumbnail, Headshot, Initials Monogram
+
+**Notionist Avatar**:
+An opt-in, hand-drawn monochrome character illustration customized for a Contact and stored locally on device for offline rendering.
+_Avoid_: Doodle Avatar, Cartoon Avatar, Generated Icon, AI Avatar
+
+**Avatar Playground**:
+The dedicated full-screen customization workspace launched from Edit Contact where the user crafts or edits a Contact's Notionist Avatar across facial, hairstyle, accessory, and background traits while online.
+_Avoid_: Avatar Studio, Character Creator, Notionist Maker, Avatar Editor Modal
 
 **Upcoming Alert Card**:
 The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Subconscious Check-In) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Later" / "Update" for Subconscious Check-Ins).

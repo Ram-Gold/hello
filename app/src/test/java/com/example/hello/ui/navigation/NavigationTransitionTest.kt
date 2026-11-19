@@ -182,9 +182,12 @@ class NavigationTransitionTest {
 
         assertTrue(shouldMorphDockToProfilePill(PersonDetailRoute.ROUTE_PATTERN))
         assertTrue(shouldMorphDockToProfilePill(PersonDetailRoute.createRoute("123")))
-        // Preserves pill shape while sliding down/up across PersonDetail <-> PersonEdit
+        // Preserves pill shape while sliding down/up across PersonDetail <-> PersonEdit <-> AvatarPlayground
         assertTrue(shouldMorphDockToProfilePill(PersonEditRoute.ROUTE_PATTERN))
         assertTrue(shouldMorphDockToProfilePill(PersonEditRoute.createRoute("123")))
+        assertTrue(shouldMorphDockToProfilePill(AvatarPlaygroundRoute.ROUTE_PATTERN))
+        assertTrue(shouldMorphDockToProfilePill(AvatarPlaygroundRoute.createRoute("123")))
+        assertTrue(shouldHideFloatingDock(AvatarPlaygroundRoute.createRoute("123")))
     }
 
     @Test

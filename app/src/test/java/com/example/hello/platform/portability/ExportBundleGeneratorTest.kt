@@ -223,9 +223,12 @@ class ExportBundleGeneratorTest {
             val pngBytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
             tempAvatarFile.writeBytes(pngBytes)
 
-            val contactWithAvatar = sampleContact.copy(photoUri = tempAvatarFile.absolutePath)
+            val contactWithAvatar = sampleContact.copy(
+                photoUri = tempAvatarFile.absolutePath,
+                notionistConfig = """{"seed":"opaque123456","hair":"variant05"}"""
+            )
 
-            // 1. JSON includes relative bundle path avatars/c-123.png
+            // 1. JSON includes relative bundle path avatars/c-123.png and notionistConfig
             val jsonFiles = ExportBundleGenerator.generateJsonFiles(
                 contacts = listOf(contactWithAvatar),
                 encounters = emptyList(),
@@ -235,8 +238,9 @@ class ExportBundleGeneratorTest {
             )
             val contactsJson = jsonFiles["contacts.json"]!!
             assertTrue(contactsJson.contains("\"photoUri\": \"avatars/c-123.png\""))
+            assertTrue(contactsJson.contains("\"notionistConfig\": \"{\\\"seed\\\":\\\"opaque123456\\\",\\\"hair\\\":\\\"variant05\\\"}\""))
 
-            // 2. Markdown frontmatter includes avatar: "avatars/c-123.png"
+            // 2. Markdown frontmatter includes avatar and notionist_config
             val mdFiles = ExportBundleGenerator.generateMarkdownNotes(
                 contacts = listOf(contactWithAvatar),
                 encounters = emptyList(),
@@ -245,6 +249,7 @@ class ExportBundleGeneratorTest {
             )
             val mdContent = mdFiles["contacts/Ada Lovelace.md"]!!
             assertTrue(mdContent.contains("avatar: \"avatars/c-123.png\""))
+            assertTrue(mdContent.contains("notionist_config:"))
 
             // 3. ZIP bundle includes binary avatars/c-123.png entry
             val out = ByteArrayOutputStream()

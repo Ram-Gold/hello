@@ -20,6 +20,7 @@ data class Contact(
     val tagIds: List<String> = emptyList(),
     val notes: String = "",
     val photoUri: String? = null,
+    val notionistConfig: String? = null,
     val firstMetAt: Instant? = null,
     val lastMetAt: Instant? = null,
     val meetCount: Int = 0,

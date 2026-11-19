@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,33 +21,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.platform.avatar.AvatarBitmapCache
 import com.example.hello.ui.components.CustomizableIcon
-import com.example.hello.ui.theme.AvatarAmber
-import com.example.hello.ui.theme.AvatarLavender
-import com.example.hello.ui.theme.AvatarPeach
-import com.example.hello.ui.theme.AvatarRose
-import com.example.hello.ui.theme.AvatarSage
-import com.example.hello.ui.theme.AvatarSky
 
-private val AvatarColors = listOf(
-    AvatarPeach,
-    AvatarAmber,
-    AvatarSage,
-    AvatarSky,
-    AvatarRose,
-    AvatarLavender
-)
-
+/**
+ * Contact Avatar badge rendered across all surfaces (ADR-0022, ADR-0035).
+ * Displays the Contact's local portrait photo or opt-in Notionist Avatar when [photoUri] is set,
+ * and falls back to the uniform neutral minimalist user icon otherwise.
+ */
 @Composable
 fun DoodleAvatar(
-    initials: String,
-    bgIndex: Int,
+    initials: String = "",
+    bgIndex: Int = 0,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
     shape: Shape = RoundedCornerShape(16.dp),
@@ -70,7 +57,7 @@ fun DoodleAvatar(
     val bgColor = if (loadedBitmap != null) {
         Color.White
     } else {
-        AvatarColors.getOrElse(bgIndex % AvatarColors.size) { AvatarPeach }
+        MaterialTheme.colorScheme.surfaceVariant
     }
 
     Box(
@@ -89,21 +76,11 @@ fun DoodleAvatar(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-        } else if (initials.isBlank()) {
+        } else {
             CustomizableIcon(
                 iconKey = HelloIconKey.USER,
                 size = size * 0.48f,
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        } else {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (size.value * 0.38f).sp,
-                    letterSpacing = 0.5.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

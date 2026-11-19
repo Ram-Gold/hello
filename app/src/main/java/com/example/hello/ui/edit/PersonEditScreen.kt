@@ -4,9 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.FaceRetouchingNatural
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -116,6 +117,7 @@ fun PersonEditScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
     onLifecycleSuccess: (isArchived: Boolean) -> Unit = {},
+    onOpenAvatarPlayground: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -232,11 +234,17 @@ fun PersonEditScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Photo / Avatar Header with Camera Badge
+            // Contact Avatar Header with symmetric flanking Notionist & Photo buttons (ADR-0035)
             PhotoPickerSection(
                 photoUri = uiState.photoUri,
+                isNotionistAvatar = !uiState.notionistConfig.isNullOrBlank(),
                 initials = extractAlphanumericInitials(uiState.name),
+                onOpenAvatarPlayground = {
+                    haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                    onOpenAvatarPlayground()
+                },
                 onPickPhoto = {
+                    haptics.perform(SemanticHapticType.EDIT_ENTRY)
                     photoPickerLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
@@ -678,7 +686,9 @@ fun PersonEditScreen(
 @Composable
 private fun PhotoPickerSection(
     photoUri: String?,
+    isNotionistAvatar: Boolean,
     initials: String,
+    onOpenAvatarPlayground: () -> Unit,
     onPickPhoto: () -> Unit,
     onRemovePhoto: () -> Unit
 ) {
@@ -686,56 +696,121 @@ private fun PhotoPickerSection(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clickable(onClick = onPickPhoto),
-            contentAlignment = Alignment.Center
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            DoodleAvatar(
-                initials = initials,
-                bgIndex = 0,
-                size = 96.dp,
-                shape = CircleShape,
-                photoUri = photoUri
+            // Left: Opt-in Notionist Avatar Playground button
+            AvatarSourceActionButton(
+                icon = Icons.Rounded.FaceRetouchingNatural,
+                label = "Notionist",
+                contentDescription = "Customize Notionist avatar",
+                isActive = photoUri != null && isNotionistAvatar,
+                onClick = onOpenAvatarPlayground
             )
 
-            // Camera Icon Overlay Badge
+            // Center: 96dp circular Contact Avatar (opens active source on tap)
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .align(Alignment.BottomEnd)
+                    .size(96.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .border(2.dp, MaterialTheme.colorScheme.background, CircleShape),
+                    .clickable(
+                        onClick = {
+                            if (photoUri != null && isNotionistAvatar) {
+                                onOpenAvatarPlayground()
+                            } else {
+                                onPickPhoto()
+                            }
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PhotoCamera,
-                    contentDescription = "Pick photo",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(18.dp)
+                DoodleAvatar(
+                    initials = initials,
+                    bgIndex = 0,
+                    size = 96.dp,
+                    shape = CircleShape,
+                    photoUri = photoUri
                 )
             }
+
+            // Right: Choose photo from gallery
+            AvatarSourceActionButton(
+                icon = Icons.Rounded.PhotoCamera,
+                label = "Photo",
+                contentDescription = "Choose photo",
+                isActive = photoUri != null && !isNotionistAvatar,
+                onClick = onPickPhoto
+            )
         }
 
         if (photoUri != null) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             TextButton(onClick = onRemovePhoto) {
                 Text(
-                    text = "Reset to Doodle Avatar",
+                    text = "Remove avatar",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error
                 )
             }
         } else {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Tap to choose photo",
+                text = "Choose a photo or craft a Notionist avatar",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun AvatarSourceActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    contentDescription: String,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor = if (isActive) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (isActive) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = containerColor,
+            contentColor = contentColor,
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            ),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

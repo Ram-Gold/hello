@@ -5,7 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import com.example.hello.data.local.dao.CaptureFlowDao
 import com.example.hello.data.local.dao.ContactDao
 import com.example.hello.data.local.dao.EncounterDao
@@ -39,7 +42,7 @@ import com.example.hello.data.local.entity.TagEntity
         CaptureFlowPresetEntity::class,
         CaptureFlowComponentEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -56,6 +59,14 @@ abstract class HelloDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "hello_crm.db"
 
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE contacts ADD COLUMN notionistConfig TEXT DEFAULT NULL"
+                )
+            }
+        }
+
         @Volatile
         private var instance: HelloDatabase? = null
 
@@ -71,6 +82,7 @@ abstract class HelloDatabase : RoomDatabase() {
                 HelloDatabase::class.java,
                 DATABASE_NAME
             )
+            .addMigrations(MIGRATION_5_6)
             .fallbackToDestructiveMigration(true)
             .setDriver(BundledSQLiteDriver())
             .build()

@@ -40,6 +40,7 @@ class PersonEditViewModel(
                 email = contact.email.orEmpty(),
                 notes = contact.notes,
                 photoUri = contact.photoUri,
+                notionistConfig = contact.notionistConfig,
                 selectedTagIds = contact.tagIds.toSet(),
                 availableTags = tags,
                 customProperties = contact.customProperties,
@@ -75,6 +76,7 @@ class PersonEditViewModel(
                             email = fetchedContact.email.orEmpty(),
                             notes = fetchedContact.notes,
                             photoUri = fetchedContact.photoUri,
+                            notionistConfig = fetchedContact.notionistConfig,
                             selectedTagIds = fetchedContact.tagIds.toSet(),
                             availableTags = repository.tags.value,
                             customProperties = fetchedContact.customProperties,
@@ -187,9 +189,29 @@ class PersonEditViewModel(
                         bytes = event.croppedBytes,
                         previousStagedPath = current.photoUri
                     ) ?: current.pendingCropUri
-                    val isMod = checkModified(current.copy(photoUri = stagedPath))
+                    val isMod = checkModified(
+                        current.copy(photoUri = stagedPath, notionistConfig = null)
+                    )
                     current.copy(
                         photoUri = stagedPath,
+                        notionistConfig = null,
+                        pendingCropUri = null,
+                        isModified = isMod
+                    )
+                }
+            }
+            is PersonEditUiEvent.OnNotionistAvatarApplied -> {
+                _uiState.update { current ->
+                    val stagedPath = avatarStorage?.writeStagedBytes(
+                        bytes = event.pngBytes,
+                        previousStagedPath = current.photoUri
+                    ) ?: current.photoUri
+                    val isMod = checkModified(
+                        current.copy(photoUri = stagedPath, notionistConfig = event.configJson)
+                    )
+                    current.copy(
+                        photoUri = stagedPath,
+                        notionistConfig = event.configJson,
                         pendingCropUri = null,
                         isModified = isMod
                     )
@@ -212,9 +234,10 @@ class PersonEditViewModel(
                         stagedPhotoUri = current.photoUri,
                         originalPhotoUri = initialContact?.photoUri
                     )
-                    val isMod = checkModified(current.copy(photoUri = null))
+                    val isMod = checkModified(current.copy(photoUri = null, notionistConfig = null))
                     current.copy(
                         photoUri = null,
+                        notionistConfig = null,
                         isModified = isMod
                     )
                 }
@@ -332,13 +355,14 @@ class PersonEditViewModel(
         val sameEmail = current.email.trim() == (base.email ?: "").trim()
         val sameNotes = current.notes.trim() == base.notes.trim()
         val samePhoto = current.photoUri == base.photoUri
+        val sameNotionist = current.notionistConfig == base.notionistConfig
         val sameTags = current.selectedTagIds == base.tagIds.toSet()
         val sameCadence = current.cadenceDays == base.cadenceDays
         val sameRole = current.role.trim() == base.role.orEmpty()
         val sameCompany = current.company.trim() == base.company.orEmpty()
         val sameBirthday = current.birthday == base.birthday
 
-        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
+        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameNotionist && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
     }
 
     private fun saveChanges() {
@@ -356,6 +380,7 @@ class PersonEditViewModel(
         } else {
             current.photoUri
         }
+        val committedNotionistConfig = if (committedPhotoUri != null) current.notionistConfig else null
         val updated = Contact(
             id = contactId,
             name = cleanName,
@@ -368,6 +393,7 @@ class PersonEditViewModel(
             tagIds = current.selectedTagIds.toList(),
             notes = current.notes.trim(),
             photoUri = committedPhotoUri,
+            notionistConfig = committedNotionistConfig,
             firstMetAt = base?.firstMetAt,
             lastMetAt = base?.lastMetAt,
             meetCount = base?.meetCount ?: 0,
@@ -383,6 +409,7 @@ class PersonEditViewModel(
         _uiState.update {
             it.copy(
                 photoUri = committedPhotoUri,
+                notionistConfig = committedNotionistConfig,
                 isModified = false,
                 isSaved = true,
                 userMessage = "Contact updated"

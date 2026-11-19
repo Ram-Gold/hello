@@ -15,6 +15,7 @@ data class PersonEditUiState(
     val email: String = "",
     val notes: String = "",
     val photoUri: String? = null,
+    val notionistConfig: String? = null,
     val pendingCropUri: String? = null,
     val selectedTagIds: Set<String> = emptySet(),
     val availableTags: List<Tag> = emptyList(),
@@ -48,6 +49,10 @@ sealed interface PersonEditUiEvent {
     data class OnNotesChange(val notes: String) : PersonEditUiEvent
     data class OnPhotoSelected(val uri: String?) : PersonEditUiEvent
     data class OnPhotoCropped(val croppedBytes: ByteArray) : PersonEditUiEvent
+    data class OnNotionistAvatarApplied(
+        val pngBytes: ByteArray,
+        val configJson: String
+    ) : PersonEditUiEvent
     data object OnCancelCrop : PersonEditUiEvent
     data object OnPhotoDecodeFailed : PersonEditUiEvent
     data object OnRemovePhoto : PersonEditUiEvent

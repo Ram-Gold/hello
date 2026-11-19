@@ -76,6 +76,7 @@ class ContactPersistenceReactiveTest {
             tagIds = listOf("tag-tech", "tag-coffee"),
             notes = "Met at Kotlin conference. Loves coroutines.",
             photoUri = "content://media/photo/123",
+            notionistConfig = """{"seed":"opaque123456","hair":"variant05","backgroundColor":"ffffff"}""",
             firstMetAt = Instant.now().minus(30, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS),
             lastMetAt = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS),
             meetCount = 5,
@@ -92,6 +93,7 @@ class ContactPersistenceReactiveTest {
         assertEquals(original.tagIds, entity.tagIds)
         assertEquals(original.notes, entity.notes)
         assertEquals(original.photoUri, entity.photoUri)
+        assertEquals(original.notionistConfig, entity.notionistConfig)
         assertEquals(original.firstMetAt, entity.firstMetAt)
         assertEquals(original.lastMetAt, entity.lastMetAt)
         assertEquals(original.meetCount, entity.meetCount)

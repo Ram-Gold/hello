@@ -51,6 +51,7 @@ object ExportBundleGenerator {
                 append("    \"notes\": ${quoteJson(c.notes)},\n")
                 val exportedAvatarRelPath = resolveExportAvatarEntry(c)?.first
                 append("    \"photoUri\": ${quoteJson(exportedAvatarRelPath)},\n")
+                append("    \"notionistConfig\": ${quoteJson(c.notionistConfig)},\n")
                 append("    \"firstMetAt\": ${quoteJson(c.firstMetAt?.toString())},\n")
                 append("    \"lastMetAt\": ${quoteJson(c.lastMetAt?.toString())},\n")
                 append("    \"meetCount\": ${c.meetCount},\n")
@@ -179,6 +180,9 @@ object ExportBundleGenerator {
                 val exportedAvatarRelPath = resolveExportAvatarEntry(contact)?.first
                 if (!exportedAvatarRelPath.isNullOrBlank()) {
                     append("avatar: \"$exportedAvatarRelPath\"\n")
+                }
+                if (!contact.notionistConfig.isNullOrBlank()) {
+                    append("notionist_config: ${quoteJson(contact.notionistConfig)}\n")
                 }
                 contact.customProperties.forEach { (key, value) ->
                     if (value.isNotBlank()) {

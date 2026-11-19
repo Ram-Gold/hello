@@ -54,6 +54,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -87,9 +89,12 @@ import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.SpeedDialAction
 import com.example.hello.domain.model.extractAlphanumericInitials
+import com.example.hello.platform.avatar.AndroidNotionistAvatarFetcher
 import com.example.hello.platform.avatar.AvatarStorageManager
 import com.example.hello.platform.location.LocationService
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
+import com.example.hello.ui.avatar.AvatarPlaygroundScreen
+import com.example.hello.ui.avatar.AvatarPlaygroundViewModel
 import com.example.hello.ui.components.ScreenDepthWrapper
 import com.example.hello.ui.contacts.ContactsScreen
 import com.example.hello.ui.contacts.ContactsUiEvent
@@ -98,12 +103,14 @@ import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.detail.PersonDetailScreen
 import com.example.hello.ui.detail.PersonDetailViewModel
 import com.example.hello.ui.edit.PersonEditScreen
+import com.example.hello.ui.edit.PersonEditUiEvent
 import com.example.hello.ui.edit.PersonEditViewModel
 import com.example.hello.ui.home.HomeScreen
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
 import com.example.hello.ui.home.components.HomeFloatingBottomDock
 import com.example.hello.ui.navigation.ArchivedContactsRoute
+import com.example.hello.ui.navigation.AvatarPlaygroundRoute
 import com.example.hello.ui.navigation.HomeRoute
 import com.example.hello.ui.navigation.NavigationTransitionConfig
 import com.example.hello.ui.navigation.OnboardingRoute
@@ -1336,12 +1343,20 @@ private fun MainAppNavHost(
                 ) {
                     ScreenDepthWrapper(isDepthVisible = false) {
                         val contactId = backStackEntry.arguments?.getString(PersonEditRoute.ARG_CONTACT_ID) ?: ""
-                        val editViewModel = remember(contactId) {
-                            PersonEditViewModel(
-                                contactId = contactId,
-                                repository = quickActionViewModel.repository,
-                                avatarStorage = AvatarStorageManager(context)
-                            )
+                        val editViewModel = remember(backStackEntry, contactId) {
+                            ViewModelProvider(
+                                backStackEntry,
+                                object : ViewModelProvider.Factory {
+                                    @Suppress("UNCHECKED_CAST")
+                                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                        return PersonEditViewModel(
+                                            contactId = contactId,
+                                            repository = quickActionViewModel.repository,
+                                            avatarStorage = AvatarStorageManager(context)
+                                        ) as T
+                                    }
+                                }
+                            )[PersonEditViewModel::class.java]
                         }
                         val editUiState by editViewModel.uiState.collectAsState()
 
@@ -1349,6 +1364,9 @@ private fun MainAppNavHost(
                             uiState = editUiState,
                             onEvent = editViewModel::onEvent,
                             onNavigateBack = { navController.popBackStack() },
+                            onOpenAvatarPlayground = {
+                                navController.navigateSafely(AvatarPlaygroundRoute.createRoute(contactId))
+                            },
                             onSaveSuccess = {
                                 scope.launch {
                                     snackbarHostState.showHelloToast(
@@ -1386,6 +1404,79 @@ private fun MainAppNavHost(
                                         navController.popBackStack(HomeRoute.ROUTE_NAME, inclusive = false)
                                     }
                                 }
+                            }
+                        )
+                    }
+                }
+            }
+
+            composable(
+                route = AvatarPlaygroundRoute.ROUTE_PATTERN,
+                arguments = listOf(navArgument(AvatarPlaygroundRoute.ARG_CONTACT_ID) { type = NavType.StringType }),
+                enterTransition = { PersonDetailMotionConfig.detailEnterTransition(isReducedMotion) },
+                exitTransition = { PersonDetailMotionConfig.detailExitTransition(isReducedMotion) },
+                popEnterTransition = { PersonDetailMotionConfig.detailPopEnterTransition(isReducedMotion) },
+                popExitTransition = {
+                    if (popHandoff.shouldSkipPopExit(initialState.id)) ExitTransition.None
+                    else PersonDetailMotionConfig.detailPopExitTransition(isReducedMotion)
+                }
+            ) { backStackEntry ->
+                DeeperRouteBackWrapper(
+                    entryId = backStackEntry.id,
+                    popHandoff = popHandoff,
+                    useRootBridge = useRootBridgeState.value,
+                    isReducedMotion = isReducedMotion,
+                    backProgress = deeperBackProgressState.value,
+                    onBackProgress = onDeeperRouteBackProgress,
+                    onBackCommit = { onDeeperRouteBackCommit(backStackEntry.id) }
+                ) {
+                    ScreenDepthWrapper(isDepthVisible = false) {
+                        val contactId = backStackEntry.arguments?.getString(AvatarPlaygroundRoute.ARG_CONTACT_ID) ?: ""
+                        val parentEditEntry = remember(backStackEntry) {
+                            runCatching { navController.getBackStackEntry(PersonEditRoute.ROUTE_PATTERN) }.getOrNull()
+                        }
+                        val parentEditViewModel = remember(parentEditEntry) {
+                            parentEditEntry?.let { entry ->
+                                runCatching {
+                                    ViewModelProvider(entry)[PersonEditViewModel::class.java]
+                                }.getOrNull()
+                            }
+                        }
+
+                        val playgroundViewModel = remember(backStackEntry, contactId) {
+                            val initialName = parentEditViewModel?.uiState?.value?.name
+                                ?: quickActionViewModel.repository.getContact(contactId)?.name.orEmpty()
+                            val initialConfig = parentEditViewModel?.uiState?.value?.notionistConfig
+                                ?: quickActionViewModel.repository.getContact(contactId)?.notionistConfig
+                            ViewModelProvider(
+                                backStackEntry,
+                                object : ViewModelProvider.Factory {
+                                    @Suppress("UNCHECKED_CAST")
+                                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                        return AvatarPlaygroundViewModel(
+                                            contactName = initialName,
+                                            initialConfigJson = initialConfig,
+                                            fetcher = AndroidNotionistAvatarFetcher(context)
+                                        ) as T
+                                    }
+                                }
+                            )[AvatarPlaygroundViewModel::class.java]
+                        }
+                        val playgroundUiState by playgroundViewModel.uiState.collectAsState()
+
+                        AvatarPlaygroundScreen(
+                            uiState = playgroundUiState,
+                            onEvent = playgroundViewModel::onEvent,
+                            loadTraitThumbnail = playgroundViewModel::loadTraitThumbnail,
+                            onNavigateBack = { navController.popBackStack() },
+                            onApplyAvatar = { pngBytes, configJson ->
+                                parentEditViewModel?.onEvent(
+                                    PersonEditUiEvent.OnNotionistAvatarApplied(
+                                        pngBytes = pngBytes,
+                                        configJson = configJson
+                                    )
+                                )
+                                navController.popBackStack()
                             }
                         )
                     }

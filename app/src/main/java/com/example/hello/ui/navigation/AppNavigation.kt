@@ -81,6 +81,12 @@ data object PersonEditRoute {
     fun createRoute(contactId: String) = "edit/$contactId"
 }
 
+data object AvatarPlaygroundRoute {
+    const val ROUTE_PATTERN = "avatar-playground/{contactId}"
+    const val ARG_CONTACT_ID = "contactId"
+    fun createRoute(contactId: String) = "avatar-playground/$contactId"
+}
+
 /**
  * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute], [TimelineRoute], or [PeopleRoute]).
  * Matches PixelPlayer's `MainRootRoutes.kt`.
@@ -120,13 +126,21 @@ fun isPersonEditRoute(route: String?): Boolean {
 }
 
 /**
+ * Returns true if [route] represents the Avatar Playground (`AvatarPlaygroundRoute`).
+ */
+fun isAvatarPlaygroundRoute(route: String?): Boolean {
+    if (route == null) return false
+    return route == AvatarPlaygroundRoute.ROUTE_PATTERN || route.startsWith("avatar-playground/")
+}
+
+/**
  * Returns true when the Floating Bottom Dock should be in its morphed Profile Encounter Pill
- * shape (`"+ Catching up?"`) per ADR-0034. Preserves the pill shape on `PersonEditRoute` so
- * transitions between `PersonDetailRoute` and `PersonEditRoute` slide the pill cleanly without
- * flickering back to the 3-tab dock.
+ * shape (`"+ Catching up?"`) per ADR-0034. Preserves the pill shape across deeper edit routes
+ * (`PersonEditRoute`, `AvatarPlaygroundRoute`) so transitions slide cleanly without flickering
+ * back to the 3-tab dock.
  */
 fun shouldMorphDockToProfilePill(currentRoute: String?): Boolean =
-    isPersonDetailRoute(currentRoute) || isPersonEditRoute(currentRoute)
+    isPersonDetailRoute(currentRoute) || isPersonEditRoute(currentRoute) || isAvatarPlaygroundRoute(currentRoute)
 
 /**
  * Determines whether the floating bottom navigation dock should be hidden vertically for [currentRoute]
