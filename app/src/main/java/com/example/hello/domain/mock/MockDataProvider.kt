@@ -16,7 +16,7 @@ object MockDataProvider {
     val tagTech = Tag(
         id = "tag-tech",
         name = "Tech",
-        colorHex = "#E06D3B",
+        colorHex = "#D3E5EF", // Sky
         useCount = 5,
         lastUsedAt = Instant.now().minus(2, ChronoUnit.DAYS)
     )
@@ -24,7 +24,7 @@ object MockDataProvider {
     val tagDesign = Tag(
         id = "tag-design",
         name = "Design",
-        colorHex = "#F3A261",
+        colorHex = "#E8DEEE", // Lavender
         useCount = 3,
         lastUsedAt = Instant.now().minus(5, ChronoUnit.DAYS)
     )
@@ -32,7 +32,7 @@ object MockDataProvider {
     val tagCoffee = Tag(
         id = "tag-coffee",
         name = "Coffee",
-        colorHex = "#8D6E63",
+        colorHex = "#FAEBDD", // Peach
         useCount = 4,
         lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
     )
@@ -40,7 +40,7 @@ object MockDataProvider {
     val tagAi = Tag(
         id = "tag-ai",
         name = "AI",
-        colorHex = "#4A6572",
+        colorHex = "#F1F1EF", // Soft Gray
         useCount = 2,
         lastUsedAt = Instant.now().minus(3, ChronoUnit.DAYS)
     )
@@ -48,7 +48,7 @@ object MockDataProvider {
     val tagFriends = Tag(
         id = "tag-friends",
         name = "Friends",
-        colorHex = "#F3A261",
+        colorHex = "#FFE2DD", // Rose
         useCount = 6,
         lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
     )
@@ -56,7 +56,7 @@ object MockDataProvider {
     val tagWork = Tag(
         id = "tag-work",
         name = "Work",
-        colorHex = "#E06D3B",
+        colorHex = "#FDECC8", // Amber
         useCount = 5,
         lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
     )
@@ -64,7 +64,7 @@ object MockDataProvider {
     val tagFamily = Tag(
         id = "tag-family",
         name = "Family",
-        colorHex = "#5A9A6E",
+        colorHex = "#DBEDDB", // Sage
         useCount = 3,
         lastUsedAt = Instant.now().minus(2, ChronoUnit.DAYS)
     )
@@ -72,7 +72,7 @@ object MockDataProvider {
     val tagUni = Tag(
         id = "tag-uni",
         name = "Uni",
-        colorHex = "#8E7CC3",
+        colorHex = "#FBF3DB", // Warm Cream
         useCount = 3,
         lastUsedAt = Instant.now().minus(4, ChronoUnit.DAYS)
     )

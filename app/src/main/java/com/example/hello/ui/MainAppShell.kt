@@ -120,6 +120,7 @@ import com.example.hello.ui.navigation.PersonDetailMotionConfig
 import com.example.hello.ui.navigation.PersonDetailRoute
 import com.example.hello.ui.navigation.PersonEditRoute
 import com.example.hello.ui.navigation.SettingsAboutRoute
+import com.example.hello.ui.navigation.SettingsLicensesRoute
 import com.example.hello.ui.navigation.SettingsAppearanceRoute
 import com.example.hello.ui.navigation.SettingsDataRoute
 import com.example.hello.ui.navigation.SettingsFlowsRoute
@@ -162,6 +163,7 @@ import com.example.hello.ui.quickaction.QuickActionSheetHost
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionViewModel
 import com.example.hello.ui.settings.SettingsAboutScreen
+import com.example.hello.ui.settings.SettingsLicensesScreen
 import com.example.hello.ui.settings.SettingsAppearanceScreen
 import com.example.hello.ui.settings.SettingsDataScreen
 import com.example.hello.ui.settings.SettingsFlowsScreen
@@ -1232,6 +1234,21 @@ private fun MainAppNavHost(
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
                 SettingsAboutScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToLicenses = { navController.navigateSafely(SettingsLicensesRoute.ROUTE_NAME) }
+                )
+            }
+
+            settingsBridgedComposable(
+                route = SettingsLicensesRoute.ROUTE_NAME,
+                isReducedMotion = isReducedMotion,
+                popHandoff = popHandoff,
+                useRootBridge = { useRootBridgeState.value },
+                deeperBackProgress = { deeperBackProgressState.value },
+                onDeeperBackProgress = onDeeperRouteBackProgress,
+                onDeeperBackCommit = onDeeperRouteBackCommit
+            ) {
+                SettingsLicensesScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

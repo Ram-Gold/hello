@@ -3,9 +3,11 @@ package com.example.hello.platform.widget
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -16,15 +18,14 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
+import androidx.glance.layout.size
 import androidx.glance.unit.ColorProvider
+import com.example.hello.R
 import com.example.hello.ui.quickaction.QuickCaptureActivity
 
 /**
  * Native 1x1 Glance App Widget for the Android home screen.
- * Styled as a crisp Minimalist (#121212) rounded squircle with a tactile '+' icon
+ * Styled as a crisp Minimalist (#121212) rounded squircle with the Hello name-tag symbol
  * that launches directly into the Add Contact step-by-step flow in <50ms.
  */
 class QuickAddWidget : GlanceAppWidget() {
@@ -42,13 +43,11 @@ class QuickAddWidget : GlanceAppWidget() {
                     .clickable(actionStartActivity<QuickCaptureActivity>()),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "+",
-                    style = TextStyle(
-                        color = ColorProvider(white),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Image(
+                    provider = ImageProvider(R.drawable.ic_hello_mark),
+                    contentDescription = "Quick Add Contact",
+                    colorFilter = ColorFilter.tint(ColorProvider(white)),
+                    modifier = GlanceModifier.size(36.dp)
                 )
             }
         }

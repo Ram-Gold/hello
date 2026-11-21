@@ -35,14 +35,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -61,14 +59,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HelloIconKey
+import com.example.hello.ui.components.HelloDatePickerDialog
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +78,8 @@ fun FlowBLogEncounterSheet(
 ) {
     val isReducedMotion = LocalReducedMotion.current
     val haptics = LocalHelloHaptics.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var showDatePicker by remember { mutableStateOf(false) }
     val stageTransitionState = remember { SeekableTransitionState(uiState.selectedContact) }
     LaunchedEffect(uiState.selectedContact, predictiveBackProgress, isReducedMotion) {
@@ -97,37 +96,14 @@ fun FlowBLogEncounterSheet(
     val stageTransition = rememberTransition(stageTransitionState, label = "flowBStageTransition")
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.encounterDate
-                .atStartOfDay(ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val picked = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneOffset.UTC)
-                                .toLocalDate()
-                            onEvent(QuickActionUiEvent.OnEncounterDateChange(picked))
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("Confirm")
-                }
+        HelloDatePickerDialog(
+            initialDate = uiState.encounterDate,
+            onConfirm = { picked ->
+                onEvent(QuickActionUiEvent.OnEncounterDateChange(picked))
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+            onDismissRequest = { showDatePicker = false },
+            restrictToPastDates = false
+        )
     }
 
     val isEncounterStage = uiState.selectedContact != null
@@ -245,7 +221,11 @@ fun FlowBLogEncounterSheet(
                     contact = selectedContact,
                     uiState = uiState,
                     onEvent = onEvent,
-                    onOpenCustomDatePicker = { showDatePicker = true }
+                    onOpenCustomDatePicker = {
+                        focusManager.clearFocus(force = true)
+                        keyboardController?.hide()
+                        showDatePicker = true
+                    }
                 )
             }
         }

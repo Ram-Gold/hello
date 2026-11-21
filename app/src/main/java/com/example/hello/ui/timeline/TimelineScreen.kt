@@ -50,7 +50,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -99,6 +98,12 @@ fun TimelineScreen(
     val showFuture = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.FUTURE
     val showPast = uiState.selectedFilter == TimelineFilter.ALL || uiState.selectedFilter == TimelineFilter.PAST
     val showTodayDivider = uiState.selectedFilter == TimelineFilter.ALL
+    val futureGroups = remember(uiState.futureDayGroups, uiState.futureNodes) {
+        uiState.futureDayGroups.ifEmpty { TimelineViewModel.groupFutureNodesByDay(uiState.futureNodes) }
+    }
+    val pastGroups = remember(uiState.pastDayGroups, uiState.pastNodes) {
+        uiState.pastDayGroups.ifEmpty { TimelineViewModel.groupPastNodesByDay(uiState.pastNodes) }
+    }
     val haptics = LocalHelloHaptics.current
     val isReducedMotion = LocalReducedMotion.current
     var localSelectionBackProgress by remember { mutableFloatStateOf(0f) }
@@ -158,56 +163,65 @@ fun TimelineScreen(
                         bottom = 128.dp
                     )
                 ) {
-                    // Future Horizon Section (Soonest-First, Dashed Spine)
+                    // Future Horizon Section (Soonest-First, Dashed Spine, Grouped by Day)
                     if (showFuture) {
-                        if (uiState.futureNodes.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
+                        if (futureGroups.isEmpty() && uiState.selectedFilter == TimelineFilter.FUTURE) {
                             item(key = "empty-future") {
                                 EmptyTimelineStateCard(
                                     title = "No upcoming events in your horizon",
                                     subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
                                 )
                             }
-                        } else if (uiState.futureNodes.isNotEmpty()) {
-                            itemsIndexed(
-                                items = uiState.futureNodes,
-                                key = { _, node -> node.id }
-                            ) { index, node ->
-                                val isFirstFuture = index == 0
-                                val isLastFuture = index == uiState.futureNodes.lastIndex && !showTodayDivider
-                                val isSelected = node.id in uiState.selectedNodeIds
-                                val isFollowUp = node is FutureTimelineNode.FollowUpNode
+                        } else if (futureGroups.isNotEmpty()) {
+                            futureGroups.forEachIndexed { groupIndex, group ->
+                                stickyHeader(key = "future-header-${group.date}") {
+                                    TimelineDayStickyHeader(
+                                        label = group.headerLabel,
+                                        isFuture = true
+                                    )
+                                }
+                                itemsIndexed(
+                                    items = group.items,
+                                    key = { _, node -> node.id }
+                                ) { index, node ->
+                                    val isFirstInGroup = index == 0
+                                    val isLastInGroup = index == group.items.lastIndex &&
+                                        (groupIndex < futureGroups.lastIndex || !showTodayDivider)
+                                    val isSelected = node.id in uiState.selectedNodeIds
+                                    val isFollowUp = node is FutureTimelineNode.FollowUpNode
 
-                                FutureTimelineNodeRow(
-                                    node = node,
-                                    isFirst = isFirstFuture,
-                                    isLast = isLastFuture,
-                                    isSelected = isSelected,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    onClick = {
-                                        if (uiState.isSelectionMode) {
-                                            if (isFollowUp) {
-                                                onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
+                                    FutureTimelineNodeRow(
+                                        node = node,
+                                        isFirst = isFirstInGroup,
+                                        isLast = isLastInGroup,
+                                        isSelected = isSelected,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        onClick = {
+                                            if (uiState.isSelectionMode) {
+                                                if (isFollowUp) {
+                                                    onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
+                                                }
+                                            } else {
+                                                onContactClick(node.contactId)
                                             }
-                                        } else {
-                                            onContactClick(node.contactId)
+                                        },
+                                        onLongClick = if (isFollowUp) {
+                                            { onEvent(TimelineUiEvent.OnNodeLongClick(node.id)) }
+                                        } else null,
+                                        onMarkDone = { followUpId ->
+                                            onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
+                                        },
+                                        onSnooze = { followUpId ->
+                                            onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
+                                        },
+                                        onLogMet = {
+                                            val note = if (node is FutureTimelineNode.BirthdayNode) {
+                                                "Celebrated ${node.contactName}'s Birthday"
+                                            } else null
+                                            onLogEncounterForContact(node.contactId, note)
                                         }
-                                    },
-                                    onLongClick = if (isFollowUp) {
-                                        { onEvent(TimelineUiEvent.OnNodeLongClick(node.id)) }
-                                    } else null,
-                                    onMarkDone = { followUpId ->
-                                        onEvent(TimelineUiEvent.OnMarkFollowUpDone(followUpId))
-                                    },
-                                    onSnooze = { followUpId ->
-                                        onEvent(TimelineUiEvent.OnSnoozeFollowUp(followUpId))
-                                    },
-                                    onLogMet = {
-                                        val note = if (node is FutureTimelineNode.BirthdayNode) {
-                                            "Celebrated ${node.contactName}'s Birthday"
-                                        } else null
-                                        onLogEncounterForContact(node.contactId, note)
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -217,14 +231,14 @@ fun TimelineScreen(
                         item(key = "today-divider-anchor") {
                             TodayTimelineAnchor(
                                 todayLabel = uiState.todayLabel,
-                                hasPastBelow = uiState.pastNodes.isNotEmpty()
+                                hasPastBelow = pastGroups.isNotEmpty()
                             )
                         }
                     }
 
-                    // Past Log Section (Newest-First, Solid Spine, First Met vs Met Again)
+                    // Past Log Section (Newest-First, Solid Spine, Grouped by Day)
                     if (showPast) {
-                        if (uiState.pastNodes.isEmpty()) {
+                        if (pastGroups.isEmpty()) {
                             item(key = "empty-past") {
                                 EmptyTimelineStateCard(
                                     title = "No encounters logged yet",
@@ -240,51 +254,43 @@ fun TimelineScreen(
                                     )
                                 }
                             }
-                            itemsIndexed(
-                                items = uiState.pastNodes,
-                                key = { _, node -> node.id }
-                            ) { index, node ->
-                                val isFirstPast = index == 0
-                                val isLastPast = index == uiState.pastNodes.lastIndex
-                                val isSelected = node.id in uiState.selectedNodeIds
+                            pastGroups.forEach { group ->
+                                stickyHeader(key = "past-header-${group.date}") {
+                                    TimelineDayStickyHeader(
+                                        label = group.headerLabel,
+                                        isFuture = false
+                                    )
+                                }
+                                itemsIndexed(
+                                    items = group.items,
+                                    key = { _, node -> node.id }
+                                ) { index, node ->
+                                    val isFirstInGroup = index == 0
+                                    val isLastInGroup = index == group.items.lastIndex
+                                    val isSelected = node.id in uiState.selectedNodeIds
 
-                                PastTimelineNodeRow(
-                                    node = node,
-                                    isFirst = isFirstPast,
-                                    isLast = isLastPast,
-                                    isSelected = isSelected,
-                                    onClick = {
-                                        if (uiState.isSelectionMode) {
-                                            onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
-                                        } else {
-                                            onContactClick(node.contactId)
+                                    PastTimelineNodeRow(
+                                        node = node,
+                                        isFirst = isFirstInGroup,
+                                        isLast = isLastInGroup,
+                                        isSelected = isSelected,
+                                        onClick = {
+                                            if (uiState.isSelectionMode) {
+                                                onEvent(TimelineUiEvent.OnToggleSelectNode(node.id))
+                                            } else {
+                                                onContactClick(node.contactId)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                                            onEvent(TimelineUiEvent.OnNodeLongClick(node.id))
                                         }
-                                    },
-                                    onLongClick = {
-                                        haptics.perform(SemanticHapticType.EDIT_ENTRY)
-                                        onEvent(TimelineUiEvent.OnNodeLongClick(node.id))
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
                 }
-
-                // 16.dp vertical gradient scrim floating directly over the top of the scrolling list
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp)
-                        .align(Alignment.TopCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.background,
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
             }
         }
 
@@ -508,6 +514,49 @@ private fun TimelineSectionLabel(
 }
 
 @Composable
+private fun TimelineDayStickyHeader(
+    label: String,
+    isFuture: Boolean
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isFuture) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+    }
+}
+
+@Composable
 private fun TodayTimelineAnchor(
     todayLabel: String,
     hasPastBelow: Boolean
@@ -576,10 +625,6 @@ private fun TodayTimelineAnchor(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
-            HorizontalDivider(
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
         }
     }
 }
@@ -1023,7 +1068,7 @@ private fun PastTimelineNodeRow(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = node.dateLabel,
+                                text = node.timeLabel.ifBlank { node.dateLabel },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = secondaryContentColor
                             )

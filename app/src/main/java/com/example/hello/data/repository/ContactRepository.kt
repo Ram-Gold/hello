@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -100,14 +101,16 @@ class ContactRepository(
                 seedDatabaseIfEmpty()
                 sanitizeLegacyHashtags()
                 val initialEntities = database.contactDao().getAllContacts()
+                val initialTags = database.tagDao().getAllTagsFlow().firstOrNull().orEmpty().map { it.toDomain() }
                 val domainMap = initialEntities.associate { it.id to it.toDomain() }
+                _tags.value = initialTags
                 _fullContacts.value = domainMap
-                _contacts.value = initialEntities.map { it.toSummary() }
+                _contacts.value = initialEntities.map { it.toSummary(initialTags) }
                 _recentContacts.value = initialEntities
                     .filterNot { it.isArchived }
                     .sortedByDescending { it.lastMetAt ?: Instant.MIN }
                     .take(4)
-                    .map { it.toSummary() }
+                    .map { it.toSummary(initialTags) }
                 refreshBirthdayAlerts(domainMap.values)
                 refreshFavorites()
                 observeDatabaseStreams()
@@ -165,15 +168,21 @@ class ContactRepository(
         val db = database ?: return
 
         coroutineScope.launch {
-            db.contactDao().getAllContactsFlow().collect { entities ->
+            combine(
+                db.contactDao().getAllContactsFlow(),
+                db.tagDao().getAllTagsFlow()
+            ) { entities, tagEntities ->
+                entities to tagEntities.map { it.toDomain() }
+            }.collect { (entities, domainTags) ->
+                _tags.value = domainTags
                 val domainMap = entities.associate { it.id to it.toDomain() }
                 _fullContacts.value = domainMap
-                _contacts.value = entities.map { it.toSummary() }
+                _contacts.value = entities.map { it.toSummary(domainTags) }
                 _recentContacts.value = entities
                     .filterNot { it.isArchived }
                     .sortedByDescending { it.lastMetAt ?: Instant.MIN }
                     .take(4)
-                    .map { it.toSummary() }
+                    .map { it.toSummary(domainTags) }
                 refreshBirthdayAlerts(domainMap.values)
                 refreshFavorites()
             }
@@ -182,12 +191,6 @@ class ContactRepository(
         coroutineScope.launch {
             db.placeDao().getAllPlacesFlow().collect { entities ->
                 _places.value = entities.map { it.toDomain() }
-            }
-        }
-
-        coroutineScope.launch {
-            db.tagDao().getAllTagsFlow().collect { entities ->
-                _tags.value = entities.map { it.toDomain() }
             }
         }
 
@@ -1280,7 +1283,7 @@ class ContactRepository(
             return tokens.joinToString(" ") { "$it*" }
         }
 
-        fun ContactEntity.toSummary(): ContactSummary {
+        fun ContactEntity.toSummary(availableTags: List<Tag> = MockDataProvider.tags): ContactSummary {
             val initials = extractAlphanumericInitials(name)
             val subtitle = notes.ifBlank { "Contact" }
             val lastMet = when {
@@ -1295,9 +1298,8 @@ class ContactRepository(
                     }
                 }
             }
-            val resolvedTags = tagIds.mapNotNull { tagId ->
-                MockDataProvider.tags.find { it.id == tagId }
-            }
+            val tagsById = availableTags.associateBy { it.id }
+            val resolvedTags = tagIds.mapNotNull { tagsById[it] }
             return ContactSummary(
                 id = id,
                 name = name,

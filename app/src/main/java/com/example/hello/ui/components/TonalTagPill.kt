@@ -34,7 +34,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.TagColorPalette
+import com.example.hello.ui.theme.LocalIsDarkTheme
 import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Resolved mode-aware colors for rendering a tag pill or swatch.
+ */
+data class ResolvedTagColors(
+    val unselectedContainer: Color,
+    val unselectedContent: Color,
+    val unselectedBorder: Color,
+    val selectedContainer: Color,
+    val selectedContent: Color
+)
 
 /**
  * High-performance concurrent cache for parsed tag colors, contrasting content colors,
@@ -46,6 +59,7 @@ object TagColorCache {
     private val contrastMap = ConcurrentHashMap<Color, Color>()
     private val containerAlphaMap = ConcurrentHashMap<Color, Color>()
     private val borderMap = ConcurrentHashMap<Color, BorderStroke>()
+    private val resolvedMap = ConcurrentHashMap<String, ResolvedTagColors>()
 
     fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color {
         return colorMap.computeIfAbsent(hex) { raw ->
@@ -75,6 +89,39 @@ object TagColorCache {
     fun getBorder(tagColor: Color): BorderStroke {
         return borderMap.computeIfAbsent(tagColor) { c ->
             BorderStroke(1.dp, c.copy(alpha = 0.28f))
+        }
+    }
+
+    fun resolvePillColors(hex: String, isDark: Boolean): ResolvedTagColors {
+        val cacheKey = "${hex.trim().uppercase()}|$isDark"
+        return resolvedMap.computeIfAbsent(cacheKey) {
+            val spec = TagColorPalette.findSpec(hex)
+            if (spec != null) {
+                val tone = if (isDark) spec.dark else spec.light
+                ResolvedTagColors(
+                    unselectedContainer = parseColor(tone.containerHex),
+                    unselectedContent = parseColor(tone.contentHex),
+                    unselectedBorder = parseColor(tone.borderHex),
+                    selectedContainer = parseColor(tone.selectedContainerHex),
+                    selectedContent = parseColor(tone.selectedContentHex)
+                )
+            } else {
+                // Graceful luminance-aware fallback for legacy or custom hexes
+                val baseColor = parseColor(hex)
+                val luminance = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
+                val unselectedContent = if (isDark && luminance < 0.35f) {
+                    lerp(baseColor, Color.White, 0.55f)
+                } else {
+                    baseColor
+                }
+                ResolvedTagColors(
+                    unselectedContainer = getContainerColor(baseColor),
+                    unselectedContent = unselectedContent,
+                    unselectedBorder = baseColor.copy(alpha = 0.28f),
+                    selectedContainer = baseColor,
+                    selectedContent = getContrastingColor(baseColor)
+                )
+            }
         }
     }
 }
@@ -115,11 +162,12 @@ fun TonalTagPill(
         cleanName
     }
 
-    val tagColor = TagColorCache.parseColor(tag.colorHex)
-    val unselectedContainerColor = TagColorCache.getContainerColor(tagColor)
-    val selectedContainerColor = tagColor
-    val unselectedContentColor = tagColor
-    val selectedContentColor = TagColorCache.getContrastingColor(tagColor)
+    val isDark = LocalIsDarkTheme.current
+    val resolved = TagColorCache.resolvePillColors(tag.colorHex, isDark)
+    val unselectedContainerColor = resolved.unselectedContainer
+    val selectedContainerColor = resolved.selectedContainer
+    val unselectedContentColor = resolved.unselectedContent
+    val selectedContentColor = resolved.selectedContent
 
     if (onClick != null) {
         TonalFilterPill(

@@ -38,18 +38,13 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,8 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import com.example.hello.ui.components.BirthdayInputUtils
-import java.time.Instant
-import java.time.ZoneOffset
+import com.example.hello.ui.components.HelloDatePickerDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +61,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -81,7 +77,6 @@ import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
 import kotlinx.coroutines.delay
-import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -113,49 +108,19 @@ fun FlowAAddContactCard(
     }
     val stepTransition = rememberTransition(stepTransitionState, label = "modularStepTransition")
 
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
-        val initialMillis = uiState.birthday
-            ?.atStartOfDay(ZoneOffset.UTC)
-            ?.toInstant()
-            ?.toEpochMilli()
-            ?: System.currentTimeMillis()
-        val selectableDates = remember {
-            object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                    return utcTimeMillis <= System.currentTimeMillis()
-                }
-                override fun isSelectableYear(year: Int): Boolean {
-                    return year <= LocalDate.now().year
-                }
-            }
-        }
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = initialMillis,
-            selectableDates = selectableDates
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val picked = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneOffset.UTC)
-                                .toLocalDate()
-                            onEvent(QuickActionUiEvent.OnBirthdayChange(picked))
-                        }
-                        showDatePicker = false
-                    }
-                ) { Text("Confirm") }
+        HelloDatePickerDialog(
+            initialDate = uiState.birthday,
+            onConfirm = { picked ->
+                onEvent(QuickActionUiEvent.OnBirthdayChange(picked))
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+            onDismissRequest = { showDatePicker = false },
+            restrictToPastDates = true
+        )
     }
 
     // Sequence focus request after the frame settles to avoid IME flicker
@@ -171,6 +136,9 @@ fun FlowAAddContactCard(
             } catch (_: Exception) {
                 // Ignore if not focusable in test
             }
+        } else {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
         }
     }
 
@@ -435,7 +403,11 @@ fun FlowAAddContactCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(16.dp))
-                                        .clickable { showDatePicker = true }
+                                        .clickable {
+                                            focusManager.clearFocus(force = true)
+                                            keyboardController?.hide()
+                                            showDatePicker = true
+                                        }
                                 ) {
                                     Row(
                                         modifier = Modifier

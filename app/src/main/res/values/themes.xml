@@ -3,6 +3,12 @@
 
     <style name="Theme.Hello" parent="android:Theme.Material.Light.NoActionBar" />
 
+    <style name="Theme.Hello.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_hello_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.Hello</item>
+    </style>
+
     <!-- Lightweight translucent dialog theme for <50ms QuickCaptureActivity -->
     <style name="Theme.Hello.QuickCapture" parent="Theme.Hello">
         <item name="android:windowBackground">@android:color/transparent</item>

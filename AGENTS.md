@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Local markdown files in `.scratch/`. See `.docs/agents/issue-tracker.md`.
+Linear (`linear_linear` MCP — Team `Ramblings` / `RAM`, Project `Hello` / `P-RAM-5`), **opt-in only** when the user references a Linear issue or asks to use Linear. Automatically transitions referenced issues to `In Progress` on start and `In Review` on completion. See `.docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

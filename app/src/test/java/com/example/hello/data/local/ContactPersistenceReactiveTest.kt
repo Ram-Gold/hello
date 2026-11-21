@@ -234,6 +234,43 @@ class ContactPersistenceReactiveTest {
         )
     }
 
+    @Test
+    fun filteringByNewlyCreatedTag_surfacesTaggedContactInContactsViewModel() = runTest(testDispatcher) {
+        val repository = ContactRepository(
+            database = database,
+            ioDispatcher = testDispatcher,
+            coroutineScope = backgroundScope
+        )
+        advanceUntilIdle()
+
+        val createdTag = repository.addTag(name = "Bookclub", colorHex = "#D3E5EF")
+        advanceUntilIdle()
+
+        val added = repository.addContactWithInitialEncounter(
+            name = "Nadia Okafor",
+            tagIds = setOf(createdTag.id),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met at reading group",
+            followUpDays = null
+        )
+        advanceUntilIdle()
+
+        val summary = repository.contacts.value.first { it.id == added.id }
+        assertTrue(
+            "Newly created tag must be resolved on ContactSummary",
+            summary.tags.any { it.id == createdTag.id && it.name == "Bookclub" }
+        )
+
+        val viewModel = ContactsViewModel()
+        viewModel.syncTags(repository.tags.value)
+        viewModel.syncContacts(repository.contacts.value)
+        viewModel.onEvent(ContactsUiEvent.OnSelectTag("Bookclub"))
+
+        val filtered = viewModel.uiState.value.contacts
+        assertEquals(listOf(added.id), filtered.map { it.id })
+    }
+
     private fun createMockContext(): Context {
         val tempDir = Files.createTempDirectory("test_db_contacts").toFile()
         return object : android.content.ContextWrapper(null) {

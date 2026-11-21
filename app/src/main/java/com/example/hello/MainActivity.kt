@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.data.preferences.ThemeStyle
@@ -18,6 +19,7 @@ import com.example.hello.ui.theme.HelloTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 

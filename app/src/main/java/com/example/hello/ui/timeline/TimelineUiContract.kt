@@ -1,6 +1,7 @@
 package com.example.hello.ui.timeline
 
 import java.time.Instant
+import java.time.LocalDate
 
 enum class TimelineFilter(val label: String) {
     ALL("All"),
@@ -22,6 +23,7 @@ sealed interface FutureTimelineNode {
     val daysUntil: Long
     val dateLabel: String
     val photoUri: String?
+    val targetDate: LocalDate
 
     data class FollowUpNode(
         override val id: String,
@@ -33,7 +35,8 @@ sealed interface FutureTimelineNode {
         override val dateLabel: String,
         val followUpId: String,
         val note: String,
-        override val photoUri: String? = null
+        override val photoUri: String? = null,
+        override val targetDate: LocalDate = LocalDate.now().plusDays(daysUntil.coerceAtLeast(0L))
     ) : FutureTimelineNode
 
     data class BirthdayNode(
@@ -45,7 +48,8 @@ sealed interface FutureTimelineNode {
         override val daysUntil: Long,
         override val dateLabel: String,
         val turningAge: Int? = null,
-        override val photoUri: String? = null
+        override val photoUri: String? = null,
+        override val targetDate: LocalDate = LocalDate.now().plusDays(daysUntil.coerceAtLeast(0L))
     ) : FutureTimelineNode
 }
 
@@ -60,13 +64,22 @@ data class PastTimelineNode(
     val placeLabel: String?,
     val notes: String,
     val badge: PastEncounterBadge,
-    val photoUri: String? = null
+    val photoUri: String? = null,
+    val timeLabel: String = ""
+)
+
+data class TimelineDayGroup<T>(
+    val date: LocalDate,
+    val headerLabel: String,
+    val items: List<T>
 )
 
 data class TimelineUiState(
     val selectedFilter: TimelineFilter = TimelineFilter.ALL,
     val futureNodes: List<FutureTimelineNode> = emptyList(),
     val pastNodes: List<PastTimelineNode> = emptyList(),
+    val futureDayGroups: List<TimelineDayGroup<FutureTimelineNode>> = emptyList(),
+    val pastDayGroups: List<TimelineDayGroup<PastTimelineNode>> = emptyList(),
     val todayLabel: String = "TODAY",
     val userMessage: String? = null,
     val selectedNodeIds: Set<String> = emptySet(),

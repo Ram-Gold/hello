@@ -1,6 +1,7 @@
 package com.example.hello.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.TagColorCache
+import com.example.hello.ui.theme.LocalIsDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -185,11 +188,13 @@ fun SettingsTagsScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                 ) {
+                                    val dotColors = TagColorCache.resolvePillColors(tag.colorHex, LocalIsDarkTheme.current)
                                     Box(
                                         modifier = Modifier
-                                            .size(16.dp)
+                                            .size(18.dp)
                                             .clip(CircleShape)
-                                            .background(TagColorPalette.parseColor(tag.colorHex))
+                                            .background(dotColors.unselectedContainer)
+                                            .border(1.dp, dotColors.unselectedBorder, CircleShape)
                                     )
 
                                     Spacer(modifier = Modifier.width(14.dp))

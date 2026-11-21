@@ -40,17 +40,52 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.Tag
+import com.example.hello.ui.components.TagColorCache
+import com.example.hello.ui.theme.LocalIsDarkTheme
 
 object TagColorPalette {
     val PALETTE_HEX = com.example.hello.domain.model.TagColorPalette.PALETTE_HEX
 
-    fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color {
-        return try {
-            val cleanHex = hex.trim().removePrefix("#")
-            val fullHex = if (cleanHex.length == 6) "FF$cleanHex" else cleanHex
-            Color(fullHex.toLong(16))
-        } catch (_: Exception) {
-            fallback
+    fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color =
+        TagColorCache.parseColor(hex, fallback)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagColorSwatchGrid(
+    selectedHex: String,
+    onSelectHex: (String) -> Unit
+) {
+    val isDark = LocalIsDarkTheme.current
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TagColorPalette.PALETTE_HEX.forEach { hex ->
+            val isSelected = selectedHex.equals(hex, ignoreCase = true)
+            val resolved = TagColorCache.resolvePillColors(hex, isDark)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(resolved.unselectedContainer)
+                    .border(
+                        width = if (isSelected) 2.dp else 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else resolved.unselectedBorder,
+                        shape = CircleShape
+                    )
+                    .clickable { onSelectHex(hex) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = resolved.unselectedContent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -90,36 +125,10 @@ fun AddTagDialog(
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TagColorPalette.PALETTE_HEX.forEach { hex ->
-                        val isSelected = effectiveColor.equals(hex, ignoreCase = true)
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(TagColorPalette.parseColor(hex))
-                                .border(
-                                    width = if (isSelected) 2.5.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable { userSelectedColor = hex },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                TagColorSwatchGrid(
+                    selectedHex = effectiveColor,
+                    onSelectHex = { userSelectedColor = it }
+                )
             }
         },
         confirmButton = {
@@ -174,36 +183,10 @@ fun EditTagDialog(
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TagColorPalette.PALETTE_HEX.forEach { hex ->
-                        val isSelected = selectedColor.equals(hex, ignoreCase = true)
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(TagColorPalette.parseColor(hex))
-                                .border(
-                                    width = if (isSelected) 2.5.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable { selectedColor = hex },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                TagColorSwatchGrid(
+                    selectedHex = selectedColor,
+                    onSelectHex = { selectedColor = it }
+                )
             }
         },
         confirmButton = {
@@ -281,11 +264,13 @@ fun MergeTagDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    val dotColors = TagColorCache.resolvePillColors(target.colorHex, LocalIsDarkTheme.current)
                                     Box(
                                         modifier = Modifier
-                                            .size(12.dp)
+                                            .size(14.dp)
                                             .clip(CircleShape)
-                                            .background(TagColorPalette.parseColor(target.colorHex))
+                                            .background(dotColors.unselectedContainer)
+                                            .border(1.dp, dotColors.unselectedBorder, CircleShape)
                                     )
                                     Text(
                                         text = target.name,

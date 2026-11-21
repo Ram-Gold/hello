@@ -61,6 +61,10 @@ data object SettingsAboutRoute {
     const val ROUTE_NAME = "settings/about"
 }
 
+data object SettingsLicensesRoute {
+    const val ROUTE_NAME = "settings/licenses"
+}
+
 data object ArchivedContactsRoute {
     const val ROUTE_NAME = "contacts/archived"
 }

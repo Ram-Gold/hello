@@ -114,7 +114,7 @@ class ContactsViewModel(
                     searchJob?.cancel()
                     searchJob = viewModelScope.launch {
                         repository.searchContacts(query).collect { matchingContacts ->
-                            val matchingSummaries = matchingContacts.map { it.toEntity().toSummary() }
+                            val matchingSummaries = matchingContacts.map { it.toSummary(availableTags) }
                             _uiState.update { current ->
                                 computeState(
                                     searchQuery = query,

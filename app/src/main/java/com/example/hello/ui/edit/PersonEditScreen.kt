@@ -8,8 +8,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,17 +47,12 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Work
-import java.time.LocalDate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberDatePickerState
 import com.example.hello.ui.components.BirthdayInputUtils
-import java.time.Instant
-import java.time.ZoneOffset
+import com.example.hello.ui.components.HelloDatePickerDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -67,8 +60,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -93,6 +86,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -343,70 +338,41 @@ fun PersonEditScreen(
             )
 
             // Birthday
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
             var showDatePicker by remember { mutableStateOf(false) }
+            val openDatePicker = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+                showDatePicker = true
+            }
 
             if (showDatePicker) {
-                val initialMillis = uiState.birthday
-                    ?.atStartOfDay(ZoneOffset.UTC)
-                    ?.toInstant()
-                    ?.toEpochMilli()
-                    ?: System.currentTimeMillis()
-                val selectableDates = remember {
-                    object : SelectableDates {
-                        override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                            return utcTimeMillis <= System.currentTimeMillis()
-                        }
-                        override fun isSelectableYear(year: Int): Boolean {
-                            return year <= LocalDate.now().year
-                        }
-                    }
-                }
-                val datePickerState = rememberDatePickerState(
-                    initialSelectedDateMillis = initialMillis,
-                    selectableDates = selectableDates
-                )
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                datePickerState.selectedDateMillis?.let { millis ->
-                                    val picked = Instant.ofEpochMilli(millis)
-                                        .atZone(ZoneOffset.UTC)
-                                        .toLocalDate()
-                                    onEvent(PersonEditUiEvent.OnBirthdayChange(picked))
-                                }
-                                showDatePicker = false
-                            }
-                        ) {
-                            Text("Confirm")
-                        }
+                HelloDatePickerDialog(
+                    initialDate = uiState.birthday,
+                    onConfirm = { picked ->
+                        onEvent(PersonEditUiEvent.OnBirthdayChange(picked))
                     },
-                    dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel")
-                        }
-                    }
-                ) {
-                    DatePicker(state = datePickerState)
-                }
+                    onDismissRequest = { showDatePicker = false },
+                    restrictToPastDates = true
+                )
             }
 
             val displayBirthday = BirthdayInputUtils.formatHumanReadable(uiState.birthday)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showDatePicker = true }
+                    .clickable(onClick = openDatePicker)
             ) {
                 OutlinedTextField(
                     value = displayBirthday,
                     onValueChange = {},
                     readOnly = true,
-                    enabled = true,
+                    enabled = false,
                     label = { Text("Birthday") },
                     placeholder = { Text("Select birthday from calendar...") },
                     leadingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
+                        IconButton(onClick = openDatePicker) {
                             Icon(
                                 imageVector = Icons.Rounded.Cake,
                                 contentDescription = "Select birthday from date picker",
@@ -423,17 +389,15 @@ fun PersonEditScreen(
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    interactionSource = remember { MutableInteractionSource() }
-                        .also { interactionSource ->
-                            LaunchedEffect(interactionSource) {
-                                interactionSource.interactions.collect { interaction ->
-                                    if (interaction is PressInteraction.Release) {
-                                        showDatePicker = true
-                                    }
-                                }
-                            }
-                        }
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -847,23 +811,23 @@ private fun AliasesChipManager(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+                            modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
                         ) {
                             Text(
                                 text = alias,
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             IconButton(
                                 onClick = { onRemoveAlias(alias) },
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Close,
                                     contentDescription = "Remove alias",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -931,10 +895,10 @@ private fun TagsManager(
                 Icon(
                     imageVector = Icons.Rounded.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("New Tag", style = MaterialTheme.typography.labelMedium)
+                Text("New Tag", style = MaterialTheme.typography.labelLarge)
             }
         }
 

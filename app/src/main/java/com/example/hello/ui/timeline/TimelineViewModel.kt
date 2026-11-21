@@ -47,11 +47,14 @@ class TimelineViewModel(
                     _uiState.update { state ->
                         val allNodeIds = (futureNodes.map { it.id } + pastNodes.map { it.id }).toSet()
                         val prunedSelected = state.selectedNodeIds.filter { it in allNodeIds }.toSet()
+                        val today = LocalDate.now()
                         state.copy(
                             futureNodes = futureNodes,
                             pastNodes = pastNodes,
+                            futureDayGroups = groupFutureNodesByDay(futureNodes, today),
+                            pastDayGroups = groupPastNodesByDay(pastNodes, today),
                             selectedNodeIds = prunedSelected,
-                            todayLabel = formatTodayDividerLabel(LocalDate.now())
+                            todayLabel = formatTodayDividerLabel(today)
                         )
                     }
                 }
@@ -67,10 +70,12 @@ class TimelineViewModel(
             is TimelineUiEvent.OnMarkFollowUpDone -> {
                 repository?.markFollowUpDone(event.followUpId)
                 _uiState.update { state ->
+                    val updatedFuture = state.futureNodes.filterNot { node ->
+                        node is FutureTimelineNode.FollowUpNode && node.followUpId == event.followUpId
+                    }
                     state.copy(
-                        futureNodes = state.futureNodes.filterNot { node ->
-                            node is FutureTimelineNode.FollowUpNode && node.followUpId == event.followUpId
-                        },
+                        futureNodes = updatedFuture,
+                        futureDayGroups = groupFutureNodesByDay(updatedFuture),
                         userMessage = "Follow-up marked as done!"
                     )
                 }
@@ -78,12 +83,14 @@ class TimelineViewModel(
             is TimelineUiEvent.OnSnoozeFollowUp -> {
                 repository?.snoozeFollowUp(event.followUpId)
                 _uiState.update { state ->
+                    val today = LocalDate.now()
                     val updatedFuture = state.futureNodes.map { node ->
                         if (node is FutureTimelineNode.FollowUpNode && node.followUpId == event.followUpId) {
                             val newDays = (node.daysUntil + 3).coerceAtLeast(3)
                             node.copy(
                                 daysUntil = newDays,
-                                dateLabel = formatFutureDaysLabel(newDays)
+                                dateLabel = formatFutureDaysLabel(newDays),
+                                targetDate = today.plusDays(newDays)
                             )
                         } else {
                             node
@@ -91,6 +98,7 @@ class TimelineViewModel(
                     }.sortedBy { it.daysUntil }
                     state.copy(
                         futureNodes = updatedFuture,
+                        futureDayGroups = groupFutureNodesByDay(updatedFuture, today),
                         userMessage = "Snoozed for 3 days"
                     )
                 }
@@ -166,9 +174,13 @@ class TimelineViewModel(
                 }
 
                 _uiState.update { current ->
+                    val nextFuture = if (repository != null) current.futureNodes else remainingFuture
+                    val nextPast = if (repository != null) current.pastNodes else remainingPast
                     current.copy(
-                        futureNodes = if (repository != null) current.futureNodes else remainingFuture,
-                        pastNodes = if (repository != null) current.pastNodes else remainingPast,
+                        futureNodes = nextFuture,
+                        pastNodes = nextPast,
+                        futureDayGroups = groupFutureNodesByDay(nextFuture),
+                        pastDayGroups = groupPastNodesByDay(nextPast),
                         selectedNodeIds = emptySet(),
                         isDeleteConfirmationVisible = false,
                         userMessage = message
@@ -255,7 +267,8 @@ class TimelineViewModel(
                         placeLabel = placeLabel,
                         notes = encounter.notes,
                         badge = if (isFirstMet) PastEncounterBadge.FIRST_MET else PastEncounterBadge.MET_AGAIN,
-                        photoUri = contact.photoUri
+                        photoUri = contact.photoUri,
+                        timeLabel = formatPastTimeLabel(encounter.occurredAt, zoneId)
                     )
                 }
 
@@ -279,7 +292,8 @@ class TimelineViewModel(
                         dateLabel = formatFutureDaysLabel(daysUntil),
                         followUpId = followUp.id,
                         note = followUp.note,
-                        photoUri = contact.photoUri
+                        photoUri = contact.photoUri,
+                        targetDate = dueDate
                     )
                 }
 
@@ -305,7 +319,8 @@ class TimelineViewModel(
                         daysUntil = daysUntil,
                         dateLabel = dateLabel,
                         turningAge = turningAge,
-                        photoUri = contact.photoUri
+                        photoUri = contact.photoUri,
+                        targetDate = nextBday
                     )
                 }
             }
@@ -352,6 +367,69 @@ class TimelineViewModel(
         fun formatTodayDividerLabel(today: LocalDate = LocalDate.now()): String {
             val formatted = today.format(DateTimeFormatter.ofPattern("MMM d")).uppercase()
             return "TODAY · $formatted"
+        }
+
+        private val sameYearDayFormatter = DateTimeFormatter.ofPattern("MMM d")
+        private val crossYearDayFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+        private val timeOfDayFormatter = DateTimeFormatter.ofPattern("h:mm a")
+
+        fun formatDayHeaderLabel(
+            date: LocalDate,
+            today: LocalDate = LocalDate.now()
+        ): String {
+            val formattedDate = date.format(sameYearDayFormatter)
+            return when (date) {
+                today -> "Today · $formattedDate"
+                today.minusDays(1) -> "Yesterday · $formattedDate"
+                today.plusDays(1) -> "Tomorrow · $formattedDate"
+                else -> if (date.year == today.year) {
+                    formattedDate
+                } else {
+                    date.format(crossYearDayFormatter)
+                }
+            }
+        }
+
+        fun formatPastTimeLabel(
+            instant: Instant,
+            zoneId: ZoneId = ZoneId.systemDefault()
+        ): String = instant.atZone(zoneId).toLocalTime().format(timeOfDayFormatter)
+
+        fun groupFutureNodesByDay(
+            nodes: List<FutureTimelineNode>,
+            today: LocalDate = LocalDate.now()
+        ): List<TimelineDayGroup<FutureTimelineNode>> {
+            if (nodes.isEmpty()) return emptyList()
+            return nodes
+                .groupBy { it.targetDate }
+                .entries
+                .sortedBy { it.key }
+                .map { (date, items) ->
+                    TimelineDayGroup(
+                        date = date,
+                        headerLabel = formatDayHeaderLabel(date, today),
+                        items = items
+                    )
+                }
+        }
+
+        fun groupPastNodesByDay(
+            nodes: List<PastTimelineNode>,
+            today: LocalDate = LocalDate.now(),
+            zoneId: ZoneId = ZoneId.systemDefault()
+        ): List<TimelineDayGroup<PastTimelineNode>> {
+            if (nodes.isEmpty()) return emptyList()
+            return nodes
+                .groupBy { it.occurredAt.atZone(zoneId).toLocalDate() }
+                .entries
+                .sortedByDescending { it.key }
+                .map { (date, items) ->
+                    TimelineDayGroup(
+                        date = date,
+                        headerLabel = formatDayHeaderLabel(date, today),
+                        items = items
+                    )
+                }
         }
     }
 }

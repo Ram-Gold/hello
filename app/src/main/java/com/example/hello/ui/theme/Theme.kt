@@ -11,7 +11,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -85,6 +87,8 @@ val DesignShapes = Shapes(
     extraLarge = RoundedCornerShape(16.dp)
 )
 
+val LocalIsDarkTheme = compositionLocalOf { false }
+
 @Composable
 fun HelloTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -105,10 +109,12 @@ fun HelloTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = DesignTypography,
-        shapes = DesignShapes,
-        content = content
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = DesignTypography,
+            shapes = DesignShapes,
+            content = content
+        )
+    }
 }
