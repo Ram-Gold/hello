@@ -207,7 +207,7 @@ class HomeViewModel(
                 headline = "Product Designer & Tinkerer",
                 email = "alex.rivera@craft.design",
                 phone = "+1 (415) 890-1234",
-                subtitle = "Design Systems • Local-First"
+                subtitle = "Design Systems, Local-First"
             )
             val socialCard = MyCardData(
                 cardType = CardType.SOCIAL,
@@ -215,7 +215,7 @@ class HomeViewModel(
                 headline = "Weekend Cyclist & Bookworm",
                 email = "alex@hey.com",
                 phone = "+1 (415) 890-1234",
-                subtitle = "Specialty Coffee • Gravel Bikes"
+                subtitle = "Specialty Coffee, Gravel Bikes"
             )
 
             val upcoming = listOf(
@@ -242,7 +242,7 @@ class HomeViewModel(
                 ContactSummary(
                     id = "c-1",
                     name = "Maya Patel",
-                    contextSubtitle = "CS '27 • Met yesterday at Hackathon",
+                    contextSubtitle = "CS '27, met yesterday at Hackathon",
                     avatarInitials = "MP",
                     avatarBgIndex = 0,
                     lastEncounterText = "Met yesterday"
@@ -250,7 +250,7 @@ class HomeViewModel(
                 ContactSummary(
                     id = "c-2",
                     name = "Marcus Vance",
-                    contextSubtitle = "Founder @ Studio Arc • Met at Coffee Lab",
+                    contextSubtitle = "Founder @ Studio Arc, met at Coffee Lab",
                     avatarInitials = "MV",
                     avatarBgIndex = 1,
                     lastEncounterText = "4 days ago"
@@ -258,7 +258,7 @@ class HomeViewModel(
                 ContactSummary(
                     id = "c-3",
                     name = "Elena Rostova",
-                    contextSubtitle = "Neighbor & Botanist • Exchanged plants last Sunday",
+                    contextSubtitle = "Neighbor & Botanist, exchanged plants last Sunday",
                     avatarInitials = "ER",
                     avatarBgIndex = 2,
                     lastEncounterText = "Last Sunday"
@@ -266,7 +266,7 @@ class HomeViewModel(
                 ContactSummary(
                     id = "c-4",
                     name = "David Kim",
-                    contextSubtitle = "Mobile Dev • Discussed Compose gestures & spring physics",
+                    contextSubtitle = "Mobile Dev, discussed Compose gestures & spring physics",
                     avatarInitials = "DK",
                     avatarBgIndex = 3,
                     lastEncounterText = "10 days ago"

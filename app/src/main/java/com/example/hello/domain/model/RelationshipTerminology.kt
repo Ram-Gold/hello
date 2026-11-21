@@ -18,7 +18,7 @@ enum class RelationshipTerminology(
         id = "people",
         singularTitle = "Person",
         pluralTitle = "People",
-        description = "Warm, human, and universal — works naturally with #friends, #work & #family tags",
+        description = "Simple and human. Works naturally with friends, work, and family tags.",
         isPrimaryDirectoryOption = true
     ),
     CONTACTS(

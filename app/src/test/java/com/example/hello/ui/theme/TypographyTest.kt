@@ -178,7 +178,7 @@ class TypographyTest {
 
     @Test
     fun designTypographicScale_matchesDesignSpec() {
-        // Hero 48–64sp
+        // Hero 48-64sp
         assertTrue("Hero size in 48..64", DesignTypography.displayLarge.fontSize.value in 48f..64f)
         // h1 36sp
         assertEquals(36f, DesignTypography.headlineLarge.fontSize.value, 0.01f)

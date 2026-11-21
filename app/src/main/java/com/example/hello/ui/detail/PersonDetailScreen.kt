@@ -382,8 +382,8 @@ fun PersonDetailScreenPreview() {
                 tagsList = MockDataProvider.tags,
                 cadenceStatus = CadenceStatusInfo(
                     health = CadenceHealth.ON_TRACK,
-                    displayText = "On track • Due in 29 days",
-                    subText = "Cadence: Every 30 days • Last met 1 day ago"
+                    displayText = "On track, due in 29 days",
+                    subText = "Every 30 days, last met 1 day ago"
                 ),
                 isLoading = false
             ),

@@ -726,7 +726,7 @@ class ContactRepository(
         if (selectedTagNames.isNotEmpty()) {
             contextParts.add(selectedTagNames.joinToString(" "))
         }
-        val subtitle = contextParts.joinToString(" • ").ifEmpty { "Met today" }
+        val subtitle = contextParts.joinToString(", ").ifEmpty { "Met today" }
 
         val resolvedTags = _tags.value.filter { it.id in tagIds }
 
@@ -871,7 +871,7 @@ class ContactRepository(
             ?: _recentContacts.value.firstOrNull { it.id == contactId }
 
         val updatedSubtitle = when {
-            note.isNotBlank() && placeLabel != null -> "${note.trim()} • at $placeLabel"
+            note.isNotBlank() && placeLabel != null -> "${note.trim()}, at $placeLabel"
             note.isNotBlank() -> note.trim()
             placeLabel != null -> "Met at $placeLabel"
             else -> targetContact?.contextSubtitle ?: "Recent encounter"
@@ -1379,7 +1379,7 @@ class ContactRepository(
                     phone = "+1 (555) 432-1098",
                     email = "dkim@example.com",
                     tagIds = listOf("tag-tech"),
-                    notes = "Mobile Dev • Discussed Compose gestures and physics.",
+                    notes = "Mobile Dev, discussed Compose gestures and physics.",
                     firstMetAt = Instant.now().minus(60, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(10, ChronoUnit.DAYS),
                     meetCount = 4,
@@ -1392,7 +1392,7 @@ class ContactRepository(
                     phone = "+1 (555) 345-6789",
                     email = "elena.r@example.org",
                     tagIds = emptyList(),
-                    notes = "Neighbor & Botanist • Exchanged rare monstera cuttings.",
+                    notes = "Neighbor & Botanist, exchanged rare monstera cuttings.",
                     firstMetAt = Instant.now().minus(120, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(7, ChronoUnit.DAYS),
                     meetCount = 6,
@@ -1405,7 +1405,7 @@ class ContactRepository(
                     phone = "+1 (555) 234-5678",
                     email = "sarah.lin@example.com",
                     tagIds = listOf("tag-tech", "tag-ai", "tag-coffee"),
-                    notes = "Biotech Researcher • Tea tasting buddy. Loves light roast pour-overs.",
+                    notes = "Biotech Researcher, tea tasting buddy. Loves light roast pour-overs.",
                     firstMetAt = Instant.now().minus(90, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(1, ChronoUnit.DAYS),
                     meetCount = 3,

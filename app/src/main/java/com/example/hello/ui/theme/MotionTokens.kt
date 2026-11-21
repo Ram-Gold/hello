@@ -24,7 +24,7 @@ object MotionTokens {
     const val PILL_SPRING_STIFFNESS = 500f
 
     // 2. PixelPlayer Bottom-Nav Root Transition (Home <-> Relationship Terminology tab)
-    // Base duration for bottom-nav switches at 1x — at 0.5x system scale = ~190ms.
+    // Base duration for bottom-nav switches at 1x (at 0.5x system scale = ~190ms).
     const val BOTTOM_NAV_TRANSITION_DURATION = 380
     const val BOTTOM_NAV_FADE_DURATION = BOTTOM_NAV_TRANSITION_DURATION / 2 // 190ms
     const val SCREEN_SLIDE_DURATION_MS = BOTTOM_NAV_TRANSITION_DURATION
@@ -66,8 +66,8 @@ object MotionTokens {
     const val AVATAR_SELECTION_EXIT_SCALE = 0.45f
     val AvatarSelectionEasing = FastOutSlowInEasing
 
-    // Material 3 Expressive – Emphasized easing (matches Material Motion spec & PixelPlayer)
-    // cubic-bezier(0.2, 0.0, 0.0, 1.0) — fast responsive start, long smooth ease-out settle
+    // Material 3 Expressive: Emphasized easing (matches Material Motion spec & PixelPlayer)
+    // cubic-bezier(0.2, 0.0, 0.0, 1.0): fast responsive start, long smooth ease-out settle
     val M3EmphasizedEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
     val BottomNavEasing = M3EmphasizedEasing
     val M3Easing = M3EmphasizedEasing
@@ -80,7 +80,7 @@ object MotionTokens {
     val StrongEaseInOut = CubicBezierEasing(0.77f, 0.0f, 0.175f, 1.0f)
     val NavBarHideEasing = StrongEaseOut
 
-    // Decelerate for elements entering the screen — mirror of EmphasizedAccelerateEasing
+    // Decelerate for elements entering the screen (mirror of EmphasizedAccelerateEasing)
     val EmphasizedDecelerateEasing = CubicBezierEasing(0.2f, 0.85f, 0.7f, 1f)
 
     // Accelerate for elements leaving the screen

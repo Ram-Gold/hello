@@ -1,6 +1,5 @@
 package com.example.hello.ui.detail.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
-import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
@@ -32,17 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Encounter
-import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.domain.model.Place
-import com.example.hello.ui.components.CustomizableIcon
+import com.example.hello.ui.components.BirthdayInputUtils
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -94,18 +89,19 @@ fun LivingTimeline(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (birthday != null) {
-            BirthdayMilestoneNodeItem(
+        val today = LocalDate.now()
+        if (birthday != null && BirthdayInputUtils.isUpcomingWithinOneMonth(birthday, today)) {
+            UpcomingBirthdayCard(
                 birthday = birthday,
-                hasEncountersBelow = encounters.isNotEmpty()
+                today = today
             )
         }
 
-        if (encounters.isEmpty() && birthday == null) {
+        if (encounters.isEmpty()) {
             EmptyTimelineCard(onLogEncounterClick = onLogEncounterClick)
         } else {
             encounters.forEachIndexed { index, encounter ->
-                val isFirst = index == 0 && birthday == null
+                val isFirst = index == 0
                 val isLast = index == encounters.lastIndex
                 val isSelected = encounter.id in selectedEncounterIds
                 TimelineNodeItem(
@@ -129,155 +125,38 @@ fun LivingTimeline(
 }
 
 @Composable
-private fun BirthdayMilestoneNodeItem(
+private fun UpcomingBirthdayCard(
     birthday: LocalDate,
-    hasEncountersBelow: Boolean
+    today: LocalDate = LocalDate.now()
 ) {
-    val today = LocalDate.now()
-    val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(birthday, today)
+    val nextBday = BirthdayInputUtils.nextAnnualBirthday(birthday, today)
     val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
-    val monthDayLabel = nextBday.format(DateTimeFormatter.ofPattern("MMMM d"))
-    val countdownLabel = when (daysUntil) {
-        0L -> "Today!"
-        1L -> "Tomorrow"
-        else -> "In $daysUntil days"
-    }
-    val spineColor = MaterialTheme.colorScheme.onSurface
-    val dotFillColor = MaterialTheme.colorScheme.surface
-    val dashColor = MaterialTheme.colorScheme.outlineVariant
+    val monthDayLabel = BirthdayInputUtils.formatAbbreviatedMonthDay(nextBday)
+    val countdownLabel = BirthdayInputUtils.formatBirthdayCountdown(daysUntil)
 
-    Row(
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
+            .padding(bottom = 16.dp)
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .width(28.dp)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Canvas(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .weight(1f)
-                ) {
-                    val brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, dashColor),
-                        startY = 0f,
-                        endY = size.height
-                    )
-                    drawLine(
-                        brush = brush,
-                        start = Offset(size.width / 2f, 0f),
-                        end = Offset(size.width / 2f, size.height),
-                        strokeWidth = size.width,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
-                    )
-                }
-                if (hasEncountersBelow) {
-                    Canvas(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .weight(1f)
-                    ) {
-                        drawLine(
-                            color = dashColor,
-                            start = Offset(size.width / 2f, 0f),
-                            end = Offset(size.width / 2f, size.height),
-                            strokeWidth = size.width,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(dotFillColor)
-                    .border(
-                        width = 2.dp,
-                        color = spineColor,
-                        shape = CircleShape
-                    )
+            Text(
+                text = "Birthday on $monthDayLabel",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier
-                .weight(1f)
-                .padding(bottom = 16.dp)
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CustomizableIcon(
-                            iconKey = HelloIconKey.CAKE,
-                            size = 16.dp,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Birthday — $monthDayLabel",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Text(
-                        text = countdownLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Cake,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Text(
-                            text = "Milestone",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
+            Text(
+                text = countdownLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

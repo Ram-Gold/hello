@@ -297,18 +297,17 @@ class TimelineViewModel(
                     )
                 }
 
-            // 2b. Set-in-Stone Upcoming Birthdays (365-day year-round horizon)
+            // 2b. Set-in-Stone Upcoming Birthdays (1-month upcoming horizon)
             activeContacts.forEach { contact ->
                 val bday = contact.birthday ?: return@forEach
-                val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(bday, today)
-                val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
-                if (daysUntil in 0..365) {
+                if (com.example.hello.ui.components.BirthdayInputUtils.isUpcomingWithinOneMonth(bday, today)) {
+                    val nextBday = com.example.hello.ui.components.BirthdayInputUtils.nextAnnualBirthday(bday, today)
+                    val daysUntil = ChronoUnit.DAYS.between(today, nextBday)
                     val turningAge = (nextBday.year - bday.year).takeIf { it in 1..130 }
-                    val formattedMonthDay = nextBday.format(DateTimeFormatter.ofPattern("MMM d"))
-                    val dateLabel = when {
-                        daysUntil == 0L -> "Today!"
-                        daysUntil <= 30L -> formatFutureDaysLabel(daysUntil)
-                        else -> "$formattedMonthDay • In $daysUntil days"
+                    val dateLabel = if (daysUntil == 0L) {
+                        "Today!"
+                    } else {
+                        formatFutureDaysLabel(daysUntil)
                     }
                     futureList += FutureTimelineNode.BirthdayNode(
                         id = "future-bday-${contact.id}",
@@ -366,7 +365,7 @@ class TimelineViewModel(
 
         fun formatTodayDividerLabel(today: LocalDate = LocalDate.now()): String {
             val formatted = today.format(DateTimeFormatter.ofPattern("MMM d")).uppercase()
-            return "TODAY · $formatted"
+            return "TODAY, $formatted"
         }
 
         private val sameYearDayFormatter = DateTimeFormatter.ofPattern("MMM d")
@@ -379,9 +378,9 @@ class TimelineViewModel(
         ): String {
             val formattedDate = date.format(sameYearDayFormatter)
             return when (date) {
-                today -> "Today · $formattedDate"
-                today.minusDays(1) -> "Yesterday · $formattedDate"
-                today.plusDays(1) -> "Tomorrow · $formattedDate"
+                today -> "Today, $formattedDate"
+                today.minusDays(1) -> "Yesterday, $formattedDate"
+                today.plusDays(1) -> "Tomorrow, $formattedDate"
                 else -> if (date.year == today.year) {
                     formattedDate
                 } else {

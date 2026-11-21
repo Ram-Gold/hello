@@ -80,7 +80,7 @@ object SubconsciousCheckInCalculator {
             else -> "$daysSince days ago"
         }
         val prefix = if (hasMultipleEncounters) "Met" else "Added"
-        return "$prefix $durationLabel — anything new to update?"
+        return "$prefix $durationLabel. Anything new to update?"
     }
 }
 
@@ -149,6 +149,6 @@ enum class SpeedDialAction {
 }
 
 enum class ContactSortMode(val label: String) {
-    ALPHABETICAL("A–Z"),
+    ALPHABETICAL("A-Z"),
     RECENTLY_ENCOUNTERED("Recent")
 }

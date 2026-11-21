@@ -297,18 +297,18 @@ private fun OnboardingWelcomeStep(modifier: Modifier = Modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ValuePropCard(
                 icon = Icons.Rounded.FlashOn,
-                title = "Extreme Capture Speed (<50ms)",
+                title = "Fast Capture (<50ms)",
                 description = "Record quick notes, encounters, and places before the context fades."
             )
             ValuePropCard(
                 icon = Icons.Rounded.Lock,
-                title = "100% Local-First Sovereignty",
+                title = "Local-First by Default",
                 description = "No accounts, no cloud sync, no tracking. Your device is the single home of all data."
             )
             ValuePropCard(
                 icon = Icons.Rounded.Shield,
-                title = "Strict Permission Discipline",
-                description = "We never harvest your system contacts and never track your location in the background."
+                title = "Private Permissions",
+                description = "We never read your phone contacts and never track your location in the background."
             )
         }
     }
@@ -337,7 +337,7 @@ private fun OnboardingTerminologyStep(
         )
 
         Text(
-            text = "Choose a universal container for everyone in your life. You'll use flexible #tags (#friends, #work, #family) for how you know each person—so your labels never collide.",
+            text = "Pick a name for your main list. You can use tags (friends, work, family) for how you know each person.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -464,7 +464,7 @@ private fun OnboardingTerminologyStep(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Layer 1 • Directory Tab",
+                        text = "Directory Tab",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -481,7 +481,7 @@ private fun OnboardingTerminologyStep(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Layer 2 • Context Pills",
+                        text = "Tags",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

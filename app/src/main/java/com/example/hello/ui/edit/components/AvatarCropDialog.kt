@@ -315,7 +315,7 @@ fun AvatarCropDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Pinch to zoom • Drag to position",
+                        text = "Pinch to zoom, drag to position",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )

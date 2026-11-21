@@ -81,7 +81,7 @@ fun SettingsTerminologyScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                SettingsSubsection(title = "Layer 1 • Universal Directory Containers (Recommended)") {
+                SettingsSubsection(title = "Directory Names (Recommended)") {
                     val primaryEntries = RelationshipTerminology.primaryDirectoryOptions
                     primaryEntries.forEachIndexed { index, option ->
                         val titleText = if (option == RelationshipTerminology.PEOPLE) {
@@ -116,7 +116,7 @@ fun SettingsTerminologyScreen(
             }
 
             item {
-                SettingsSubsection(title = "Two-Layer Taxonomy Architecture") {
+                SettingsSubsection(title = "How Directory Names & Tags Work") {
                     Surface(
                         shape = shapeFor(0, 1),
                         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -134,14 +134,14 @@ fun SettingsTerminologyScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "Why Two Layers? (ADR-0005)",
+                                    text = "Why separate names and tags?",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Text(
-                                text = "Layer 1 names your global directory container (${uiState.terminology.pluralTitle}), while Layer 2 uses flat #tags (#friends, #work, #family, #uni) for life spheres. This prevents overlapping labels and keeps your SQLite & Markdown schemas 100% portable.",
+                                text = "This sets your main tab name (${uiState.terminology.pluralTitle}), while tags (friends, work, family, uni) organize how you know each person without overlapping labels.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )

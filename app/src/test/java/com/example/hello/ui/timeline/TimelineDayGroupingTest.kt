@@ -14,9 +14,9 @@ class TimelineDayGroupingTest {
 
     @Test
     fun formatDayHeaderLabel_formatsRelativeAndCalendarDates() {
-        assertEquals("Today · Nov 21", TimelineViewModel.formatDayHeaderLabel(today, today))
-        assertEquals("Yesterday · Nov 20", TimelineViewModel.formatDayHeaderLabel(today.minusDays(1), today))
-        assertEquals("Tomorrow · Nov 22", TimelineViewModel.formatDayHeaderLabel(today.plusDays(1), today))
+        assertEquals("Today, Nov 21", TimelineViewModel.formatDayHeaderLabel(today, today))
+        assertEquals("Yesterday, Nov 20", TimelineViewModel.formatDayHeaderLabel(today.minusDays(1), today))
+        assertEquals("Tomorrow, Nov 22", TimelineViewModel.formatDayHeaderLabel(today.plusDays(1), today))
         assertEquals("Nov 14", TimelineViewModel.formatDayHeaderLabel(LocalDate.of(2026, 11, 14), today))
         assertEquals("Nov 14, 2025", TimelineViewModel.formatDayHeaderLabel(LocalDate.of(2025, 11, 14), today))
         assertEquals("Jan 5, 2027", TimelineViewModel.formatDayHeaderLabel(LocalDate.of(2027, 1, 5), today))
@@ -43,11 +43,11 @@ class TimelineDayGroupingTest {
         val groups = TimelineViewModel.groupPastNodesByDay(nodes, today, zoneId)
         assertEquals(2, groups.size)
         assertEquals(LocalDate.of(2026, 11, 21), groups[0].date)
-        assertEquals("Today · Nov 21", groups[0].headerLabel)
+        assertEquals("Today, Nov 21", groups[0].headerLabel)
         assertEquals(listOf("p1", "p2"), groups[0].items.map { it.id })
 
         assertEquals(LocalDate.of(2026, 11, 20), groups[1].date)
-        assertEquals("Yesterday · Nov 20", groups[1].headerLabel)
+        assertEquals("Yesterday, Nov 20", groups[1].headerLabel)
         assertEquals(listOf("p3"), groups[1].items.map { it.id })
     }
 
@@ -92,9 +92,9 @@ class TimelineDayGroupingTest {
 
         val groups = TimelineViewModel.groupFutureNodesByDay(nodes, today)
         assertEquals(2, groups.size)
-        assertEquals("Today · Nov 21", groups[0].headerLabel)
+        assertEquals("Today, Nov 21", groups[0].headerLabel)
         assertEquals(listOf("b1", "f1"), groups[0].items.map { it.id })
-        assertEquals("Tomorrow · Nov 22", groups[1].headerLabel)
+        assertEquals("Tomorrow, Nov 22", groups[1].headerLabel)
         assertEquals(listOf("f2"), groups[1].items.map { it.id })
     }
 

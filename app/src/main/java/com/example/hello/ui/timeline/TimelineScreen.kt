@@ -856,8 +856,8 @@ private fun FutureTimelineNodeRow(
                         val bdayDescription = when {
                             isToday && node.turningAge != null -> "Turning ${node.turningAge} today! Send warm wishes and celebrate"
                             isToday -> "Today is ${node.contactName}'s birthday! Celebrate together"
-                            node.turningAge != null -> "Turning ${node.turningAge} · Send a warm birthday note"
-                            else -> "Upcoming birthday · Send a warm birthday note"
+                            node.turningAge != null -> "Turning ${node.turningAge}. Send a warm birthday note"
+                            else -> "Upcoming birthday. Send a warm birthday note"
                         }
                         Text(
                             text = bdayDescription,

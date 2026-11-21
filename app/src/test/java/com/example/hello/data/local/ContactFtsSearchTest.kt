@@ -83,13 +83,13 @@ class ContactFtsSearchTest {
             id = "c-10",
             name = "Sarah Lin",
             aliases = listOf("S-Lin", "Sarah"),
-            notes = "Biotech Researcher • Tea tasting buddy. Loves light roast pour-overs."
+            notes = "Biotech Researcher, tea tasting buddy. Loves light roast pour-overs."
         )
         val contact2 = ContactEntity(
             id = "c-20",
             name = "Marcus Vance",
             aliases = listOf("Marc"),
-            notes = "Founder @ Studio Arc • Met at Coffee Lab"
+            notes = "Founder @ Studio Arc, met at Coffee Lab"
         )
         contactDao.insertContacts(listOf(contact1, contact2))
         contactDao.insertContactFtsList(

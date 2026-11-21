@@ -84,7 +84,7 @@ fun SettingsAboutScreen(
                 SettingsSubsection(title = "Application") {
                     SettingsItem(
                         title = "Hello Personal CRM",
-                        subtitle = "v1.0.0-alpha • 100% Native Kotlin & Jetpack Compose",
+                        subtitle = "v1.0.0-alpha, Native Kotlin & Jetpack Compose",
                         shape = shapeFor(0, 2),
                         onClick = {}
                     )
@@ -109,10 +109,10 @@ fun SettingsAboutScreen(
 
             item {
                 val totalInvariants = 4
-                SettingsSubsection(title = "Architectural Invariants") {
+                SettingsSubsection(title = "Principles") {
                     SettingsItem(
                         title = "1. Zero Backend, Zero Accounts",
-                        subtitle = "No remote servers, no Supabase, no Firebase, and zero telemetry. Your device is the sovereign home of all data.",
+                        subtitle = "No remote servers, no cloud accounts, and no telemetry. Everything stays on your device.",
                         shape = shapeFor(0, totalInvariants),
                         leadingIcon = {
                             Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.primary)
@@ -121,8 +121,8 @@ fun SettingsAboutScreen(
                     )
 
                     SettingsItem(
-                        title = "2. SQLite Truth & Export Bundle (ADR-0006)",
-                        subtitle = "Room DB (SQLite + FTS5) provides zero-latency queries. Export bundles (JSON, Markdown, CSV) saved via SAF.",
+                        title = "2. Local SQLite & Portable Exports",
+                        subtitle = "Stored in local SQLite (Room + FTS5). Export your data anytime as JSON, Markdown, or CSV.",
                         shape = shapeFor(1, totalInvariants),
                         leadingIcon = {
                             Icon(Icons.Rounded.Shield, null, tint = MaterialTheme.colorScheme.primary)
@@ -131,8 +131,8 @@ fun SettingsAboutScreen(
                     )
 
                     SettingsItem(
-                        title = "3. Extreme Speed (<50ms Cold Start)",
-                        subtitle = "Ultra-lean capture tree, zero disk I/O on main thread during startup, and Baseline Profiles.",
+                        title = "3. Fast Startup (<50ms Cold Start)",
+                        subtitle = "Lean capture screen with no main-thread disk I/O during launch.",
                         shape = shapeFor(2, totalInvariants),
                         leadingIcon = {
                             Icon(Icons.Rounded.Speed, null, tint = MaterialTheme.colorScheme.primary)
@@ -142,7 +142,7 @@ fun SettingsAboutScreen(
 
                     SettingsItem(
                         title = "4. Strict Permission Discipline",
-                        subtitle = "Never requests READ_CONTACTS or WRITE_CONTACTS. Foreground-only location strictly at instant of capture.",
+                        subtitle = "Never reads your phone contacts. Location is foreground-only when logging a meeting.",
                         shape = shapeFor(3, totalInvariants),
                         leadingIcon = {
                             Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.primary)
@@ -239,7 +239,7 @@ fun SettingsLicensesScreen(
                     RUNTIME_LIBRARY_NOTICES.forEachIndexed { index, notice ->
                         SettingsItem(
                             title = notice.name,
-                            subtitle = "${notice.author} • ${notice.licenseName}",
+                            subtitle = "${notice.author} (${notice.licenseName})",
                             shape = shapeFor(index, RUNTIME_LIBRARY_NOTICES.size),
                             trailingContent = {
                                 Icon(
@@ -259,7 +259,7 @@ fun SettingsLicensesScreen(
                     FONT_AND_ASSET_NOTICES.forEachIndexed { index, notice ->
                         SettingsItem(
                             title = notice.name,
-                            subtitle = "${notice.author} • ${notice.licenseName}",
+                            subtitle = "${notice.author} (${notice.licenseName})",
                             shape = shapeFor(index, FONT_AND_ASSET_NOTICES.size),
                             trailingContent = {
                                 Icon(
@@ -294,7 +294,7 @@ fun SettingsLicensesScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "${notice.author} • ${notice.licenseName}",
+                        text = "${notice.author} (${notice.licenseName})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )

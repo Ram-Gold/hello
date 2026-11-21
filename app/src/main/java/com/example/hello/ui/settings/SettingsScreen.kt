@@ -129,7 +129,7 @@ fun SettingsScreen(
                     val profileColors = if (isDark) PROFILE_COLORS_DARK else PROFILE_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Your Name",
-                        subtitle = "${uiState.userName} • Tap to edit profile greeting name",
+                        subtitle = "${uiState.userName}, tap to edit greeting name",
                         icon = Icons.Rounded.AccountCircle,
                         colors = profileColors,
                         onClick = { onEvent(SettingsUiEvent.OnOpenEditNameDialog) },
@@ -140,7 +140,7 @@ fun SettingsScreen(
                     val termColors = if (isDark) TERM_COLORS_DARK else TERM_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Display Terminology",
-                        subtitle = "${uiState.terminology.pluralTitle} • Layer 1 directory vocabulary",
+                        subtitle = "${uiState.terminology.pluralTitle}, directory label",
                         icon = Icons.Rounded.Tune,
                         colors = termColors,
                         onClick = onNavigateToTerminology,
@@ -152,7 +152,7 @@ fun SettingsScreen(
                     val activePresetName = uiState.flowPresets.firstOrNull { it.id == uiState.activeFlowPresetId }?.name ?: "Default"
                     ExpressiveNavigationItem(
                         title = "Capture Flows",
-                        subtitle = "$activePresetName • Adaptive capture card & default steps",
+                        subtitle = "$activePresetName, default capture steps",
                         icon = Icons.AutoMirrored.Rounded.AltRoute,
                         colors = flowColors,
                         onClick = onNavigateToFlows,
@@ -163,7 +163,7 @@ fun SettingsScreen(
                     val tagColors = if (isDark) TAG_COLORS_DARK else TAG_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Tag Taxonomy",
-                        subtitle = "${uiState.tags.size} active #tags • Layer 2 groups & topics",
+                        subtitle = "${uiState.tags.size} active tags",
                         icon = Icons.AutoMirrored.Rounded.Label,
                         colors = tagColors,
                         onClick = onNavigateToTags,
@@ -186,7 +186,7 @@ fun SettingsScreen(
                     // 4. Data & Sovereign Storage
                     val dataColors = if (isDark) DATA_COLORS_DARK else DATA_COLORS_LIGHT
                     ExpressiveNavigationItem(
-                        title = "Data & Sovereign Storage",
+                        title = "Data & Storage",
                         subtitle = "SQLite canonical truth, export bundles, and backups",
                         icon = Icons.Rounded.Storage,
                         colors = dataColors,
@@ -199,7 +199,7 @@ fun SettingsScreen(
                     val motionSubtitle = if (uiState.reduceAnimations) "Reduced motion (0ms)" else "Standard motion"
                     ExpressiveNavigationItem(
                         title = "Appearance",
-                        subtitle = "${uiState.themeMode.title} • $motionSubtitle",
+                        subtitle = "${uiState.themeMode.title}, $motionSubtitle",
                         icon = Icons.Rounded.Palette,
                         colors = appColors,
                         onClick = onNavigateToAppearance,
@@ -210,7 +210,7 @@ fun SettingsScreen(
                     val prefColors = if (isDark) PREF_COLORS_DARK else PREF_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Preferences",
-                        subtitle = "Notif: ${uiState.notificationHour}:00 • Location",
+                        subtitle = "Notifications at ${uiState.notificationHour}:00, Location",
                         icon = Icons.Rounded.Settings,
                         colors = prefColors,
                         onClick = onNavigateToPreferences,
@@ -221,7 +221,7 @@ fun SettingsScreen(
                     val aboutColors = if (isDark) ABOUT_COLORS_DARK else ABOUT_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "About Hello",
-                        subtitle = "v1.0.0-alpha • 100% Local-First & Zero Backend",
+                        subtitle = "v1.0.0-alpha, local-first with no backend",
                         icon = Icons.Rounded.Info,
                         colors = aboutColors,
                         onClick = onNavigateToAbout,

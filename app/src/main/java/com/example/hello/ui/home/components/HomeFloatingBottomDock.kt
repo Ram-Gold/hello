@@ -1010,7 +1010,7 @@ private fun SpeedDialChipPreview() {
     }
 }
 
-@Preview(name = "Profile Morph — 0.0 Root Dock", showBackground = true, widthDp = 390)
+@Preview(name = "Profile Morph: 0.0 Root Dock", showBackground = true, widthDp = 390)
 @Composable
 private fun ProfileMorphRootDockPreview() {
     HelloTheme {
@@ -1026,7 +1026,7 @@ private fun ProfileMorphRootDockPreview() {
     }
 }
 
-@Preview(name = "Profile Morph — 0.16 Liquid Bridge", showBackground = true, widthDp = 390)
+@Preview(name = "Profile Morph: 0.16 Liquid Bridge", showBackground = true, widthDp = 390)
 @Composable
 private fun ProfileMorphLiquidBridgePreview() {
     HelloTheme {
@@ -1042,7 +1042,7 @@ private fun ProfileMorphLiquidBridgePreview() {
     }
 }
 
-@Preview(name = "Profile Morph — 0.52 Right-to-Left Swallow", showBackground = true, widthDp = 390)
+@Preview(name = "Profile Morph: 0.52 Right-to-Left Swallow", showBackground = true, widthDp = 390)
 @Composable
 private fun ProfileMorphSwallowPreview() {
     HelloTheme {
@@ -1058,7 +1058,7 @@ private fun ProfileMorphSwallowPreview() {
     }
 }
 
-@Preview(name = "Profile Morph — 1.0 Catching Up Pill", showBackground = true, widthDp = 390)
+@Preview(name = "Profile Morph: 1.0 Catching Up Pill", showBackground = true, widthDp = 390)
 @Composable
 private fun ProfileMorphPillPreview() {
     HelloTheme {

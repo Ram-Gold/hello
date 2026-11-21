@@ -86,7 +86,7 @@ fun SettingsDataScreen(
         },
         topBar = {
             PixelStyleTopBar(
-                title = "Data & Sovereign Storage",
+                title = "Data & Storage",
                 onNavigateBack = onNavigateBack,
                 modifier = Modifier.padding(
                     top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -107,7 +107,7 @@ fun SettingsDataScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                SettingsSubsection(title = "Storage Invariant (ADR-0006)") {
+                SettingsSubsection(title = "Local Storage") {
                     Surface(
                         shape = shapeFor(0, 1),
                         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -125,13 +125,13 @@ fun SettingsDataScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "SQLite Truth + Multi-Format Portability",
+                                    text = "SQLite & Portable Exports",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Text(
-                                text = "Room DB (SQLite + FTS5) provides zero-latency local queries with sub-2ms mutations. An on-demand WorkManager pipeline packages all data into JSON, Markdown notes, and CSV tabular sheets saved via Storage Access Framework.",
+                                text = "All data lives in local SQLite on your device. Export anytime into a ZIP with JSON, Markdown notes, and CSV files saved to a folder you choose.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )

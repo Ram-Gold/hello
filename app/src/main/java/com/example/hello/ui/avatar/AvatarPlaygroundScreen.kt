@@ -294,7 +294,7 @@ fun AvatarPlaygroundScreen(
                 // Non-destructive offline or fetch error notice while preserving user selections
                 if (uiState.isOffline || uiState.errorMessage != null) {
                     val noticeMessage = if (uiState.isOffline) {
-                        "You're offline. Reconnect to preview changes — your selections are kept."
+                        "You're offline. Reconnect to preview changes. Your selections are kept."
                     } else {
                         uiState.errorMessage.orEmpty()
                     }

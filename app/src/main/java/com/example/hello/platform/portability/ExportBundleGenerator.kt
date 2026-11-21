@@ -210,7 +210,7 @@ object ExportBundleGenerator {
                     contactEncounters.forEach { encounter ->
                         val dateStr = DateTimeFormatter.ISO_INSTANT.format(encounter.occurredAt).take(10)
                         val placeLabel = encounter.placeId?.let { placeMap[it] } ?: encounter.eventLabel
-                        val header = if (placeLabel != null) "### $dateStr • $placeLabel" else "### $dateStr"
+                        val header = if (placeLabel != null) "### $dateStr - $placeLabel" else "### $dateStr"
                         append("$header\n")
                         if (encounter.notes.isNotBlank()) {
                             append("${encounter.notes.trim()}\n")

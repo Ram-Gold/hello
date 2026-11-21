@@ -29,9 +29,9 @@ val VellumFontFamily = FontFamily(
 
 /**
  * Minimalist Typography for Hello (Default, .agents/design.md):
- * - Headings: Mallow (Hero 48–64sp, h1 36sp, h2 28sp, h3 22sp)
+ * - Headings: Mallow (Hero 48-64sp, h1 36sp, h2 28sp, h3 22sp)
  * - Body: Vellum (Body 16sp, Caption/Label 13sp)
- * - Weights: 400 for body, 500–600 for headings
+ * - Weights: 400 for body, 500-600 for headings
  * - Letter spacing: -0.01em on headings, normal on body
  */
 val DesignTypography = Typography(

@@ -196,10 +196,10 @@ class HomeViewModelTest {
         assertEquals(90, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 180L)))
 
         val metPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 45, hasMultipleEncounters = true)
-        assertEquals("Met 6 weeks ago — anything new to update?", metPrompt)
+        assertEquals("Met 6 weeks ago. Anything new to update?", metPrompt)
 
         val addedPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 35, hasMultipleEncounters = false)
-        assertEquals("Added 5 weeks ago — anything new to update?", addedPrompt)
+        assertEquals("Added 5 weeks ago. Anything new to update?", addedPrompt)
     }
 
     @Test

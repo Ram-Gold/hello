@@ -170,7 +170,7 @@ class AvatarPlaygroundViewModelTest {
         assertFalse(vm.uiState.value.canApply)
         assertArrayEquals(initialBytes, vm.uiState.value.preview?.bytes)
 
-        // User still picks glasses while offline — selections are preserved!
+        // User still picks glasses while offline; selections are preserved.
         vm.onEvent(AvatarPlaygroundUiEvent.OnSelectCategory(NotionistTraitCategory.GLASSES))
         vm.onEvent(AvatarPlaygroundUiEvent.OnSelectOption("variant05"))
         advanceUntilIdle()

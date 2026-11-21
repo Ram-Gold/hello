@@ -86,7 +86,7 @@ class HelloDatabaseTest {
         val contact2 = com.example.hello.data.local.entity.ContactEntity(
             id = "c-2",
             name = "David Kim",
-            notes = "Mobile Dev • Discussed Compose gestures and physics."
+            notes = "Mobile Dev, discussed Compose gestures and physics."
         )
         contactDao.insertContacts(listOf(contact1, contact2))
 

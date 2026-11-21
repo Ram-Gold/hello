@@ -210,7 +210,7 @@ fun EncountersEmptyState(
                 text = if (hasContacts) {
                     "Log an encounter or notes from a recent conversation to keep your connections fresh."
                 } else {
-                    "Your directory is empty. Add your first ${terminology.singularTitle.lowercase()} to start cultivating your circle."
+                    "Your directory is empty. Add your first ${terminology.singularTitle.lowercase()} to get started."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -285,7 +285,7 @@ fun aospSharedAxisPopExit(
 // PixelPlayer 450ms MD3 Expressive Push/Pop Transitions (Root Tab Fallbacks)
 // =========================================================================
 
-// Push: Enter from Right — slides in 50% of screen width + slight scale up
+// Push: Enter from Right (slides in 50% of screen width + slight scale up)
 fun enterTransition(): EnterTransition = slideInHorizontally(
     animationSpec = PUSH_DECELERATE_SLIDE_SPEC,
     initialOffsetX = { (it * 0.5f).toInt() }
@@ -297,7 +297,7 @@ fun enterTransition(): EnterTransition = slideInHorizontally(
     animationSpec = PUSH_ACCELERATE_FADE_SPEC
 )
 
-// Push: Exit to Left — recedes 25% (parallax)
+// Push: Exit to Left (recedes 25% parallax)
 fun exitTransition(): ExitTransition = slideOutHorizontally(
     animationSpec = PUSH_ACCELERATE_SLIDE_SPEC,
     targetOffsetX = { -(it * 0.25f).toInt() }
@@ -305,7 +305,7 @@ fun exitTransition(): ExitTransition = slideOutHorizontally(
     animationSpec = PUSH_ACCELERATE_HALF_FADE_SPEC
 )
 
-// Pop: Enter from Left — parallax slide-in 25% + subtle scale up
+// Pop: Enter from Left (parallax slide-in 25% + subtle scale up)
 fun popEnterTransition(): EnterTransition = slideInHorizontally(
     animationSpec = PUSH_DECELERATE_SLIDE_SPEC,
     initialOffsetX = { -(it * 0.25f).toInt() }
@@ -316,7 +316,7 @@ fun popEnterTransition(): EnterTransition = slideInHorizontally(
     animationSpec = PUSH_DECELERATE_HALF_FADE_SPEC
 )
 
-// Pop: Exit to Right — slides out 50% + slight scale down
+// Pop: Exit to Right (slides out 50% + slight scale down)
 fun popExitTransition(): ExitTransition = slideOutHorizontally(
     animationSpec = PUSH_ACCELERATE_SLIDE_SPEC,
     targetOffsetX = { (it * 0.5f).toInt() }

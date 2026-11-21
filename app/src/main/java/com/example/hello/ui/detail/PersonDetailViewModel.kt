@@ -201,7 +201,7 @@ class PersonDetailViewModel(
                         cadenceDays = targetDays,
                         daysRemaining = daysDiff,
                         displayText = "Overdue by $daysOverdue ${if (daysOverdue == 1) "day" else "days"}",
-                        subText = "Cadence: Every $targetDays days • Last met $daysSince days ago"
+                        subText = "Every $targetDays days, last met $daysSince days ago"
                     )
                 }
                 daysDiff <= 3 -> {
@@ -211,7 +211,7 @@ class PersonDetailViewModel(
                         cadenceDays = targetDays,
                         daysRemaining = daysDiff,
                         displayText = "Due in $daysDiff ${if (daysDiff == 1) "day" else "days"}",
-                        subText = "Cadence: Every $targetDays days • Last met $daysSince days ago"
+                        subText = "Every $targetDays days, last met $daysSince days ago"
                     )
                 }
                 else -> {
@@ -220,8 +220,8 @@ class PersonDetailViewModel(
                         daysSinceLastMet = daysSince,
                         cadenceDays = targetDays,
                         daysRemaining = daysDiff,
-                        displayText = "On track • Due in $daysDiff days",
-                        subText = "Cadence: Every $targetDays days • Last met $daysSince days ago"
+                        displayText = "On track, due in $daysDiff days",
+                        subText = "Every $targetDays days, last met $daysSince days ago"
                     )
                 }
             }
