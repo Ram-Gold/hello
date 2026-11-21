@@ -35,7 +35,24 @@ fun HelloMark(modifier: Modifier = Modifier, width: Dp = 48.dp) {
 }
 
 /**
- * Stacked Hello lockup (name-tag symbol above wordmark) for About and square surfaces.
+ * Horizontal Hello lockup (name-tag symbol beside wordmark).
+ * Minimum width 96.dp per logo guidelines.
+ */
+@Composable
+fun HelloHorizontalLogo(modifier: Modifier = Modifier, width: Dp = 180.dp) {
+    val clampedWidth = width.coerceAtLeast(96.dp)
+    Image(
+        painter = painterResource(R.drawable.ic_hello_horizontal),
+        contentDescription = "Hello",
+        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+        modifier = modifier
+            .width(clampedWidth)
+            .aspectRatio(760f / 256f)
+    )
+}
+
+/**
+ * Stacked Hello lockup (name-tag symbol above wordmark) for square surfaces.
  * Minimum width 72.dp per logo guidelines.
  */
 @Composable
