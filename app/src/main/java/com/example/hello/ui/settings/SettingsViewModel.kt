@@ -46,7 +46,8 @@ class SettingsViewModel(
                         notificationHour = prefs.notificationHour,
                         notificationMinute = prefs.notificationMinute,
                         defaultIncludeLocation = prefs.defaultIncludeLocation,
-                        activeFlowPresetId = prefs.activeFlowPresetId
+                        activeFlowPresetId = prefs.activeFlowPresetId,
+                        selectedEditingPresetId = prefs.activeFlowPresetId
                     )
                 }
             }
@@ -175,6 +176,12 @@ class SettingsViewModel(
                 }
             }
 
+            SettingsUiEvent.OnUndoDeleteTag -> {
+                if (contactRepository.undoLastDeleteTag()) {
+                    _uiState.update { it.copy(userMessage = "Tag restored") }
+                }
+            }
+
             is SettingsUiEvent.OnStartExportBundle -> {
                 if (workManager != null) {
                     val request = OneTimeWorkRequestBuilder<ExportDataWorker>()
@@ -296,6 +303,7 @@ class SettingsViewModel(
                         val name = it.flowPresets.firstOrNull { p -> p.id == event.presetId }?.name ?: "Flow"
                         it.copy(
                             activeFlowPresetId = event.presetId,
+                            selectedEditingPresetId = event.presetId,
                             userMessage = "Active flow set to $name"
                         )
                     }
@@ -354,10 +362,15 @@ class SettingsViewModel(
             is SettingsUiEvent.OnDeleteCustomPreset -> {
                 viewModelScope.launch {
                     captureFlowRepository.deleteCustomPreset(event.presetId)
+                    val wasActive = _uiState.value.activeFlowPresetId == event.presetId
+                    if (wasActive) {
+                        preferencesRepository.setActiveFlowPresetId(FlowPreset.PRESET_DEFAULT)
+                    }
                     _uiState.update {
+                        val nextActive = if (it.activeFlowPresetId == event.presetId) FlowPreset.PRESET_DEFAULT else it.activeFlowPresetId
                         it.copy(
-                            selectedEditingPresetId = FlowPreset.PRESET_DEFAULT,
-                            activeFlowPresetId = if (it.activeFlowPresetId == event.presetId) FlowPreset.PRESET_DEFAULT else it.activeFlowPresetId,
+                            activeFlowPresetId = nextActive,
+                            selectedEditingPresetId = nextActive,
                             userMessage = "Custom flow preset deleted"
                         )
                     }
@@ -380,9 +393,11 @@ class SettingsViewModel(
                         description = event.description.trim().ifEmpty { "Custom Capture Flow" },
                         components = defaultPreset.components.map { it.copy(id = UUID.randomUUID().toString()) }
                     )
+                    preferencesRepository.setActiveFlowPresetId(newPreset.id)
                     _uiState.update {
                         it.copy(
                             isCreatePresetDialogOpen = false,
+                            activeFlowPresetId = newPreset.id,
                             selectedEditingPresetId = newPreset.id,
                             userMessage = "Created '${newPreset.name}' flow preset"
                         )

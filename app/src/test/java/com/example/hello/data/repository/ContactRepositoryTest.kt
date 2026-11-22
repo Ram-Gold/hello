@@ -516,6 +516,54 @@ class ContactRepositoryTest {
     }
 
     @Test
+    fun deleteTag_and_undoLastDeleteTag_restoresTagAndContactAssignments() {
+        val tag = repository.addTag("Bookclub", "#D3E5EF")
+        val added = repository.addContactWithInitialEncounter(
+            name = "Hannah Abbott",
+            tagIds = setOf(tag.id),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met at reading group",
+            followUpDays = null
+        )
+
+        val tagBeforeDelete = repository.tags.value.first { it.id == tag.id }
+
+        repository.deleteTag(tag.id)
+        assertTrue(repository.tags.value.none { it.id == tag.id })
+        assertFalse(tag.id in repository.fullContacts.value[added.id]!!.tagIds)
+        assertTrue(repository.contacts.value.first { it.id == added.id }.tags.none { it.id == tag.id })
+        assertTrue(repository.recentContacts.value.first { it.id == added.id }.tags.none { it.id == tag.id })
+
+        assertTrue(repository.undoLastDeleteTag())
+        assertEquals(tagBeforeDelete, repository.tags.value.firstOrNull { it.id == tag.id })
+        assertTrue(tag.id in repository.fullContacts.value[added.id]!!.tagIds)
+        assertTrue(repository.contacts.value.first { it.id == added.id }.tags.any { it.id == tag.id })
+        assertTrue(repository.recentContacts.value.first { it.id == added.id }.tags.any { it.id == tag.id })
+
+        // Calling undo again without a new deletion is a no-op
+        assertFalse(repository.undoLastDeleteTag())
+    }
+
+    @Test
+    fun deleteTag_consecutiveDeletes_undoRestoresOnlyMostRecentTag() {
+        val firstTag = repository.tags.value[0]
+        val secondTag = repository.tags.value[1]
+
+        repository.deleteTag(firstTag.id)
+        repository.deleteTag(secondTag.id)
+
+        assertTrue(repository.undoLastDeleteTag())
+        assertTrue(repository.tags.value.any { it.id == secondTag.id })
+        assertTrue(repository.tags.value.none { it.id == firstTag.id })
+    }
+
+    @Test
+    fun undoLastDeleteTag_returnsFalseWhenNoTagDeleted() {
+        assertFalse(repository.undoLastDeleteTag())
+    }
+
+    @Test
     fun skipSerendipityPrompt_excludesSkippedContactAndRollsNextEligibleContact() {
         val today = LocalDate.of(2026, 11, 22)
         val thirtyDaysAgo = today.minusDays(30).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()

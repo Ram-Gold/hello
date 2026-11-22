@@ -35,22 +35,30 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
+import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
 import com.example.hello.ui.components.TagColorCache
+import com.example.hello.ui.components.showHelloToast
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.theme.LocalIsDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsTagsScreen(
@@ -60,11 +68,32 @@ fun SettingsTagsScreen(
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = LocalHelloHaptics.current
+    val toastScope = rememberCoroutineScope()
+    val activeToastJob = remember { arrayOfNulls<Job>(1) }
 
     LaunchedEffect(uiState.userMessage) {
-        uiState.userMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
-            onEvent(SettingsUiEvent.OnDismissUserMessage)
+        val msg = uiState.userMessage ?: return@LaunchedEffect
+        onEvent(SettingsUiEvent.OnDismissUserMessage)
+        activeToastJob[0]?.cancel()
+        activeToastJob[0] = toastScope.launch {
+            val hasUndo = msg.startsWith("Deleted tag", ignoreCase = true)
+            val result = if (hasUndo) {
+                snackbarHostState.showHelloToast(
+                    message = msg,
+                    actionLabel = "Undo",
+                    durationMs = TOAST_DURATION_ACTIONABLE_MS
+                )
+            } else {
+                snackbarHostState.showHelloToast(
+                    message = msg,
+                    durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                )
+            }
+            if (hasUndo && result == SnackbarResult.ActionPerformed) {
+                haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                onEvent(SettingsUiEvent.OnUndoDeleteTag)
+            }
         }
     }
 

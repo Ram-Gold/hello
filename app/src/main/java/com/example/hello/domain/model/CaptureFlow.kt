@@ -6,20 +6,21 @@ import java.util.UUID
  * Modular component types available in Hello's Capture Flow engine (ADR-0012).
  */
 enum class CaptureComponentType(
+    val displayTitle: String,
     val defaultLabel: String,
     val isSystemMandatory: Boolean = false
 ) {
-    NAME("What's their name?", isSystemMandatory = true),
-    ROLE("What do they do?"),
-    COMPANY("Where do they work or study?"),
-    PLACE("Where did you meet?"),
-    TAGS("Add tags"),
-    EMAIL("Email address"),
-    PHONE("Phone number"),
-    BIRTHDAY("When is their birthday?"),
-    CADENCE("How often to keep in touch?"),
-    CUSTOM("Custom property"),
-    NOTE("Any notes or memories?")
+    NAME("Name", "What's their name?", isSystemMandatory = true),
+    ROLE("Role", "What do they do?"),
+    COMPANY("Company", "Where do they work or study?"),
+    PLACE("Place", "Where did you meet?"),
+    TAGS("Tags", "Add tags"),
+    EMAIL("Email", "Email address"),
+    PHONE("Phone", "Phone number"),
+    BIRTHDAY("Birthday", "When is their birthday?"),
+    CADENCE("Cadence", "How often to keep in touch?"),
+    CUSTOM("Custom Field", "Custom property"),
+    NOTE("Note", "Any notes or memories?")
 }
 
 /**

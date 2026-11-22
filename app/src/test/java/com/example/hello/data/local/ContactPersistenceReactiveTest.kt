@@ -269,6 +269,57 @@ class ContactPersistenceReactiveTest {
         assertEquals(listOf(added.id), filtered.map { it.id })
     }
 
+    @Test
+    fun deleteTag_and_undoLastDeleteTag_persistsTransactionallyInRoom() = runTest(testDispatcher) {
+        val repository = ContactRepository(
+            database = database,
+            ioDispatcher = testDispatcher,
+            coroutineScope = backgroundScope
+        )
+        advanceUntilIdle()
+
+        val tag = repository.addTag(name = "RunClub", colorHex = "#D3E5EF")
+        advanceUntilIdle()
+        database.tagDao().getAllTagsFlow().first { tags -> tags.any { it.id == tag.id } }
+
+        val added = repository.addContactWithInitialEncounter(
+            name = "Devon Brooks",
+            tagIds = setOf(tag.id),
+            placeId = null,
+            customPlaceName = null,
+            note = "Met at Saturday 5K",
+            followUpDays = null
+        )
+        advanceUntilIdle()
+        database.contactDao().getContactFlow(added.id).first { it != null && tag.id in it.tagIds }
+
+        repository.deleteTag(tag.id)
+        advanceUntilIdle()
+        database.tagDao().getAllTagsFlow().first { tags -> tags.none { it.id == tag.id } }
+        val afterDeleteEntity = database.contactDao().getContactFlow(added.id)
+            .first { it != null && tag.id !in it.tagIds }
+        assertNull(database.tagDao().getTagById(tag.id))
+        assertFalse(
+            "Deleting a tag must also remove its ID from ContactEntity.tagIds in Room",
+            tag.id in afterDeleteEntity!!.tagIds
+        )
+
+        assertTrue(repository.undoLastDeleteTag())
+        advanceUntilIdle()
+        database.tagDao().getAllTagsFlow().first { tags -> tags.any { it.id == tag.id } }
+        val afterUndoEntity = database.contactDao().getContactFlow(added.id)
+            .first { it != null && tag.id in it.tagIds }
+
+        val restoredTagEntity = database.tagDao().getTagById(tag.id)
+        assertNotNull(restoredTagEntity)
+        assertEquals("RunClub", restoredTagEntity?.name)
+        assertEquals("#D3E5EF", restoredTagEntity?.colorHex)
+        assertTrue(
+            "Undoing tag deletion must restore the tag ID on ContactEntity in Room",
+            tag.id in afterUndoEntity!!.tagIds
+        )
+    }
+
     private fun createMockContext(): Context {
         val tempDir = Files.createTempDirectory("test_db_contacts").toFile()
         return object : android.content.ContextWrapper(null) {

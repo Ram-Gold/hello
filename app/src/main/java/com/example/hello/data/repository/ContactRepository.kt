@@ -24,6 +24,7 @@ import com.example.hello.ui.home.HomeViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,6 +94,9 @@ class ContactRepository(
     private var lastDeletedContactEncounters: List<Encounter> = emptyList()
     private var lastDeletedContactFollowUps: List<FollowUp> = emptyList()
     private var lastDeletedEncounters: List<Encounter> = emptyList()
+    private var lastDeletedTag: Tag? = null
+    private var lastDeletedTagContactIds: Set<String> = emptySet()
+    private var lastTagDeleteDbJob: Job? = null
 
     // In-memory daily skip list for weighted-random serendipity prompts (ADR-0036)
     private var skippedSerendipityDate: LocalDate = LocalDate.now()
@@ -675,6 +679,15 @@ class ContactRepository(
     }
 
     fun deleteTag(tagId: String) {
+        val deletedTag = _tags.value.firstOrNull { it.id == tagId } ?: return
+        val affectedContactIds = _fullContacts.value.values
+            .filter { tagId in it.tagIds }
+            .map { it.id }
+            .toSet()
+
+        lastDeletedTag = deletedTag
+        lastDeletedTagContactIds = affectedContactIds
+
         _fullContacts.update { currentMap ->
             currentMap.mapValues { (_, contact) ->
                 if (contact.tagIds.contains(tagId)) {
@@ -708,11 +721,24 @@ class ContactRepository(
                 }
             }
         }
+        refreshFavorites()
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
-                db.tagDao().deleteTagById(tagId)
+            val previousJob = lastTagDeleteDbJob
+            lastTagDeleteDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.withTransactionSafe {
+                    db.tagDao().deleteTagById(tagId)
+                    for (contactId in affectedContactIds) {
+                        val existingEntity = db.contactDao().getContactById(contactId)
+                        if (existingEntity != null && tagId in existingEntity.tagIds) {
+                            db.contactDao().updateContact(
+                                existingEntity.copy(tagIds = existingEntity.tagIds.filterNot { it == tagId })
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1174,6 +1200,75 @@ class ContactRepository(
         }
 
         lastDeletedEncounters = emptyList()
+        return true
+    }
+
+    /**
+     * Reverts the most recent tag deletion, restoring the tag and re-attaching it to all
+     * previously tagged contacts within the transient 7-second window (ADR-0027).
+     */
+    fun undoLastDeleteTag(): Boolean {
+        val tagToRestore = lastDeletedTag ?: return false
+        val affectedContactIds = lastDeletedTagContactIds
+
+        lastDeletedTag = null
+        lastDeletedTagContactIds = emptySet()
+
+        _tags.update { currentTags ->
+            (currentTags.filterNot { it.id == tagToRestore.id } + tagToRestore)
+                .sortedWith(compareByDescending<Tag> { it.useCount }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        }
+
+        _fullContacts.update { currentMap ->
+            currentMap.mapValues { (contactId, contact) ->
+                if (contactId in affectedContactIds && tagToRestore.id !in contact.tagIds) {
+                    contact.copy(tagIds = contact.tagIds + tagToRestore.id)
+                } else {
+                    contact
+                }
+            }
+        }
+
+        _contacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.id in affectedContactIds && contact.tags.none { it.id == tagToRestore.id }) {
+                    contact.copy(tags = contact.tags + tagToRestore)
+                } else {
+                    contact
+                }
+            }
+        }
+
+        _recentContacts.update { currentList ->
+            currentList.map { contact ->
+                if (contact.id in affectedContactIds && contact.tags.none { it.id == tagToRestore.id }) {
+                    contact.copy(tags = contact.tags + tagToRestore)
+                } else {
+                    contact
+                }
+            }
+        }
+        refreshFavorites()
+
+        val db = database
+        if (db != null) {
+            val pendingDeleteJob = lastTagDeleteDbJob
+            lastTagDeleteDbJob = coroutineScope.launch {
+                pendingDeleteJob?.join()
+                db.withTransactionSafe {
+                    db.tagDao().insertTag(tagToRestore.toEntity())
+                    for (contactId in affectedContactIds) {
+                        val existingEntity = db.contactDao().getContactById(contactId)
+                        if (existingEntity != null && tagToRestore.id !in existingEntity.tagIds) {
+                            db.contactDao().updateContact(
+                                existingEntity.copy(tagIds = existingEntity.tagIds + tagToRestore.id)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         return true
     }
 

@@ -9,6 +9,7 @@ import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -174,6 +175,32 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun onUndoDeleteTag_restoresTagAndEmitsConfirmationMessage() = runTest {
+        advanceUntilIdle()
+        val tagToDelete = viewModel.uiState.value.tags.first { it.id == "tag-coffee" }
+
+        viewModel.onEvent(SettingsUiEvent.OnDeleteTag(tagToDelete.id))
+        advanceUntilIdle()
+        assertNull(contactRepository.tags.value.firstOrNull { it.id == tagToDelete.id })
+
+        viewModel.onEvent(SettingsUiEvent.OnDismissUserMessage)
+        viewModel.onEvent(SettingsUiEvent.OnUndoDeleteTag)
+        advanceUntilIdle()
+
+        assertEquals(tagToDelete, contactRepository.tags.value.firstOrNull { it.id == tagToDelete.id })
+        assertEquals("Tag restored", viewModel.uiState.value.userMessage)
+    }
+
+    @Test
+    fun onUndoDeleteTag_withoutPendingDeletion_isNoOp() = runTest {
+        advanceUntilIdle()
+        viewModel.onEvent(SettingsUiEvent.OnUndoDeleteTag)
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.userMessage)
+    }
+
+    @Test
     fun onExportMarkdownZip_generatesPayloadAndFeedback() = runTest {
         viewModel.onEvent(SettingsUiEvent.OnExportMarkdownZip)
         advanceUntilIdle()
@@ -235,6 +262,7 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(FlowPreset.PRESET_CONFERENCE, viewModel.uiState.value.activeFlowPresetId)
+        assertEquals(FlowPreset.PRESET_CONFERENCE, viewModel.uiState.value.selectedEditingPresetId)
         assertTrue(viewModel.uiState.value.userMessage?.contains("Conference") == true)
     }
 
@@ -287,13 +315,19 @@ class SettingsViewModelTest {
         val created = viewModel.uiState.value.flowPresets.first { it.name == "Hackathon" }
         assertEquals("Hackathon", created.name)
         assertFalse(created.isSystemPreset)
+        assertEquals(created.id, viewModel.uiState.value.activeFlowPresetId)
+        assertEquals(created.id, viewModel.uiState.value.selectedEditingPresetId)
+        assertEquals(created.id, fakePreferencesRepository.userPreferencesFlow.first().activeFlowPresetId)
 
-        // Delete custom preset
+        // Delete active custom preset -> falls back to Default and persists
         viewModel.onEvent(SettingsUiEvent.OnDeleteCustomPreset(created.id))
         advanceUntilIdle()
 
         assertEquals(initialCount, viewModel.uiState.value.flowPresets.size)
         assertNull(viewModel.uiState.value.flowPresets.firstOrNull { it.id == created.id })
+        assertEquals(FlowPreset.PRESET_DEFAULT, viewModel.uiState.value.activeFlowPresetId)
+        assertEquals(FlowPreset.PRESET_DEFAULT, viewModel.uiState.value.selectedEditingPresetId)
+        assertEquals(FlowPreset.PRESET_DEFAULT, fakePreferencesRepository.userPreferencesFlow.first().activeFlowPresetId)
     }
 
     @Test

@@ -207,6 +207,7 @@ fun SettingsItem(
     title: String,
     subtitle: String,
     shape: Shape = RoundedCornerShape(24.dp),
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
@@ -242,7 +243,7 @@ fun SettingsItem(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = titleColor
                 )
                 Text(
                     text = subtitle,
@@ -257,6 +258,45 @@ fun SettingsItem(
             }
         }
     }
+}
+
+/**
+ * Shared Material 3 Expressive switch matching Settings toggles.
+ */
+@Composable
+fun ExpressiveSettingsSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = { if (enabled) onCheckedChange(it) },
+        enabled = enabled,
+        modifier = modifier,
+        thumbContent = {
+            AnimatedContent(
+                targetState = checked,
+                transitionSpec = { fadeIn(tween(100)) togetherWith fadeOut(tween(100)) },
+                label = "switch_thumb_icon"
+            ) { isChecked ->
+                Icon(
+                    imageVector = if (isChecked) Icons.Rounded.Check else Icons.Rounded.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+            }
+        },
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+            checkedTrackColor = MaterialTheme.colorScheme.primary,
+            checkedIconColor = MaterialTheme.colorScheme.primary,
+            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            uncheckedIconColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
+    )
 }
 
 /**
@@ -313,31 +353,10 @@ fun SwitchSettingItem(
                 )
             }
 
-            Switch(
+            ExpressiveSettingsSwitch(
                 checked = checked,
-                onCheckedChange = { if (enabled) onCheckedChange(it) },
-                enabled = enabled,
-                thumbContent = {
-                    AnimatedContent(
-                        targetState = checked,
-                        transitionSpec = { fadeIn(tween(100)) togetherWith fadeOut(tween(100)) },
-                        label = "switch_thumb_icon"
-                    ) { isChecked ->
-                        Icon(
-                            imageVector = if (isChecked) Icons.Rounded.Check else Icons.Rounded.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(SwitchDefaults.IconSize)
-                        )
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    checkedIconColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    uncheckedIconColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                )
+                onCheckedChange = onCheckedChange,
+                enabled = enabled
             )
         }
     }

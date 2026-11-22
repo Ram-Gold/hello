@@ -48,6 +48,7 @@ sealed interface SettingsUiEvent {
     data class OnOpenMergeTagDialog(val sourceTag: Tag) : SettingsUiEvent
     data class OnConfirmMergeTag(val sourceTagId: String, val targetTagId: String) : SettingsUiEvent
     data class OnDeleteTag(val tagId: String) : SettingsUiEvent
+    data object OnUndoDeleteTag : SettingsUiEvent
     data class OnStartExportBundle(val outputUri: String? = null) : SettingsUiEvent
     data object OnExportMarkdownZip : SettingsUiEvent
     data object OnExportBackupJson : SettingsUiEvent
