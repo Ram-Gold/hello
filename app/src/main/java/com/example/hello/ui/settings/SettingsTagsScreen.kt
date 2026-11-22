@@ -1,5 +1,8 @@
 package com.example.hello.ui.settings
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -159,8 +162,12 @@ fun SettingsTagsScreen(
                             Column(
                                 modifier = Modifier.padding(32.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
+                                EmptyStateIllustration(
+                                    drawableRes = R.drawable.ic_empty_tags,
+                                    height = 116.dp
+                                )
                                 Text("No tags yet", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                                 Text(
                                     "Tap '+' to create your first tag.",

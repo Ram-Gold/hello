@@ -41,10 +41,6 @@ class FakeUserPreferencesRepository(
         _prefs.update { it.copy(reduceAnimations = enabled) }
     }
 
-    override suspend fun setDefaultCadenceDays(days: Int) {
-        _prefs.update { it.copy(defaultCadenceDays = days) }
-    }
-
     override suspend fun setNotificationTime(hour: Int, minute: Int) {
         _prefs.update { it.copy(notificationHour = hour, notificationMinute = minute) }
     }

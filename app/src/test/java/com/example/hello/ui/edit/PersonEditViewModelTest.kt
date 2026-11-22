@@ -52,7 +52,6 @@ class PersonEditViewModelTest {
         assertEquals("Alex Rivera", state.name)
         assertEquals("+1 (555) 876-5432", state.phone)
         assertEquals("alex.rivera@example.com", state.email)
-        assertEquals(14, state.cadenceDays)
         assertTrue(state.aliases.contains("Rivera"))
         assertFalse(state.isModified)
         assertTrue(state.canSave)
@@ -99,23 +98,6 @@ class PersonEditViewModelTest {
         viewModel.onEvent(PersonEditUiEvent.OnAliasInputChange("S-Lin"))
         viewModel.onEvent(PersonEditUiEvent.OnAddAlias("S-Lin"))
         assertEquals("", viewModel.uiState.value.aliasInput)
-    }
-
-    @Test
-    fun cadenceIntervalSelection_updatesCadenceDays() = runTest {
-        val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.onEvent(PersonEditUiEvent.OnSelectCadence(30))
-        assertEquals(30, viewModel.uiState.value.cadenceDays)
-        assertFalse(viewModel.uiState.value.isCustomCadence)
-
-        viewModel.onEvent(PersonEditUiEvent.OnSelectCadence(null))
-        assertNull(viewModel.uiState.value.cadenceDays)
-
-        viewModel.onEvent(PersonEditUiEvent.OnCustomCadenceChange("45"))
-        assertEquals(45, viewModel.uiState.value.cadenceDays)
-        assertTrue(viewModel.uiState.value.isCustomCadence)
     }
 
     @Test

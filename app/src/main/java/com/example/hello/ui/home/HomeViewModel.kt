@@ -9,7 +9,6 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.domain.model.MyCardData
 import com.example.hello.domain.model.SpeedDialAction
-import com.example.hello.domain.model.SubconsciousCheckInCalculator
 import com.example.hello.domain.model.UpcomingAlert
 import com.example.hello.domain.model.extractAlphanumericInitials
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,32 +63,37 @@ class HomeViewModel(
             }
             is HomeUiEvent.OnReminderDone -> {
                 val targetAlert = _uiState.value.upcomingAlerts.firstOrNull { it.id == event.alertId }
-                if (targetAlert is UpcomingAlert.CadenceAlert && targetAlert.contactId.isNotBlank()) {
-                    repository?.logEncounterForContact(
-                        contactId = targetAlert.contactId,
-                        note = "Caught up recently"
-                    )
-                } else {
-                    repository?.markFollowUpDone(event.alertId)
+                if (targetAlert is UpcomingAlert.SerendipityPrompt) {
+                    // Serendipity cards open Contact Profile instead of logging synthetic encounters (ADR-0036)
+                    return
                 }
+                repository?.markFollowUpDone(event.alertId)
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
                         upcomingAlerts = updated,
-                        userMessage = if (targetAlert is UpcomingAlert.CadenceAlert) "Updated!" else "Marked as done!"
+                        userMessage = "Marked as done!"
                     )
                 }
             }
             is HomeUiEvent.OnReminderSnooze -> {
                 val targetAlert = _uiState.value.upcomingAlerts.firstOrNull { it.id == event.alertId }
-                val isSubconsciousCheckIn = targetAlert is UpcomingAlert.CadenceAlert
-                val snoozeDays = if (isSubconsciousCheckIn) SubconsciousCheckInCalculator.SNOOZE_DAYS else 3L
-                repository?.snoozeFollowUp(event.alertId, days = snoozeDays)
+                if (targetAlert is UpcomingAlert.SerendipityPrompt) {
+                    if (repository != null && targetAlert.contactId.isNotBlank()) {
+                        repository.skipSerendipityPrompt(targetAlert.contactId)
+                    } else {
+                        _uiState.update { state ->
+                            state.copy(upcomingAlerts = state.upcomingAlerts.filterNot { it.id == event.alertId })
+                        }
+                    }
+                    return
+                }
+                repository?.snoozeFollowUp(event.alertId, days = 3L)
                 _uiState.update { state ->
                     val updated = state.upcomingAlerts.filterNot { it.id == event.alertId }
                     state.copy(
                         upcomingAlerts = updated,
-                        userMessage = if (isSubconsciousCheckIn) "Snoozed for 2 weeks" else "Snoozed for 3 days"
+                        userMessage = "Snoozed for 3 days"
                     )
                 }
             }
@@ -230,11 +234,12 @@ class HomeViewModel(
                     taskDescription = "Send design feedback from hackathon",
                     dueText = "In 3 days"
                 ),
-                UpcomingAlert.CadenceAlert(
+                UpcomingAlert.SerendipityPrompt(
                     id = "alert-3",
                     contactName = "Sarah L.",
                     daysSinceLastMet = 45,
-                    promptText = "45 days since coffee chat"
+                    contextText = "Last met 6 weeks ago",
+                    contactId = "c-8"
                 )
             )
 

@@ -155,20 +155,38 @@ class TimelineViewModelTest {
     }
 
     @Test
-    fun buildTimelineNodes_includesSetInStoneBirthdaysAcrossFullYearHorizon() {
+    fun buildTimelineNodes_onlyIncludesBirthdaysWithinOneMonthHorizon() {
         val today = LocalDate.of(2026, 11, 5)
         val now = today.atStartOfDay(ZoneOffset.UTC).toInstant()
 
+        val upcomingExactBoundary = Contact(
+            id = "c-one-month",
+            name = "Maya Lin",
+            birthday = LocalDate.of(1998, 12, 5), // Exact +1 calendar month -> included
+            firstMetAt = now.minus(30, ChronoUnit.DAYS),
+            lastMetAt = now.minus(10, ChronoUnit.DAYS)
+        )
+        val justBeyondBoundary = Contact(
+            id = "c-beyond-month",
+            name = "Sam Rivera",
+            birthday = LocalDate.of(1998, 12, 6), // 1 day past 1 month -> excluded
+            firstMetAt = now.minus(30, ChronoUnit.DAYS),
+            lastMetAt = now.minus(10, ChronoUnit.DAYS)
+        )
         val summerFriend = Contact(
             id = "c-summer",
             name = "Leo Chen",
-            birthday = LocalDate.of(1998, 7, 20), // ~257 days away (> 60 days)
+            birthday = LocalDate.of(1998, 7, 20), // ~257 days away -> excluded
             firstMetAt = now.minus(30, ChronoUnit.DAYS),
             lastMetAt = now.minus(10, ChronoUnit.DAYS)
         )
 
         val (futureNodes, _) = TimelineViewModel.buildTimelineNodes(
-            contactsMap = mapOf(summerFriend.id to summerFriend),
+            contactsMap = mapOf(
+                upcomingExactBoundary.id to upcomingExactBoundary,
+                justBeyondBoundary.id to justBeyondBoundary,
+                summerFriend.id to summerFriend
+            ),
             encounters = emptyList(),
             placesMap = emptyMap(),
             followUps = emptyList(),
@@ -178,9 +196,9 @@ class TimelineViewModelTest {
 
         assertEquals(1, futureNodes.size)
         val bdayNode = futureNodes.first() as FutureTimelineNode.BirthdayNode
-        assertEquals("c-summer", bdayNode.contactId)
-        assertTrue(bdayNode.daysUntil > 200L)
-        assertTrue(bdayNode.dateLabel.contains("Jul 20"))
+        assertEquals("c-one-month", bdayNode.contactId)
+        assertEquals(30L, bdayNode.daysUntil)
+        assertEquals("In 30 days", bdayNode.dateLabel)
     }
 
     @Test

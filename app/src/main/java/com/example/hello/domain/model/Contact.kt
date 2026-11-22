@@ -24,7 +24,6 @@ data class Contact(
     val firstMetAt: Instant? = null,
     val lastMetAt: Instant? = null,
     val meetCount: Int = 0,
-    val cadenceDays: Int? = null,
     val isArchived: Boolean = false,
     val isFavorite: Boolean = false,
     val updatedAt: Instant? = null,

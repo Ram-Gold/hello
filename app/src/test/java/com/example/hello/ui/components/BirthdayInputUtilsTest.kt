@@ -1,6 +1,7 @@
 package com.example.hello.ui.components
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -99,6 +100,56 @@ class BirthdayInputUtilsTest {
         assertEquals("", BirthdayInputUtils.formatHumanReadable(null))
         assertEquals("Nov 6, 1996", BirthdayInputUtils.formatHumanReadable(LocalDate.of(1996, 11, 6)))
         assertEquals("August 15", BirthdayInputUtils.formatHumanReadable(LocalDate.of(0, 8, 15)))
+    }
+
+    @Test
+    fun isUpcomingWithinOneMonth_checksExactCalendarMonthInclusive() {
+        val today = LocalDate.of(2026, 11, 22)
+
+        assertFalse(BirthdayInputUtils.isUpcomingWithinOneMonth(null, today))
+        // Today (day 0)
+        assertTrue(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1995, 11, 22), today))
+        // Tomorrow (day 1)
+        assertTrue(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1995, 11, 23), today))
+        // Exact 1 calendar month boundary (Dec 22)
+        assertTrue(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1995, 12, 22), today))
+        // 1 day past 1 calendar month (Dec 23) -> excluded
+        assertFalse(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1995, 12, 23), today))
+        // Yesterday (Nov 21 -> rolls over ~12 months to next year) -> excluded
+        assertFalse(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1995, 11, 21), today))
+
+        // Year rollover: Dec 20 -> Jan 20 included, Jan 21 excluded
+        val decToday = LocalDate.of(2026, 12, 20)
+        assertTrue(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1992, 1, 20), decToday))
+        assertFalse(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1992, 1, 21), decToday))
+
+        // Shorter month clamping: Jan 31 + 1 month = Feb 28 (non-leap 2026)
+        val janEnd = LocalDate.of(2026, 1, 31)
+        assertTrue(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1996, 2, 29), janEnd))
+        assertFalse(BirthdayInputUtils.isUpcomingWithinOneMonth(LocalDate.of(1996, 3, 1), janEnd))
+    }
+
+    @Test
+    fun formatAbbreviatedMonthDay_usesPeriodExceptMay() {
+        assertEquals("Jan. 1", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 1, 1)))
+        assertEquals("Feb. 14", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 2, 14)))
+        assertEquals("Mar. 3", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 3, 3)))
+        assertEquals("Apr. 10", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 4, 10)))
+        assertEquals("May 5", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 5, 5)))
+        assertEquals("Jun. 20", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 6, 20)))
+        assertEquals("Jul. 4", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 7, 4)))
+        assertEquals("Aug. 15", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 8, 15)))
+        assertEquals("Sep. 9", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 9, 9)))
+        assertEquals("Oct. 31", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 10, 31)))
+        assertEquals("Nov. 21", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 11, 21)))
+        assertEquals("Dec. 25", BirthdayInputUtils.formatAbbreviatedMonthDay(LocalDate.of(2026, 12, 25)))
+    }
+
+    @Test
+    fun formatBirthdayCountdown_formatsZeroOneAndMultipleDays() {
+        assertEquals("Today!", BirthdayInputUtils.formatBirthdayCountdown(0L))
+        assertEquals("Tomorrow", BirthdayInputUtils.formatBirthdayCountdown(1L))
+        assertEquals("In 12 days", BirthdayInputUtils.formatBirthdayCountdown(12L))
     }
 }
 

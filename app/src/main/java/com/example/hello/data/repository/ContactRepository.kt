@@ -13,7 +13,7 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
-import com.example.hello.domain.model.SubconsciousCheckInCalculator
+import com.example.hello.domain.model.SerendipityPicker
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.domain.model.UpcomingAlert
@@ -93,6 +93,10 @@ class ContactRepository(
     private var lastDeletedContactEncounters: List<Encounter> = emptyList()
     private var lastDeletedContactFollowUps: List<FollowUp> = emptyList()
     private var lastDeletedEncounters: List<Encounter> = emptyList()
+
+    // In-memory daily skip list for weighted-random serendipity prompts (ADR-0036)
+    private var skippedSerendipityDate: LocalDate = LocalDate.now()
+    private val skippedSerendipityContactIds = mutableSetOf<String>()
 
     init {
         refreshFavorites()
@@ -224,68 +228,89 @@ class ContactRepository(
         }
     }
 
-    private fun refreshBirthdayAlerts(contacts: Collection<Contact>) {
+    private fun refreshBirthdayAlerts(contacts: Collection<Contact>, today: LocalDate = LocalDate.now()) {
+        if (skippedSerendipityDate != today) {
+            skippedSerendipityContactIds.clear()
+            skippedSerendipityDate = today
+        }
         val bdayAlerts = computeBirthdayAlerts(contacts)
-        val checkInAlerts = computeSubconsciousCheckInAlerts(
+        val serendipityAlerts = computeSerendipityPrompts(
             contacts = contacts,
             encounters = _encounters.value,
-            pendingFollowUps = _followUps.value
+            pendingFollowUps = _followUps.value,
+            skippedContactIds = skippedSerendipityContactIds,
+            today = today
         )
         _upcomingAlerts.update { currentAlerts ->
-            val nonBdays = currentAlerts.filterNot {
+            val nonManaged = currentAlerts.filterNot {
                 (it is UpcomingAlert.BirthdayAlert && it.id.startsWith("bday-")) ||
-                    (it is UpcomingAlert.CadenceAlert && it.id.startsWith("checkin-"))
+                    (it is UpcomingAlert.SerendipityPrompt && it.id.startsWith("serendipity-"))
             }
-            bdayAlerts + nonBdays + checkInAlerts
+            bdayAlerts + nonManaged + serendipityAlerts
         }
     }
 
-    fun computeSubconsciousCheckInAlerts(
+    /**
+     * Marks a contact's serendipity prompt as skipped for today and immediately rolls the
+     * next eligible weighted-random contact into the Home carousel (ADR-0036).
+     */
+    fun skipSerendipityPrompt(contactId: String, today: LocalDate = LocalDate.now()) {
+        if (skippedSerendipityDate != today) {
+            skippedSerendipityContactIds.clear()
+            skippedSerendipityDate = today
+        }
+        if (contactId.isNotBlank()) {
+            skippedSerendipityContactIds += contactId
+        }
+        refreshBirthdayAlerts(_fullContacts.value.values, today = today)
+    }
+
+    fun computeSerendipityPrompts(
         contacts: Collection<Contact>,
         encounters: List<Encounter>,
         pendingFollowUps: List<FollowUp>,
+        skippedContactIds: Set<String> = emptySet(),
         today: LocalDate = LocalDate.now(),
         zoneId: ZoneId = ZoneOffset.UTC
-    ): List<UpcomingAlert.CadenceAlert> {
+    ): List<UpcomingAlert.SerendipityPrompt> {
         val pendingContactIds = pendingFollowUps.filter { it.doneAt == null }.map { it.contactId }.toSet()
         val encountersByContact = encounters.groupBy { it.contactId }
 
-        data class DriftCandidate(
-            val alert: UpcomingAlert.CadenceAlert,
-            val driftRatio: Double
-        )
-
-        return contacts
-            .filterNot { it.isArchived || it.id in pendingContactIds }
+        val candidates = contacts
+            .filterNot { it.isArchived || it.id in pendingContactIds || it.id in skippedContactIds }
             .mapNotNull { contact ->
                 val contactEncounters = encountersByContact[contact.id].orEmpty()
-                val epochDays = contactEncounters.map { it.occurredAt.atZone(zoneId).toLocalDate().toEpochDay() }
-                val thresholdDays = SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(epochDays)
                 val anchorInstant = contact.lastMetAt ?: contact.firstMetAt ?: return@mapNotNull null
                 val anchorDate = anchorInstant.atZone(zoneId).toLocalDate()
                 val daysSince = ChronoUnit.DAYS.between(anchorDate, today).toInt().coerceAtLeast(0)
-                if (daysSince < thresholdDays) return@mapNotNull null
+                if (daysSince < SerendipityPicker.MIN_GAP_DAYS) return@mapNotNull null
 
                 val hasMultiple = contactEncounters.size >= 2 || contact.meetCount >= 2
-                val prompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(
+                val contextText = SerendipityPicker.formatSerendipityContext(
                     daysSince = daysSince,
                     hasMultipleEncounters = hasMultiple
                 )
-                val alert = UpcomingAlert.CadenceAlert(
-                    id = "checkin-${contact.id}",
+                val prompt = UpcomingAlert.SerendipityPrompt(
+                    id = "serendipity-${contact.id}",
                     contactName = contact.name,
                     daysSinceLastMet = daysSince,
-                    promptText = prompt,
+                    contextText = contextText,
                     contactId = contact.id
                 )
-                DriftCandidate(
-                    alert = alert,
-                    driftRatio = daysSince.toDouble() / thresholdDays.toDouble()
+                SerendipityPicker.WeightedCandidate(
+                    item = prompt,
+                    stableId = contact.id,
+                    daysSinceLastMet = daysSince
                 )
             }
-            .sortedByDescending { it.driftRatio }
-            .take(SubconsciousCheckInCalculator.MAX_SURFACED_PROMPTS)
-            .map { it.alert }
+
+        return SerendipityPicker
+            .pickWeightedRandom(
+                candidates = candidates,
+                todayEpochDay = today.toEpochDay(),
+                maxCount = SerendipityPicker.MAX_SURFACED_PROMPTS
+            )
+            .map { it.item }
     }
 
     private fun computeBirthdayAlerts(contacts: Collection<Contact>): List<UpcomingAlert.BirthdayAlert> {
@@ -451,8 +476,9 @@ class ContactRepository(
             val firstName = existing.name.split(" ").firstOrNull() ?: existing.name
             _upcomingAlerts.update { alerts ->
                 alerts.filterNot { alert ->
-                    alert is UpcomingAlert.CadenceAlert &&
-                        (alert.contactName.equals(existing.name, ignoreCase = true) ||
+                    alert is UpcomingAlert.SerendipityPrompt &&
+                        (alert.contactId == contactId ||
+                            alert.contactName.equals(existing.name, ignoreCase = true) ||
                             alert.contactName.startsWith(firstName, ignoreCase = true))
                 }
             }
@@ -768,7 +794,6 @@ class ContactRepository(
             firstMetAt = now,
             lastMetAt = now,
             meetCount = 1,
-            cadenceDays = followUpDays,
             customProperties = customProperties
         )
         _fullContacts.update { it + (newContact.id to fullContact) }
@@ -906,13 +931,14 @@ class ContactRepository(
         }
         refreshFavorites()
 
-        // Reset relationship cadence: clear any overdue CadenceAlert for this contact
+        // Clear any active SerendipityPrompt for this contact since they were just met
         if (targetContact != null) {
             val firstName = targetContact.name.split(" ").firstOrNull() ?: targetContact.name
             _upcomingAlerts.update { alerts ->
                 alerts.filterNot { alert ->
-                    alert is UpcomingAlert.CadenceAlert &&
-                        (alert.contactName.equals(targetContact.name, ignoreCase = true) ||
+                    alert is UpcomingAlert.SerendipityPrompt &&
+                        (alert.contactId == contactId ||
+                            alert.contactName.equals(targetContact.name, ignoreCase = true) ||
                             alert.contactName.startsWith(firstName, ignoreCase = true))
                 }
             }
@@ -1369,8 +1395,7 @@ class ContactRepository(
                     notes = "Senior Product Designer working on accessible UI design systems. Coffee lover.",
                     firstMetAt = Instant.now().minus(45, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(5, ChronoUnit.DAYS),
-                    meetCount = 1,
-                    cadenceDays = 14
+                    meetCount = 1
                 ),
                 "c-2" to Contact(
                     id = "c-2",
@@ -1382,8 +1407,7 @@ class ContactRepository(
                     notes = "Mobile Dev, discussed Compose gestures and physics.",
                     firstMetAt = Instant.now().minus(60, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(10, ChronoUnit.DAYS),
-                    meetCount = 4,
-                    cadenceDays = 30
+                    meetCount = 4
                 ),
                 "c-3" to Contact(
                     id = "c-3",
@@ -1395,8 +1419,7 @@ class ContactRepository(
                     notes = "Neighbor & Botanist, exchanged rare monstera cuttings.",
                     firstMetAt = Instant.now().minus(120, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(7, ChronoUnit.DAYS),
-                    meetCount = 6,
-                    cadenceDays = 7
+                    meetCount = 6
                 ),
                 "c-8" to Contact(
                     id = "c-8",
@@ -1408,8 +1431,7 @@ class ContactRepository(
                     notes = "Biotech Researcher, tea tasting buddy. Loves light roast pour-overs.",
                     firstMetAt = Instant.now().minus(90, ChronoUnit.DAYS),
                     lastMetAt = Instant.now().minus(1, ChronoUnit.DAYS),
-                    meetCount = 3,
-                    cadenceDays = 30
+                    meetCount = 3
                 )
             )
             sampleDetails.forEach { (id, contact) -> map[id] = contact }
@@ -1419,7 +1441,6 @@ class ContactRepository(
                         id = summary.id,
                         name = summary.name,
                         notes = summary.contextSubtitle,
-                        cadenceDays = 14,
                         lastMetAt = Instant.now().minus(14, ChronoUnit.DAYS)
                     )
                 }

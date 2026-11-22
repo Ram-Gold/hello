@@ -359,24 +359,26 @@ class HelloToastHostTest {
     }
 
     @Test
-    fun toastMotionDefaults_provideSlideFadeScaleTransitions_andRespectReducedMotion() {
+    fun toastMotionDefaults_provideEmilEaseOutSlideFadeScaleTransitions_andFadeOnlyForReducedMotion() {
         val enter = HelloToastMotionDefaults.enterTransition(isReducedMotion = false)
         val exit = HelloToastMotionDefaults.exitTransition(isReducedMotion = false)
         assertTrue(enter != androidx.compose.animation.EnterTransition.None)
         assertTrue(exit != androidx.compose.animation.ExitTransition.None)
         assertTrue(enter.toString().contains("Slide("))
-        assertTrue(enter.toString().contains("Scale("))
+        assertTrue(enter.toString().contains("Fade("))
+        assertTrue(enter.toString().contains("Scale(scale=0.97"))
         assertTrue(exit.toString().contains("Slide("))
-        assertTrue(exit.toString().contains("Scale("))
+        assertTrue(exit.toString().contains("Fade("))
+        assertTrue(exit.toString().contains("Scale(scale=0.97"))
 
-        assertEquals(
-            androidx.compose.animation.EnterTransition.None,
-            HelloToastMotionDefaults.enterTransition(isReducedMotion = true)
-        )
-        assertEquals(
-            androidx.compose.animation.ExitTransition.None,
-            HelloToastMotionDefaults.exitTransition(isReducedMotion = true)
-        )
+        val reducedEnter = HelloToastMotionDefaults.enterTransition(isReducedMotion = true)
+        val reducedExit = HelloToastMotionDefaults.exitTransition(isReducedMotion = true)
+        assertTrue(reducedEnter.toString().contains("Fade("))
+        assertFalse(reducedEnter.toString().contains("Slide("))
+        assertFalse(reducedEnter.toString().contains("Scale("))
+        assertTrue(reducedExit.toString().contains("Fade("))
+        assertFalse(reducedExit.toString().contains("Slide("))
+        assertFalse(reducedExit.toString().contains("Scale("))
     }
 }
 

@@ -1749,9 +1749,20 @@ private fun SnackbarFeedbackCollector(
     val timelineUiState by timelineViewModel.uiState.collectAsState()
     val contactsUiState by contactsViewModel.uiState.collectAsState()
     val quickActionUiState by quickActionViewModel.uiState.collectAsState()
+    val toastScope = rememberCoroutineScope()
+    val activeToastJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
+
+    fun launchToast(block: suspend () -> Unit) {
+        activeToastJob[0]?.cancel()
+        activeToastJob[0] = toastScope.launch {
+            block()
+        }
+    }
 
     LaunchedEffect(contactsUiState.userMessage) {
-        contactsUiState.userMessage?.let { msg ->
+        val msg = contactsUiState.userMessage ?: return@LaunchedEffect
+        contactsViewModel.onEvent(ContactsUiEvent.OnDismissUserMessage)
+        launchToast {
             val hasUndo = msg.startsWith("Deleted", ignoreCase = true) ||
                 msg.contains("archive", ignoreCase = true) ||
                 msg.contains("restored", ignoreCase = true)
@@ -1792,17 +1803,19 @@ private fun SnackbarFeedbackCollector(
                     }
                 }
             }
-            contactsViewModel.onEvent(ContactsUiEvent.OnDismissUserMessage)
         }
     }
     LaunchedEffect(homeUiState.userMessage) {
-        homeUiState.userMessage?.let {
-            snackbarHostState.showHelloToast(it, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
-            homeViewModel.onEvent(HomeUiEvent.OnDismissUserMessage)
+        val msg = homeUiState.userMessage ?: return@LaunchedEffect
+        homeViewModel.onEvent(HomeUiEvent.OnDismissUserMessage)
+        launchToast {
+            snackbarHostState.showHelloToast(msg, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
         }
     }
     LaunchedEffect(timelineUiState.userMessage) {
-        timelineUiState.userMessage?.let { msg ->
+        val msg = timelineUiState.userMessage ?: return@LaunchedEffect
+        timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
+        launchToast {
             val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
             val result = if (hasUndo) {
                 snackbarHostState.showHelloToast(
@@ -1825,16 +1838,17 @@ private fun SnackbarFeedbackCollector(
                     )
                 }
             }
-            timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
         }
     }
     LaunchedEffect(quickActionUiState.userMessage) {
-        quickActionUiState.userMessage?.let {
-            if (!quickActionUiState.isOpen) {
+        val msg = quickActionUiState.userMessage ?: return@LaunchedEffect
+        val shouldPlaySuccessHaptic = !quickActionUiState.isOpen
+        quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
+        launchToast {
+            if (shouldPlaySuccessHaptic) {
                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
             }
-            snackbarHostState.showHelloToast(it, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
-            quickActionViewModel.onEvent(QuickActionUiEvent.OnDismissUserMessage)
+            snackbarHostState.showHelloToast(msg, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
         }
     }
 }
@@ -1859,7 +1873,6 @@ fun MainAppShellLightPreview() {
                     override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
-                    override suspend fun setDefaultCadenceDays(days: Int) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
                     override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
                     override suspend fun setActiveFlowPresetId(presetId: String) {}
@@ -1889,7 +1902,6 @@ fun MainAppShellDarkPreview() {
                     override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
-                    override suspend fun setDefaultCadenceDays(days: Int) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
                     override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
                     override suspend fun setActiveFlowPresetId(presetId: String) {}

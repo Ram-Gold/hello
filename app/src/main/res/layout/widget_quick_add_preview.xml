@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_quick_add_preview">
+
+    <ImageView
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="center"
+        android:contentDescription="@string/quick_add_widget_description"
+        android:src="@drawable/ic_hello_mark"
+        android:tint="@color/widget_quick_add_foreground" />
+</FrameLayout>

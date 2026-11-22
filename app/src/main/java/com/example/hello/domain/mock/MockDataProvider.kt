@@ -128,8 +128,7 @@ object MockDataProvider {
         photoUri = null,
         firstMetAt = Instant.now().minus(90, ChronoUnit.DAYS),
         lastMetAt = Instant.now().minus(1, ChronoUnit.DAYS),
-        meetCount = 3,
-        cadenceDays = 30
+        meetCount = 3
     )
 
     val contactAlex = Contact(
@@ -143,8 +142,7 @@ object MockDataProvider {
         photoUri = null,
         firstMetAt = Instant.now().minus(45, ChronoUnit.DAYS),
         lastMetAt = Instant.now().minus(5, ChronoUnit.DAYS),
-        meetCount = 1,
-        cadenceDays = 14
+        meetCount = 1
     )
 
     val contactElena = Contact(
@@ -158,8 +156,7 @@ object MockDataProvider {
         photoUri = null,
         firstMetAt = Instant.now().minus(365, ChronoUnit.DAYS),
         lastMetAt = Instant.now().minus(3, ChronoUnit.DAYS),
-        meetCount = 12,
-        cadenceDays = 7
+        meetCount = 12
     )
 
     val contacts: List<Contact> = listOf(contactSarah, contactAlex, contactElena)

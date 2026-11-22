@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import java.time.Duration
-import java.time.Instant
 
 class PersonDetailViewModel(
     val contactId: String,
@@ -31,7 +29,6 @@ class PersonDetailViewModel(
         val initialEncounters = repository.encounters.value
             .filter { it.contactId == contactId }
             .sortedByDescending { it.occurredAt }
-        val initialCadence = calculateCadenceStatus(initialContact, initialEncounters)
         val initialLoading = initialContact == null && initialSummary == null
         val initialFavorite = initialContact?.isFavorite ?: (initialSummary?.isFavorite ?: false)
 
@@ -43,7 +40,6 @@ class PersonDetailViewModel(
                 encounters = initialEncounters,
                 placesMap = initialPlaces,
                 tagsList = initialTags,
-                cadenceStatus = initialCadence,
                 isLoading = initialLoading,
                 isFavorite = initialFavorite
             )
@@ -57,7 +53,6 @@ class PersonDetailViewModel(
             repository.tags
         ) { contact, encounters, places, tags ->
             val placesMap = places.associateBy { it.id }
-            val cadenceStatus = calculateCadenceStatus(contact, encounters)
             val summary = repository.contacts.value.firstOrNull { it.id == contactId }
             val isFavorite = contact?.isFavorite ?: (summary?.isFavorite ?: false)
 
@@ -70,7 +65,6 @@ class PersonDetailViewModel(
                     encounters = encounters,
                     placesMap = placesMap,
                     tagsList = tags,
-                    cadenceStatus = cadenceStatus,
                     selectedEncounterIds = prunedSelected,
                     isLoading = false,
                     isFavorite = isFavorite
@@ -162,67 +156,6 @@ class PersonDetailViewModel(
             PersonDetailUiEvent.OnUndoDeleteEncounter -> {
                 if (repository.undoLastDeleteEncounters()) {
                     _uiState.update { it.copy(userMessage = "Encounter restored") }
-                }
-            }
-        }
-    }
-
-    companion object {
-        fun calculateCadenceStatus(contact: Contact?, encounters: List<Encounter>): CadenceStatusInfo {
-            if (contact == null || contact.cadenceDays == null || contact.cadenceDays <= 0) {
-                return CadenceStatusInfo(
-                    health = CadenceHealth.NO_CADENCE,
-                    displayText = "No cadence set",
-                    subText = "Set a stay-in-touch cadence in edit"
-                )
-            }
-
-            val targetDays = contact.cadenceDays
-            val lastEncounterInstant = encounters.firstOrNull()?.occurredAt ?: contact.lastMetAt
-            if (lastEncounterInstant == null) {
-                return CadenceStatusInfo(
-                    health = CadenceHealth.DUE_SOON,
-                    cadenceDays = targetDays,
-                    displayText = "Never met yet",
-                    subText = "Target cadence: Every $targetDays days"
-                )
-            }
-
-            val now = Instant.now()
-            val daysSince = Duration.between(lastEncounterInstant, now).toDays().toInt().coerceAtLeast(0)
-            val daysDiff = targetDays - daysSince
-
-            return when {
-                daysDiff < 0 -> {
-                    val daysOverdue = -daysDiff
-                    CadenceStatusInfo(
-                        health = CadenceHealth.OVERDUE,
-                        daysSinceLastMet = daysSince,
-                        cadenceDays = targetDays,
-                        daysRemaining = daysDiff,
-                        displayText = "Overdue by $daysOverdue ${if (daysOverdue == 1) "day" else "days"}",
-                        subText = "Every $targetDays days, last met $daysSince days ago"
-                    )
-                }
-                daysDiff <= 3 -> {
-                    CadenceStatusInfo(
-                        health = CadenceHealth.DUE_SOON,
-                        daysSinceLastMet = daysSince,
-                        cadenceDays = targetDays,
-                        daysRemaining = daysDiff,
-                        displayText = "Due in $daysDiff ${if (daysDiff == 1) "day" else "days"}",
-                        subText = "Every $targetDays days, last met $daysSince days ago"
-                    )
-                }
-                else -> {
-                    CadenceStatusInfo(
-                        health = CadenceHealth.ON_TRACK,
-                        daysSinceLastMet = daysSince,
-                        cadenceDays = targetDays,
-                        daysRemaining = daysDiff,
-                        displayText = "On track, due in $daysDiff days",
-                        subText = "Every $targetDays days, last met $daysSince days ago"
-                    )
                 }
             }
         }

@@ -110,11 +110,11 @@ class ContactRepositoryTest {
         assertEquals("Met today", topRecent.lastEncounterText)
         assertTrue(topRecent.contextSubtitle.contains("Caught up about her new job at Figma"))
 
-        // Verify CadenceAlert for Sarah is cleared/reset
-        val remainingSarahCadence = repository.upcomingAlerts.value.filter {
-            it is UpcomingAlert.CadenceAlert && it.contactName.startsWith("Sarah")
+        // Verify SerendipityPrompt for Sarah is cleared when an encounter is logged
+        val remainingSarahPrompt = repository.upcomingAlerts.value.filter {
+            it is UpcomingAlert.SerendipityPrompt && it.contactName.startsWith("Sarah")
         }
-        assertTrue(remainingSarahCadence.isEmpty())
+        assertTrue(remainingSarahPrompt.isEmpty())
     }
 
     @Test
@@ -124,7 +124,6 @@ class ContactRepositoryTest {
         assertEquals("Alex Rivera", contact?.name)
         assertEquals("+1 (555) 876-5432", contact?.phone)
         assertEquals("alex.rivera@example.com", contact?.email)
-        assertEquals(14, contact?.cadenceDays)
     }
 
     @Test
@@ -147,7 +146,7 @@ class ContactRepositoryTest {
     }
 
     @Test
-    fun archiveContact_marksContactArchivedAndClearsCadenceAlert() {
+    fun archiveContact_marksContactArchivedAndClearsSerendipityPrompt() {
         val initial = repository.getContact("c-1")!!
         assertFalse(initial.isArchived)
 
@@ -514,5 +513,39 @@ class ContactRepositoryTest {
         val undone = repository.undoLastDeleteEncounters()
         assertTrue(undone)
         assertTrue(repository.encounters.value.any { it.id == encounterId })
+    }
+
+    @Test
+    fun skipSerendipityPrompt_excludesSkippedContactAndRollsNextEligibleContact() {
+        val today = LocalDate.of(2026, 11, 22)
+        val thirtyDaysAgo = today.minusDays(30).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val sixtyDaysAgo = today.minusDays(60).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val ninetyDaysAgo = today.minusDays(90).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+
+        val contacts = listOf(
+            com.example.hello.domain.model.Contact(id = "ser-1", name = "One", lastMetAt = thirtyDaysAgo, meetCount = 2),
+            com.example.hello.domain.model.Contact(id = "ser-2", name = "Two", lastMetAt = sixtyDaysAgo, meetCount = 2),
+            com.example.hello.domain.model.Contact(id = "ser-3", name = "Three", lastMetAt = ninetyDaysAgo, meetCount = 2)
+        )
+
+        val initialPicks = repository.computeSerendipityPrompts(
+            contacts = contacts,
+            encounters = emptyList(),
+            pendingFollowUps = emptyList(),
+            skippedContactIds = emptySet(),
+            today = today
+        )
+        assertEquals(2, initialPicks.size)
+
+        val firstPickedId = initialPicks.first().contactId
+        val afterSkipPicks = repository.computeSerendipityPrompts(
+            contacts = contacts,
+            encounters = emptyList(),
+            pendingFollowUps = emptyList(),
+            skippedContactIds = setOf(firstPickedId),
+            today = today
+        )
+        assertEquals(2, afterSkipPicks.size)
+        assertTrue("Skipped contact must not reappear on the same day", afterSkipPicks.none { it.contactId == firstPickedId })
     }
 }

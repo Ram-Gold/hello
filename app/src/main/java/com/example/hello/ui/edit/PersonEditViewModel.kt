@@ -28,7 +28,6 @@ class PersonEditViewModel(
         val contact = initialContact
         val tags = repository.tags.value
         val initialState = if (contact != null) {
-            val isCustom = contact.cadenceDays != null && contact.cadenceDays !in listOf(7, 14, 30, 90)
             PersonEditUiState(
                 contactId = contactId,
                 name = contact.name,
@@ -44,9 +43,6 @@ class PersonEditViewModel(
                 selectedTagIds = contact.tagIds.toSet(),
                 availableTags = tags,
                 customProperties = contact.customProperties,
-                cadenceDays = contact.cadenceDays,
-                isCustomCadence = isCustom,
-                customCadenceInput = if (isCustom) contact.cadenceDays.toString() else "",
                 isModified = false,
                 canSave = contact.name.isNotBlank()
             )
@@ -64,7 +60,6 @@ class PersonEditViewModel(
                 val fetchedContact = repository.getContactFlow(contactId).firstOrNull() ?: repository.getContact(contactId)
                 if (fetchedContact != null) {
                     initialContact = fetchedContact
-                    val isCustom = fetchedContact.cadenceDays != null && fetchedContact.cadenceDays !in listOf(7, 14, 30, 90)
                     _uiState.update { current ->
                         current.copy(
                             name = fetchedContact.name,
@@ -80,9 +75,6 @@ class PersonEditViewModel(
                             selectedTagIds = fetchedContact.tagIds.toSet(),
                             availableTags = repository.tags.value,
                             customProperties = fetchedContact.customProperties,
-                            cadenceDays = fetchedContact.cadenceDays,
-                            isCustomCadence = isCustom,
-                            customCadenceInput = if (isCustom) fetchedContact.cadenceDays.toString() else "",
                             isModified = false,
                             canSave = fetchedContact.name.isNotBlank()
                         )
@@ -270,29 +262,6 @@ class PersonEditViewModel(
                     )
                 }
             }
-            is PersonEditUiEvent.OnSelectCadence -> {
-                _uiState.update { current ->
-                    val isMod = checkModified(current.copy(cadenceDays = event.days))
-                    current.copy(
-                        cadenceDays = event.days,
-                        isCustomCadence = false,
-                        customCadenceInput = "",
-                        isModified = isMod
-                    )
-                }
-            }
-            is PersonEditUiEvent.OnCustomCadenceChange -> {
-                val parsed = event.daysString.filter { it.isDigit() }.toIntOrNull()
-                _uiState.update { current ->
-                    val isMod = checkModified(current.copy(cadenceDays = parsed))
-                    current.copy(
-                        customCadenceInput = event.daysString,
-                        isCustomCadence = true,
-                        cadenceDays = parsed,
-                        isModified = isMod
-                    )
-                }
-            }
             PersonEditUiEvent.OnSaveClick -> {
                 saveChanges()
             }
@@ -357,12 +326,11 @@ class PersonEditViewModel(
         val samePhoto = current.photoUri == base.photoUri
         val sameNotionist = current.notionistConfig == base.notionistConfig
         val sameTags = current.selectedTagIds == base.tagIds.toSet()
-        val sameCadence = current.cadenceDays == base.cadenceDays
         val sameRole = current.role.trim() == base.role.orEmpty()
         val sameCompany = current.company.trim() == base.company.orEmpty()
         val sameBirthday = current.birthday == base.birthday
 
-        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameNotionist && sameTags && sameCadence && sameRole && sameCompany && sameBirthday)
+        return !(sameName && sameAliases && samePhone && sameEmail && sameNotes && samePhoto && sameNotionist && sameTags && sameRole && sameCompany && sameBirthday)
     }
 
     private fun saveChanges() {
@@ -397,7 +365,6 @@ class PersonEditViewModel(
             firstMetAt = base?.firstMetAt,
             lastMetAt = base?.lastMetAt,
             meetCount = base?.meetCount ?: 0,
-            cadenceDays = current.cadenceDays,
             isArchived = base?.isArchived ?: false,
             isFavorite = base?.isFavorite ?: false,
             updatedAt = Instant.now(),

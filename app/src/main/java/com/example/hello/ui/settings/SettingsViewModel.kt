@@ -43,7 +43,6 @@ class SettingsViewModel(
                         themeStyle = prefs.themeStyle,
                         dynamicColor = prefs.dynamicColor,
                         reduceAnimations = prefs.reduceAnimations,
-                        defaultCadenceDays = prefs.defaultCadenceDays,
                         notificationHour = prefs.notificationHour,
                         notificationMinute = prefs.notificationMinute,
                         defaultIncludeLocation = prefs.defaultIncludeLocation,
@@ -274,12 +273,6 @@ class SettingsViewModel(
                             userMessage = if (event.enabled) "Reduced animations enabled" else "Standard animations enabled"
                         )
                     }
-                }
-            }
-
-            is SettingsUiEvent.OnSetDefaultCadenceDays -> {
-                viewModelScope.launch {
-                    preferencesRepository.setDefaultCadenceDays(event.days)
                 }
             }
 

@@ -80,7 +80,6 @@ class ContactPersistenceReactiveTest {
             firstMetAt = Instant.now().minus(30, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS),
             lastMetAt = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS),
             meetCount = 5,
-            cadenceDays = 14,
             isArchived = false
         )
 
@@ -97,7 +96,6 @@ class ContactPersistenceReactiveTest {
         assertEquals(original.firstMetAt, entity.firstMetAt)
         assertEquals(original.lastMetAt, entity.lastMetAt)
         assertEquals(original.meetCount, entity.meetCount)
-        assertEquals(original.cadenceDays, entity.cadenceDays)
         assertEquals(original.isArchived, entity.isArchived)
 
         val reconstructed = entity.toDomain()

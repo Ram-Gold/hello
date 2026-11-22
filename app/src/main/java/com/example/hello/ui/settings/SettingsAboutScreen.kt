@@ -159,6 +159,7 @@ private data class OpenSourceNotice(
     val name: String,
     val author: String,
     val licenseName: String,
+    val description: String,
     val licenseText: String
 )
 
@@ -170,6 +171,32 @@ Licensed under the Apache License, Version 2.0 (the "License"); you may not use 
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License."""
 
+private const val MIT_LICENSE = """MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT."""
+
+private const val CC0_AND_MIT_LICENSE = """CC0 1.0 Universal (Public Domain Dedication) & MIT License
+
+Original Notionists artwork by Zoish is dedicated to the public domain under CC0 1.0 Universal (no rights reserved).
+
+DiceBear avatar style remix and HTTP API tooling are licensed under the MIT License (https://www.dicebear.com/styles/notionists/)."""
+
+private const val KOBOYO_ICONS_LICENSE = """Koboyo Icons License (https://koboyo.com/icons/license)
+
+Free for personal and commercial use in websites, apps, documents, presentations, and products, including recoloring, resizing, and modification. Attribution is not required (link to https://koboyo.com/icons appreciated).
+
+Redistribution or resale as a standalone icon collection, or bundling into a competing icon library, canvas, or drawing tool, is not permitted."""
+
+private const val SQLITE_PUBLIC_DOMAIN_AND_APACHE = """Apache License, Version 2.0 (AndroidX Room & SQLite wrappers) & Public Domain (SQLite)
+
+The AndroidX Room and androidx.sqlite wrappers are licensed under the Apache License, Version 2.0.
+
+The underlying SQLite C library (by D. Richard Hipp and SQLite contributors) has been dedicated to the public domain by its authors."""
+
 private const val SIL_OFL_1_1_LICENSE = """SIL Open Font License, Version 1.1
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of the Font Software, to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies of the Font Software, subject to the following conditions:
@@ -180,25 +207,103 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED."""
 
-private val RUNTIME_LIBRARY_NOTICES = listOf(
-    OpenSourceNotice("Kotlin Standard Library & Coroutines", "JetBrains s.r.o.", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("Jetpack Compose & Material 3", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX Navigation Compose", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX Core KTX, Splashscreen & Lifecycle", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX Room & Bundled SQLite", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX DataStore Preferences", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX Glance AppWidget", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE),
-    OpenSourceNotice("AndroidX WorkManager", "The Android Open Source Project", "Apache 2.0", APACHE_2_LICENSE)
+private val ARTWORK_AND_ICON_NOTICES = listOf(
+    OpenSourceNotice(
+        name = "Notionists (via DiceBear)",
+        author = "Zoish & DiceBear",
+        licenseName = "CC0 1.0 & MIT",
+        description = "Hand-drawn monochrome character illustrations used for opt-in contact avatars in the Avatar Playground.",
+        licenseText = CC0_AND_MIT_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "Koboyo Icons",
+        author = "Koboyo (koboyo.com/icons)",
+        licenseName = "Koboyo Icons License",
+        description = "Monochrome editorial vector illustrations used for empty states across the app.",
+        licenseText = KOBOYO_ICONS_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "Feather Icons",
+        author = "Cole Bemis & Contributors",
+        licenseName = "MIT",
+        description = "Minimalist 24x24 stroke icons bundled for core UI navigation, actions, and the default contact avatar icon.",
+        licenseText = MIT_LICENSE
+    )
 )
 
 private val FONT_AND_ASSET_NOTICES = listOf(
-    OpenSourceNotice("Nunito", "Vernon Adams, Cyreal, Jacques Le Bailly", "SIL OFL 1.1", SIL_OFL_1_1_LICENSE),
-    OpenSourceNotice("Open Sans", "Steve Matteson", "SIL OFL 1.1", SIL_OFL_1_1_LICENSE),
     OpenSourceNotice(
-        "Mallow & Vellum",
-        "Bundled Typeface Assets",
-        "Bundled Asset",
-        "Bundled typeface assets used for editorial headings (Mallow) and body/caption typography (Vellum)."
+        name = "Nunito (Mallow alias)",
+        author = "The Nunito Project Authors (Vernon Adams)",
+        licenseName = "SIL OFL 1.1",
+        description = "Rounded sans-serif typeface bundled for display, heading, and title typography (nunito_*.ttf and mallow_*.ttf).",
+        licenseText = SIL_OFL_1_1_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "Open Sans (Vellum alias)",
+        author = "The Open Sans Project Authors (Monotype Design Team)",
+        licenseName = "SIL OFL 1.1",
+        description = "Humanist sans-serif typeface bundled for body copy, captions, and UI labels (opensans_*.ttf and vellum_*.ttf).",
+        licenseText = SIL_OFL_1_1_LICENSE
+    )
+)
+
+private val RUNTIME_LIBRARY_NOTICES = listOf(
+    OpenSourceNotice(
+        name = "Kotlin Standard Library & Coroutines",
+        author = "JetBrains s.r.o.",
+        licenseName = "Apache 2.0",
+        description = "Language runtime and structured concurrency (Flow, StateFlow, and background dispatchers).",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "Jetpack Compose & Material 3",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "Declarative UI toolkit, Material Design 3 components, Material Icons, and Activity Compose integration.",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX Navigation Compose",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "In-app screen routing and back-stack management.",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX Core, Splashscreen & Lifecycle",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "Kotlin Android extensions (core-ktx), system launch splash screen API, and lifecycle runtime.",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX Room & Bundled SQLite",
+        author = "The Android Open Source Project & SQLite Authors",
+        licenseName = "Apache 2.0 & Public Domain",
+        description = "Local SQLite + FTS5 persistence layer and bundled native SQLite database engine.",
+        licenseText = SQLITE_PUBLIC_DOMAIN_AND_APACHE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX DataStore Preferences",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "Asynchronous local key-value storage for theme, terminology, and app preferences.",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX Glance AppWidget",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "Compose-based home screen widget runtime powering the Quick Add widget.",
+        licenseText = APACHE_2_LICENSE
+    ),
+    OpenSourceNotice(
+        name = "AndroidX WorkManager",
+        author = "The Android Open Source Project",
+        licenseName = "Apache 2.0",
+        description = "Background job execution for on-demand ZIP export bundle generation.",
+        licenseText = APACHE_2_LICENSE
     )
 )
 
@@ -235,12 +340,12 @@ fun SettingsLicensesScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsSubsection(title = "Runtime Libraries") {
-                    RUNTIME_LIBRARY_NOTICES.forEachIndexed { index, notice ->
+                SettingsSubsection(title = "Artwork & Icons") {
+                    ARTWORK_AND_ICON_NOTICES.forEachIndexed { index, notice ->
                         SettingsItem(
                             title = notice.name,
                             subtitle = "${notice.author} (${notice.licenseName})",
-                            shape = shapeFor(index, RUNTIME_LIBRARY_NOTICES.size),
+                            shape = shapeFor(index, ARTWORK_AND_ICON_NOTICES.size),
                             trailingContent = {
                                 Icon(
                                     Icons.Rounded.ChevronRight,
@@ -261,6 +366,26 @@ fun SettingsLicensesScreen(
                             title = notice.name,
                             subtitle = "${notice.author} (${notice.licenseName})",
                             shape = shapeFor(index, FONT_AND_ASSET_NOTICES.size),
+                            trailingContent = {
+                                Icon(
+                                    Icons.Rounded.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            onClick = { selectedNotice = notice }
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsSubsection(title = "Runtime Libraries") {
+                    RUNTIME_LIBRARY_NOTICES.forEachIndexed { index, notice ->
+                        SettingsItem(
+                            title = notice.name,
+                            subtitle = "${notice.author} (${notice.licenseName})",
+                            shape = shapeFor(index, RUNTIME_LIBRARY_NOTICES.size),
                             trailingContent = {
                                 Icon(
                                     Icons.Rounded.ChevronRight,
@@ -297,6 +422,11 @@ fun SettingsLicensesScreen(
                         text = "${notice.author} (${notice.licenseName})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = notice.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = notice.licenseText,

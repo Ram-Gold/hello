@@ -1,5 +1,8 @@
 package com.example.hello.ui.detail.components
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -354,21 +357,11 @@ private fun EmptyTimelineCard(onLogEncounterClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.EventNote,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
+            EmptyStateIllustration(
+                drawableRes = R.drawable.ic_empty_profile_timeline,
+                height = 88.dp
+            )
+            Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = "No encounters logged yet",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),

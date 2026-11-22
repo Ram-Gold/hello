@@ -72,8 +72,11 @@ class ContactsViewModel(
                 contacts = allContacts,
                 selectedContactIds = current.selectedContactIds,
                 isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                 availableTags = availableTags,
-                favoriteContacts = favoriteContacts
+                favoriteContacts = favoriteContacts,
+                isArchivedSheetOpen = current.isArchivedSheetOpen,
+                userMessage = current.userMessage
             )
         }
     }
@@ -88,8 +91,11 @@ class ContactsViewModel(
                 contacts = allContacts,
                 selectedContactIds = current.selectedContactIds,
                 isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                 availableTags = availableTags,
-                favoriteContacts = favoriteContacts
+                favoriteContacts = favoriteContacts,
+                isArchivedSheetOpen = current.isArchivedSheetOpen,
+                userMessage = current.userMessage
             )
         }
     }
@@ -106,8 +112,11 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = current.userMessage
                     )
                 }
                 if (repository != null && query.isNotBlank()) {
@@ -123,8 +132,11 @@ class ContactsViewModel(
                                     contacts = matchingSummaries,
                                     selectedContactIds = current.selectedContactIds,
                                     isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                                    isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                                     availableTags = availableTags,
-                                    favoriteContacts = favoriteContacts
+                                    favoriteContacts = favoriteContacts,
+                                    isArchivedSheetOpen = current.isArchivedSheetOpen,
+                                    userMessage = current.userMessage
                                 )
                             }
                         }
@@ -141,8 +153,11 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = current.userMessage
                     )
                 }
             }
@@ -163,8 +178,11 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = current.userMessage
                     )
                 }
             }
@@ -177,8 +195,11 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = current.userMessage
                     )
                 }
             }
@@ -250,8 +271,10 @@ class ContactsViewModel(
                         isDeleteConfirmationVisible = false,
                         isArchiveConfirmationVisible = false,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
-                    ).copy(userMessage = message)
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = message
+                    )
                 }
             }
             is ContactsUiEvent.OnConfirmDeleteSelected -> {
@@ -273,8 +296,10 @@ class ContactsViewModel(
                         selectedContactIds = emptySet(),
                         isDeleteConfirmationVisible = false,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
-                    ).copy(userMessage = message)
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = message
+                    )
                 }
             }
             is ContactsUiEvent.OnClearFilters -> {
@@ -286,8 +311,11 @@ class ContactsViewModel(
                         contacts = allContacts,
                         selectedContactIds = current.selectedContactIds,
                         isDeleteConfirmationVisible = current.isDeleteConfirmationVisible,
+                        isArchiveConfirmationVisible = current.isArchiveConfirmationVisible,
                         availableTags = availableTags,
-                        favoriteContacts = favoriteContacts
+                        favoriteContacts = favoriteContacts,
+                        isArchivedSheetOpen = current.isArchivedSheetOpen,
+                        userMessage = current.userMessage
                     )
                 }
             }
@@ -334,7 +362,8 @@ class ContactsViewModel(
             isArchiveConfirmationVisible: Boolean = false,
             availableTags: List<Tag> = emptyList(),
             favoriteContacts: List<ContactSummary> = emptyList(),
-            isArchivedSheetOpen: Boolean = false
+            isArchivedSheetOpen: Boolean = false,
+            userMessage: String? = null
         ): ContactsUiState {
             val cleanQuery = searchQuery.trim()
             val cleanSelectedTags = selectedTags
@@ -427,7 +456,8 @@ class ContactsViewModel(
                 isArchiveConfirmationVisible = isArchiveConfirmationVisible,
                 favoriteContacts = favoriteContacts,
                 archivedContacts = filteredArchived,
-                isArchivedSheetOpen = isArchivedSheetOpen
+                isArchivedSheetOpen = isArchivedSheetOpen,
+                userMessage = userMessage
             )
         }
 
@@ -446,7 +476,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-2",
                     name = "David Kim",
-                    contextSubtitle = "Mobile Dev • Discussed Compose gestures",
+                    contextSubtitle = "Mobile Dev, discussed Compose gestures",
                     avatarInitials = "DK",
                     avatarBgIndex = 1,
                     lastEncounterText = "10 days ago",
@@ -456,7 +486,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-3",
                     name = "Elena Rostova",
-                    contextSubtitle = "Neighbor & Botanist • Exchanged plants",
+                    contextSubtitle = "Neighbor & Botanist, exchanged plants",
                     avatarInitials = "ER",
                     avatarBgIndex = 2,
                     lastEncounterText = "Last Sunday",
@@ -466,7 +496,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-4",
                     name = "Liam Chen",
-                    contextSubtitle = "Architect • Coffee and urban photography",
+                    contextSubtitle = "Architect, coffee and urban photography",
                     avatarInitials = "LC",
                     avatarBgIndex = 3,
                     lastEncounterText = "2 weeks ago",
@@ -476,7 +506,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-5",
                     name = "Marcus Vance",
-                    contextSubtitle = "Founder @ Studio Arc • Met at Coffee Lab",
+                    contextSubtitle = "Founder @ Studio Arc, met at Coffee Lab",
                     avatarInitials = "MV",
                     avatarBgIndex = 4,
                     lastEncounterText = "4 days ago",
@@ -486,7 +516,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-6",
                     name = "Maya Patel",
-                    contextSubtitle = "CS '27 • Met yesterday at Hackathon",
+                    contextSubtitle = "CS '27, met yesterday at Hackathon",
                     avatarInitials = "MP",
                     avatarBgIndex = 5,
                     lastEncounterText = "Met yesterday",
@@ -496,7 +526,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-7",
                     name = "Noah Albright",
-                    contextSubtitle = "High School Friend • Catch up quarterly",
+                    contextSubtitle = "High School Friend, catch up quarterly",
                     avatarInitials = "NA",
                     avatarBgIndex = 0,
                     lastEncounterText = "1 month ago",
@@ -506,7 +536,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-8",
                     name = "Sarah Lin",
-                    contextSubtitle = "Biotech Researcher • Tea tasting buddy",
+                    contextSubtitle = "Biotech Researcher, tea tasting buddy",
                     avatarInitials = "SL",
                     avatarBgIndex = 1,
                     lastEncounterText = "45 days ago",
@@ -516,7 +546,7 @@ class ContactsViewModel(
                 ContactSummary(
                     id = "c-9",
                     name = "Sophia Martinez",
-                    contextSubtitle = "UX Researcher • Working on accessibility tooling",
+                    contextSubtitle = "UX Researcher, working on accessibility tooling",
                     avatarInitials = "SM",
                     avatarBgIndex = 2,
                     lastEncounterText = "Yesterday",

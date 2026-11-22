@@ -48,39 +48,71 @@ enum class CardType(val title: String, val iconKey: HelloIconKey) {
 }
 
 /**
- * Zero-configuration subconscious check-in interval calculator.
- * Computes an adaptive threshold from past encounter history:
- * - For 2+ encounters: 1.5x average gap between recorded encounters, clamped to 14..90 days.
- * - For 0-1 encounters: 30-day baseline.
+ * Weighted-random serendipity selector for quiet, in-app-only Home reconnect prompts (ADR-0036).
+ * - Eligible contacts: active, no pending FollowUp, not skipped today, and at least [MIN_GAP_DAYS]
+ *   since their last recorded encounter (or creation anchor).
+ * - Weighting: proportional to days since last met, clamped to [MIN_GAP_DAYS]..[MAX_WEIGHT_DAYS]
+ *   so longer gaps are favored without letting multi-year gaps monopolize selection.
+ * - Deterministic daily sampling seeded by `todayEpochDay`, keeping picks stable all day until skipped.
  */
-object SubconsciousCheckInCalculator {
-    const val MIN_ADAPTIVE_DAYS = 14
-    const val MAX_ADAPTIVE_DAYS = 90
-    const val BASELINE_DAYS = 30
-    const val SNOOZE_DAYS = 14L
+object SerendipityPicker {
+    const val MIN_GAP_DAYS = 14
+    const val MAX_WEIGHT_DAYS = 365
     const val MAX_SURFACED_PROMPTS = 2
 
-    fun computeAdaptiveThresholdDays(encounterEpochDaysSortedAsc: List<Long>): Int {
-        val distinctDays = encounterEpochDaysSortedAsc.distinct().sorted()
-        if (distinctDays.size < 2) {
-            return BASELINE_DAYS
+    data class WeightedCandidate<T>(
+        val item: T,
+        val stableId: String,
+        val daysSinceLastMet: Int
+    )
+
+    fun <T> pickWeightedRandom(
+        candidates: List<WeightedCandidate<T>>,
+        todayEpochDay: Long,
+        maxCount: Int = MAX_SURFACED_PROMPTS
+    ): List<WeightedCandidate<T>> {
+        if (candidates.isEmpty() || maxCount <= 0) return emptyList()
+
+        val eligible = candidates
+            .filter { it.daysSinceLastMet >= MIN_GAP_DAYS }
+            .sortedBy { it.stableId }
+            .toMutableList()
+        if (eligible.isEmpty()) return emptyList()
+
+        val rng = kotlin.random.Random(todayEpochDay * 6364136223846793005L + 1442695040888963407L)
+        val picked = mutableListOf<WeightedCandidate<T>>()
+        val targetCount = minOf(maxCount, eligible.size)
+
+        repeat(targetCount) {
+            val totalWeight = eligible.sumOf { candidateWeight(it.daysSinceLastMet) }
+            if (totalWeight <= 0.0) return@repeat
+            var roll = rng.nextDouble() * totalWeight
+            var selectedIndex = eligible.lastIndex
+            for (i in eligible.indices) {
+                roll -= candidateWeight(eligible[i].daysSinceLastMet)
+                if (roll <= 0.0) {
+                    selectedIndex = i
+                    break
+                }
+            }
+            picked += eligible.removeAt(selectedIndex)
         }
-        val totalSpan = (distinctDays.last() - distinctDays.first()).coerceAtLeast(1L)
-        val intervalsCount = distinctDays.size - 1
-        val avgGap = totalSpan.toDouble() / intervalsCount.toDouble()
-        val adaptive = kotlin.math.round(avgGap * 1.5).toInt()
-        return adaptive.coerceIn(MIN_ADAPTIVE_DAYS, MAX_ADAPTIVE_DAYS)
+
+        return picked
     }
 
-    fun formatSubconsciousPrompt(daysSince: Int, hasMultipleEncounters: Boolean): String {
+    fun candidateWeight(daysSinceLastMet: Int): Double =
+        daysSinceLastMet.coerceIn(MIN_GAP_DAYS, MAX_WEIGHT_DAYS).toDouble()
+
+    fun formatSerendipityContext(daysSince: Int, hasMultipleEncounters: Boolean): String {
         val durationLabel = when {
             daysSince >= 60 -> "${daysSince / 30} months ago"
             daysSince >= 14 -> "${daysSince / 7} weeks ago"
             daysSince == 1 -> "yesterday"
             else -> "$daysSince days ago"
         }
-        val prefix = if (hasMultipleEncounters) "Met" else "Added"
-        return "$prefix $durationLabel. Anything new to update?"
+        val prefix = if (hasMultipleEncounters) "Last met" else "Added"
+        return "$prefix $durationLabel"
     }
 }
 
@@ -102,11 +134,11 @@ sealed interface UpcomingAlert {
         val dueText: String
     ) : UpcomingAlert
 
-    data class CadenceAlert(
+    data class SerendipityPrompt(
         override val id: String,
         override val contactName: String,
         val daysSinceLastMet: Int,
-        val promptText: String,
+        val contextText: String,
         val contactId: String = ""
     ) : UpcomingAlert
 }

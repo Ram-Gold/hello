@@ -272,7 +272,7 @@ class TimelineViewModel(
                     )
                 }
 
-            // 2. Future Nodes: Soonest-first (FollowUps + Birthdays within 60d + Projected Cadence Reconnections)
+            // 2. Future Nodes: Soonest-first (FollowUps + Birthdays within 1 calendar month)
             val futureList = mutableListOf<FutureTimelineNode>()
 
             // 2a. Pending FollowUps

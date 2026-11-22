@@ -554,4 +554,23 @@ class ContactsViewModelTest {
         assertTrue(state.archivedContacts.any { it.id == secondId })
         assertEquals("Archived 2 contacts", state.userMessage)
     }
+
+    @Test
+    fun syncContacts_preservesActiveUserMessageAndArchivedSheetState() {
+        val sample = ContactsViewModel.createSampleContacts()
+        viewModel.syncContacts(sample)
+        val firstId = sample[0].id
+
+        viewModel.onEvent(ContactsUiEvent.OnOpenArchivedSheet)
+        viewModel.onEvent(ContactsUiEvent.OnContactLongClick(firstId))
+        viewModel.onEvent(ContactsUiEvent.OnConfirmArchiveSelected)
+        assertEquals("Archived 1 contact", viewModel.uiState.value.userMessage)
+        assertTrue(viewModel.uiState.value.isArchivedSheetOpen)
+
+        // Simulate repository Flow re-emitting after archive or undo restore
+        viewModel.syncContacts(sample)
+
+        assertEquals("Archived 1 contact", viewModel.uiState.value.userMessage)
+        assertTrue(viewModel.uiState.value.isArchivedSheetOpen)
+    }
 }

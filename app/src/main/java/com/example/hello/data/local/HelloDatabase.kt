@@ -42,7 +42,7 @@ import com.example.hello.data.local.entity.TagEntity
         CaptureFlowPresetEntity::class,
         CaptureFlowComponentEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -67,6 +67,55 @@ abstract class HelloDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `contacts_new` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `aliases` TEXT NOT NULL,
+                        `role` TEXT,
+                        `company` TEXT,
+                        `birthday` TEXT,
+                        `phone` TEXT,
+                        `email` TEXT,
+                        `tagIds` TEXT NOT NULL,
+                        `notes` TEXT NOT NULL,
+                        `photoUri` TEXT,
+                        `notionistConfig` TEXT,
+                        `firstMetAt` TEXT,
+                        `lastMetAt` TEXT,
+                        `meetCount` INTEGER NOT NULL,
+                        `isArchived` INTEGER NOT NULL,
+                        `isFavorite` INTEGER NOT NULL,
+                        `updatedAt` TEXT,
+                        `customProperties` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                connection.execSQL(
+                    """
+                    INSERT INTO `contacts_new` (
+                        `id`, `name`, `aliases`, `role`, `company`, `birthday`,
+                        `phone`, `email`, `tagIds`, `notes`, `photoUri`, `notionistConfig`,
+                        `firstMetAt`, `lastMetAt`, `meetCount`, `isArchived`, `isFavorite`,
+                        `updatedAt`, `customProperties`
+                    )
+                    SELECT
+                        `id`, `name`, `aliases`, `role`, `company`, `birthday`,
+                        `phone`, `email`, `tagIds`, `notes`, `photoUri`, `notionistConfig`,
+                        `firstMetAt`, `lastMetAt`, `meetCount`, `isArchived`, `isFavorite`,
+                        `updatedAt`, `customProperties`
+                    FROM `contacts`
+                    """.trimIndent()
+                )
+                connection.execSQL("DROP TABLE `contacts`")
+                connection.execSQL("ALTER TABLE `contacts_new` RENAME TO `contacts`")
+            }
+        }
+
         @Volatile
         private var instance: HelloDatabase? = null
 
@@ -82,7 +131,7 @@ abstract class HelloDatabase : RoomDatabase() {
                 HelloDatabase::class.java,
                 DATABASE_NAME
             )
-            .addMigrations(MIGRATION_5_6)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration(true)
             .setDriver(BundledSQLiteDriver())
             .build()

@@ -18,7 +18,6 @@ class MockDataProviderTest {
         val sarah = contacts.find { it.name == "Sarah Lin" }
         assertNotNull("Sarah Lin should exist in mock contacts", sarah)
         assertEquals(3, sarah!!.meetCount)
-        assertEquals(30, sarah.cadenceDays)
         assertTrue("Sarah should have aliases", sarah.aliases.contains("S-Lin"))
 
         val alex = contacts.find { it.name == "Alex Rivera" }
@@ -27,7 +26,7 @@ class MockDataProviderTest {
 
         val elena = contacts.find { it.name == "Elena Gomez" }
         assertNotNull("Elena Gomez should exist in mock contacts", elena)
-        assertEquals(7, elena!!.cadenceDays)
+        assertEquals(12, elena!!.meetCount)
     }
 
     @Test

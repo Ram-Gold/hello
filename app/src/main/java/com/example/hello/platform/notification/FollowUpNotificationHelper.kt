@@ -22,7 +22,7 @@ object FollowUpNotificationHelper {
 
     const val CHANNEL_ID = "followup_reminders"
     const val CHANNEL_NAME = "Follow-up Reminders"
-    const val CHANNEL_DESCRIPTION = "Stay-in-touch cadences and actionable follow-up tasks"
+    const val CHANNEL_DESCRIPTION = "Actionable follow-up reminders you schedule"
 
     const val ACTION_VIEW_CONTACT = "com.example.hello.action.VIEW_CONTACT"
     const val EXTRA_CONTACT_ID = "com.example.hello.extra.CONTACT_ID"
@@ -114,7 +114,7 @@ object FollowUpNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val cleanNote = note.ifBlank { "Stay-in-touch cadence due" }
+        val cleanNote = note.ifBlank { "Scheduled follow-up reminder" }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)

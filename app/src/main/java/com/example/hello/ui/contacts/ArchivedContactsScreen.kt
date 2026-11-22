@@ -1,5 +1,8 @@
 package com.example.hello.ui.contacts
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -271,23 +274,10 @@ private fun ArchivedContactsEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Archive,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
+            EmptyStateIllustration(
+                drawableRes = R.drawable.ic_empty_archived,
+                height = 132.dp
+            )
 
             Spacer(modifier = Modifier.height(6.dp))
 

@@ -99,7 +99,8 @@ fun HomeScreen(
                 UpcomingFeedSection(
                     alerts = uiState.upcomingAlerts,
                     onReminderDone = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderDone(it)) } },
-                    onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } }
+                    onReminderSnooze = remember(onEvent) { { onEvent(HomeUiEvent.OnReminderSnooze(it)) } },
+                    onOpenContact = onContactClick
                 )
 
                 // 2.5 Favorites Area

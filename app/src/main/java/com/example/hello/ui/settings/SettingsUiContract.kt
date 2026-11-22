@@ -22,7 +22,6 @@ data class SettingsUiState(
     val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
-    val defaultCadenceDays: Int = 30,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
     val defaultIncludeLocation: Boolean = true,
@@ -59,7 +58,6 @@ sealed interface SettingsUiEvent {
     data class OnSelectThemeStyle(val themeStyle: ThemeStyle) : SettingsUiEvent
     data class OnToggleDynamicColor(val enabled: Boolean) : SettingsUiEvent
     data class OnToggleReduceAnimations(val enabled: Boolean) : SettingsUiEvent
-    data class OnSetDefaultCadenceDays(val days: Int) : SettingsUiEvent
     data class OnSetNotificationTime(val hour: Int, val minute: Int) : SettingsUiEvent
     data class OnToggleDefaultIncludeLocation(val enabled: Boolean) : SettingsUiEvent
 

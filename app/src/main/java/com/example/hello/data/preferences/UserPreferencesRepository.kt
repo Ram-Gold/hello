@@ -47,7 +47,6 @@ data class UserPreferences(
     val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
-    val defaultCadenceDays: Int = 30,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
     val defaultIncludeLocation: Boolean = true,
@@ -63,7 +62,6 @@ interface UserPreferencesRepository {
     suspend fun setThemeStyle(themeStyle: ThemeStyle)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setReduceAnimations(enabled: Boolean)
-    suspend fun setDefaultCadenceDays(days: Int)
     suspend fun setNotificationTime(hour: Int, minute: Int)
     suspend fun setDefaultIncludeLocation(enabled: Boolean)
     suspend fun setActiveFlowPresetId(presetId: String)
@@ -92,7 +90,6 @@ class DataStoreUserPreferencesRepository(
             val themeStyle = ThemeStyle.fromId(themeStyleId)
             val dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: false
             val reduceAnimations = preferences[KEY_REDUCE_ANIMATIONS] ?: false
-            val cadenceDays = preferences[KEY_DEFAULT_CADENCE_DAYS] ?: 30
             val notifHour = preferences[KEY_NOTIFICATION_HOUR] ?: 9
             val notifMinute = preferences[KEY_NOTIFICATION_MINUTE] ?: 0
             val includeLocation = preferences[KEY_DEFAULT_INCLUDE_LOCATION] ?: true
@@ -106,7 +103,6 @@ class DataStoreUserPreferencesRepository(
                 themeStyle = themeStyle,
                 dynamicColor = dynamicColor,
                 reduceAnimations = reduceAnimations,
-                defaultCadenceDays = cadenceDays,
                 notificationHour = notifHour,
                 notificationMinute = notifMinute,
                 defaultIncludeLocation = includeLocation,
@@ -156,12 +152,6 @@ class DataStoreUserPreferencesRepository(
         }
     }
 
-    override suspend fun setDefaultCadenceDays(days: Int) {
-        dataStore.edit { preferences ->
-            preferences[KEY_DEFAULT_CADENCE_DAYS] = days
-        }
-    }
-
     override suspend fun setNotificationTime(hour: Int, minute: Int) {
         dataStore.edit { preferences ->
             preferences[KEY_NOTIFICATION_HOUR] = hour
@@ -189,7 +179,6 @@ class DataStoreUserPreferencesRepository(
         val KEY_THEME_STYLE = stringPreferencesKey("theme_style")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
-        val KEY_DEFAULT_CADENCE_DAYS = intPreferencesKey("default_cadence_days")
         val KEY_NOTIFICATION_HOUR = intPreferencesKey("notification_hour")
         val KEY_NOTIFICATION_MINUTE = intPreferencesKey("notification_minute")
         val KEY_DEFAULT_INCLUDE_LOCATION = booleanPreferencesKey("default_include_location")

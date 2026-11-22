@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 /**
- * Repository interface for managing durable FollowUp persistence and stay-in-touch cadences.
+ * Repository interface for managing durable FollowUp persistence and scheduled reminders.
  * Backed by Room with atomic ACID updates in <2ms (Ticket 05).
  */
 interface FollowUpRepository {

@@ -116,6 +116,79 @@ class HelloDatabaseTest {
         assertEquals("David Kim", results2.first().name)
     }
 
+    @Test
+    fun migration6To7_dropsCadenceDaysColumnWhilePreservingContactData() {
+        val driver = androidx.sqlite.driver.bundled.BundledSQLiteDriver()
+        val connection = driver.open(":memory:")
+        try {
+            connection.prepare(
+                """
+                CREATE TABLE `contacts` (
+                    `id` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `aliases` TEXT NOT NULL,
+                    `role` TEXT,
+                    `company` TEXT,
+                    `birthday` TEXT,
+                    `phone` TEXT,
+                    `email` TEXT,
+                    `tagIds` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `photoUri` TEXT,
+                    `notionistConfig` TEXT,
+                    `firstMetAt` TEXT,
+                    `lastMetAt` TEXT,
+                    `meetCount` INTEGER NOT NULL,
+                    `cadenceDays` INTEGER,
+                    `isArchived` INTEGER NOT NULL,
+                    `isFavorite` INTEGER NOT NULL,
+                    `updatedAt` TEXT,
+                    `customProperties` TEXT NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            ).use { it.step() }
+
+            connection.prepare(
+                """
+                INSERT INTO `contacts` (
+                    `id`, `name`, `aliases`, `role`, `company`, `birthday`,
+                    `phone`, `email`, `tagIds`, `notes`, `photoUri`, `notionistConfig`,
+                    `firstMetAt`, `lastMetAt`, `meetCount`, `cadenceDays`,
+                    `isArchived`, `isFavorite`, `updatedAt`, `customProperties`
+                ) VALUES (
+                    'c-mig-1', 'Ada Lovelace', 'Ada', 'Mathematician', 'Engine Co', '1815-12-10',
+                    '+44 20 1234', 'ada@example.org', 'tag-1', 'Analytical engine notes', NULL, NULL,
+                    '2026-01-01T00:00:00Z', '2026-10-01T00:00:00Z', 4, 14,
+                    0, 1, '2026-10-02T00:00:00Z', ''
+                )
+                """.trimIndent()
+            ).use { it.step() }
+
+            HelloDatabase.MIGRATION_6_7.migrate(connection)
+
+            val columns = mutableListOf<String>()
+            connection.prepare("PRAGMA table_info(`contacts`)").use { stmt ->
+                while (stmt.step()) {
+                    columns += stmt.getText(1)
+                }
+            }
+            assertTrue("cadenceDays column must be removed by MIGRATION_6_7", "cadenceDays" !in columns)
+            assertTrue("name column must remain", "name" in columns)
+
+            connection.prepare("SELECT `id`, `name`, `meetCount`, `isFavorite`, `notes` FROM `contacts` WHERE `id` = 'c-mig-1'").use { stmt ->
+                assertTrue("Existing contact row must survive migration", stmt.step())
+                assertEquals("c-mig-1", stmt.getText(0))
+                assertEquals("Ada Lovelace", stmt.getText(1))
+                assertEquals(4L, stmt.getLong(2))
+                assertEquals(1L, stmt.getLong(3))
+                assertEquals("Analytical engine notes", stmt.getText(4))
+            }
+        } finally {
+            connection.close()
+        }
+    }
+
     private fun createMockContext(): Context {
         val tempDir = Files.createTempDirectory("test_db").toFile()
         return object : android.content.ContextWrapper(null) {

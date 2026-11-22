@@ -6,6 +6,7 @@ import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,8 +27,7 @@ class ExportBundleGeneratorTest {
         email = "ada@analytical.org",
         firstMetAt = Instant.parse("2026-01-01T10:00:00Z"),
         lastMetAt = Instant.parse("2026-10-20T14:30:00Z"),
-        meetCount = 3,
-        cadenceDays = 14
+        meetCount = 3
     )
 
     private val sampleEncounter = Encounter(
@@ -103,7 +103,8 @@ class ExportBundleGeneratorTest {
         assertTrue(noteContent.contains("id: \"c-123\""))
         assertTrue(noteContent.contains("name: \"Ada Lovelace\""))
         assertTrue(noteContent.contains("tags: [\"Math\"]"))
-        assertTrue(noteContent.contains("cadence_days: 14"))
+        assertFalse(noteContent.contains("cadence_days"))
+        assertTrue(noteContent.contains("meet_count: 3"))
         assertTrue(noteContent.contains("---"))
 
         // Body notes & encounters

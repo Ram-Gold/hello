@@ -40,9 +40,9 @@ _Avoid_: Venue, Location, Spot
 An actionable stay-in-touch reminder or task tied to a Contact, with a scheduled due date and completion state.
 _Avoid_: Task, To-do, Ping
 
-**Subconscious Check-In**:
-A zero-configuration, algorithmically inferred prompt surfaced gently in the Home "Keep in Touch" carousel when an active Contact has drifted past their adaptive encounter rhythm (`1.5x` average historical gap clamped to `14..90` days, or `30` days baseline). Unlike concrete dated events, Subconscious Check-Ins never clutter the Living Timeline and are capped to at most 2 ambient suggestions at a time.
-_Avoid_: Cadence, Manual Frequency, Overdue SLA, Ping Schedule
+**Serendipity Prompt**:
+A quiet, in-app-only weighted-random reconnect suggestion surfaced in the Home carousel (`"Say hi"` badge, capped at 2 cards per day, zero OS push notifications) drawn deterministically each day from active Contacts not met in 14+ days (higher weight for longer gaps, clamped at 365 days). Tapping `"Skip"` rolls the next eligible Contact for today, and tapping `"View"` opens the Contact Profile Screen without auto-logging synthetic encounters.
+_Avoid_: Cadence, Manual Frequency, Overdue SLA, Ping Schedule, Subconscious Check-In
 
 **Export Bundle**:
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
@@ -81,7 +81,7 @@ A transient 5-second recovery mechanism surfaced on a Toast Pill following a des
 _Avoid_: Revert Button, Restore Dialog, Rollback Trigger
 
 **Timeline Tab**:
-The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays across a 365-day year-round horizon and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
+The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays within 1 calendar month and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
 _Avoid_: Activity Feed, History Screen, Global Log, Audit Trail
 
 **Timeline Node**:
@@ -121,7 +121,7 @@ The dedicated full-screen customization workspace launched from Edit Contact whe
 _Avoid_: Avatar Studio, Character Creator, Notionist Maker, Avatar Editor Modal
 
 **Upcoming Alert Card**:
-The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Subconscious Check-In) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Later" / "Update" for Subconscious Check-Ins).
+The uniform Material 3 Expressive card surface representing time-sensitive relationship prompts (FollowUp, BirthdayAlert, or Serendipity Prompt) in the Upcoming feed, featuring a 40dp tonal icon badge, strict 1-line text truncation, and bottom-aligned action buttons ("Skip" / "View" for Serendipity Prompts).
 _Avoid_: Reminder Card, Ping Tile, Event Box, Alert Banner
 
 **Birthday Celebration Card**:
@@ -137,7 +137,7 @@ The contextual interaction phase entered via long-press on an Encounter or Follo
 _Avoid_: Timeline edit mode, Event delete mode, History multi-select
 
 **Contact Profile Screen**:
-The dedicated Material 3 Expressive view displaying a Contact's relationship properties, tags, notes, and the Living Timeline (with a pinned Birthday Milestone node at the top when a birthday is set, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
+The dedicated Material 3 Expressive view displaying a Contact's relationship properties, tags, notes, and the Living Timeline (with a standalone upcoming Birthday card above the timeline when the Contact's birthday falls within 1 calendar month, followed by past encounters), intentionally stripped of manual cadence status cards and dialer/messaging quick actions to emphasize organic relationship context.
 _Avoid_: User Profile, Person Detail, Contact Detail Screen, Address Book Entry
 
 **Semantic Tactile Feedback**:

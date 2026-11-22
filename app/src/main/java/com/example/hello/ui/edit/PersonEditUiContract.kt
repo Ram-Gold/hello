@@ -20,9 +20,6 @@ data class PersonEditUiState(
     val selectedTagIds: Set<String> = emptySet(),
     val availableTags: List<Tag> = emptyList(),
     val customProperties: Map<String, String> = emptyMap(),
-    val cadenceDays: Int? = 14,
-    val isCustomCadence: Boolean = false,
-    val customCadenceInput: String = "",
     val isModified: Boolean = false,
     val canSave: Boolean = true,
     val isSaving: Boolean = false,
@@ -58,8 +55,6 @@ sealed interface PersonEditUiEvent {
     data object OnRemovePhoto : PersonEditUiEvent
     data class OnToggleTag(val tagId: String) : PersonEditUiEvent
     data class OnCreateTag(val name: String) : PersonEditUiEvent
-    data class OnSelectCadence(val days: Int?) : PersonEditUiEvent
-    data class OnCustomCadenceChange(val daysString: String) : PersonEditUiEvent
     data object OnSaveClick : PersonEditUiEvent
     data object OnBackClick : PersonEditUiEvent
     data object OnConfirmDiscard : PersonEditUiEvent

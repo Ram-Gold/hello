@@ -126,7 +126,6 @@ fun PersonEditScreen(
     val phoneRequester = remember { BringIntoViewRequester() }
     val emailRequester = remember { BringIntoViewRequester() }
     val notesRequester = remember { BringIntoViewRequester() }
-    val cadenceRequester = remember { BringIntoViewRequester() }
     val haptics = LocalHelloHaptics.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -481,17 +480,6 @@ fun PersonEditScreen(
                 selectedTagIds = uiState.selectedTagIds,
                 onToggleTag = { onEvent(PersonEditUiEvent.OnToggleTag(it)) },
                 onOpenNewTagDialog = { onEvent(PersonEditUiEvent.OnShowNewTagDialog(true)) }
-            )
-
-            // Stay-in-touch Cadence
-            CadenceIntervalSelector(
-                cadenceDays = uiState.cadenceDays,
-                isCustomCadence = uiState.isCustomCadence,
-                customInput = uiState.customCadenceInput,
-                onSelectCadence = { onEvent(PersonEditUiEvent.OnSelectCadence(it)) },
-                onCustomChange = { onEvent(PersonEditUiEvent.OnCustomCadenceChange(it)) },
-                coroutineScope = coroutineScope,
-                bringIntoViewRequester = cadenceRequester
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -918,93 +906,6 @@ private fun TagsManager(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CadenceIntervalSelector(
-    cadenceDays: Int?,
-    isCustomCadence: Boolean,
-    customInput: String,
-    onSelectCadence: (Int?) -> Unit,
-    onCustomChange: (String) -> Unit,
-    coroutineScope: kotlinx.coroutines.CoroutineScope? = null,
-    bringIntoViewRequester: BringIntoViewRequester? = null
-) {
-    val presets = listOf(
-        7 to "Weekly (7d)",
-        14 to "Bi-weekly (14d)",
-        30 to "Monthly (30d)",
-        90 to "Quarterly (90d)"
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "STAY-IN-TOUCH CADENCE",
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            presets.forEach { (days, label) ->
-                val isSelected = !isCustomCadence && cadenceDays == days
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onSelectCadence(days) },
-                    label = { Text(label) },
-                    shape = RoundedCornerShape(14.dp)
-                )
-            }
-
-            // None option
-            FilterChip(
-                selected = !isCustomCadence && cadenceDays == null,
-                onClick = { onSelectCadence(null) },
-                label = { Text("None") },
-                shape = RoundedCornerShape(14.dp)
-            )
-
-            // Custom option
-            FilterChip(
-                selected = isCustomCadence,
-                onClick = { onCustomChange(customInput.ifEmpty { "21" }) },
-                label = { Text("Custom...") },
-                shape = RoundedCornerShape(14.dp)
-            )
-        }
-
-        if (isCustomCadence) {
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = customInput,
-                onValueChange = onCustomChange,
-                label = { Text("Custom Cadence (days)") },
-                trailingIcon = {
-                    ClearTextTrailingIcon(
-                        value = customInput,
-                        onClear = { onCustomChange("") },
-                        contentDescription = "Clear custom cadence"
-                    )
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (coroutineScope != null && bringIntoViewRequester != null) {
-                            Modifier.bringIntoViewOnFocus(coroutineScope, bringIntoViewRequester)
-                        } else Modifier
-                    )
-            )
-        }
-    }
-}
-
 @Composable
 private fun LifecycleActionsCard(
     onArchiveClick: () -> Unit,
@@ -1083,8 +984,7 @@ fun PersonEditScreenPreview() {
                 phone = "+1 (555) 234-5678",
                 email = "sarah.lin@example.com",
                 notes = "Co-founder & Staff Engineer.",
-                availableTags = MockDataProvider.tags,
-                cadenceDays = 30
+                availableTags = MockDataProvider.tags
             ),
             onEvent = {},
             onNavigateBack = {},

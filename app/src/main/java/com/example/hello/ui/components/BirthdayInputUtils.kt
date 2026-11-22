@@ -118,6 +118,48 @@ object BirthdayInputUtils {
     }
 
     /**
+     * Returns true when the contact's next annual birthday falls within the upcoming
+     * calendar month (inclusive of today through `today.plusMonths(1)`).
+     */
+    fun isUpcomingWithinOneMonth(bday: LocalDate?, today: LocalDate = LocalDate.now()): Boolean {
+        if (bday == null) return false
+        val nextBday = nextAnnualBirthday(bday, today)
+        return !nextBday.isBefore(today) && !nextBday.isAfter(today.plusMonths(1))
+    }
+
+    /**
+     * Formats a month/day with a standard 3-letter abbreviation and trailing period
+     * (except May), e.g. "Nov. 21" or "May 5".
+     */
+    fun formatAbbreviatedMonthDay(date: LocalDate): String {
+        val monthLabel = when (date.monthValue) {
+            1 -> "Jan."
+            2 -> "Feb."
+            3 -> "Mar."
+            4 -> "Apr."
+            5 -> "May"
+            6 -> "Jun."
+            7 -> "Jul."
+            8 -> "Aug."
+            9 -> "Sep."
+            10 -> "Oct."
+            11 -> "Nov."
+            12 -> "Dec."
+            else -> date.format(DateTimeFormatter.ofPattern("MMM"))
+        }
+        return "$monthLabel ${date.dayOfMonth}"
+    }
+
+    /**
+     * Formats the relative countdown for an upcoming birthday ("Today!", "Tomorrow", or "In X days").
+     */
+    fun formatBirthdayCountdown(daysUntil: Long): String = when (daysUntil) {
+        0L -> "Today!"
+        1L -> "Tomorrow"
+        else -> "In $daysUntil days"
+    }
+
+    /**
      * Moves a date to targetYear, adjusting Feb 29 to Feb 28 if targetYear is not a leap year.
      */
     fun toYearSafely(date: LocalDate, targetYear: Int): LocalDate {

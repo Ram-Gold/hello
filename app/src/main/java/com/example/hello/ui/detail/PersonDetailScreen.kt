@@ -270,7 +270,6 @@ fun PersonDetailScreen(
                     item(key = "properties") {
                         PropertiesPanel(
                             contact = uiState.contact,
-                            cadenceStatus = uiState.cadenceStatus,
                             allTags = uiState.tagsList
                         )
                     }
@@ -380,11 +379,6 @@ fun PersonDetailScreenPreview() {
                 encounters = MockDataProvider.encounters.filter { it.contactId == sample.id },
                 placesMap = MockDataProvider.places.associateBy { it.id },
                 tagsList = MockDataProvider.tags,
-                cadenceStatus = CadenceStatusInfo(
-                    health = CadenceHealth.ON_TRACK,
-                    displayText = "On track, due in 29 days",
-                    subText = "Every 30 days, last met 1 day ago"
-                ),
                 isLoading = false
             ),
             onEvent = {},

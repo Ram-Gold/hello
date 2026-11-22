@@ -217,11 +217,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun onPreferencesEvents_updatesCadenceAndNotificationDefaults() = runTest {
-        viewModel.onEvent(SettingsUiEvent.OnSetDefaultCadenceDays(60))
-        advanceUntilIdle()
-        assertEquals(60, viewModel.uiState.value.defaultCadenceDays)
-
+    fun onPreferencesEvents_updatesNotificationAndLocationDefaults() = runTest {
         viewModel.onEvent(SettingsUiEvent.OnSetNotificationTime(10, 30))
         advanceUntilIdle()
         assertEquals(10, viewModel.uiState.value.notificationHour)

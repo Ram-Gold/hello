@@ -1,5 +1,8 @@
 package com.example.hello.ui.home.components
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -24,10 +27,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -58,6 +61,7 @@ fun UpcomingFeedSection(
     alerts: List<UpcomingAlert>,
     onReminderDone: (String) -> Unit,
     onReminderSnooze: (String) -> Unit,
+    onOpenContact: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHelloHaptics.current
@@ -123,7 +127,8 @@ fun UpcomingFeedSection(
                             haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                             onReminderDone(alert.id)
                         },
-                        onSnooze = { onReminderSnooze(alert.id) }
+                        onSnooze = { onReminderSnooze(alert.id) },
+                        onOpenContact = onOpenContact
                     )
                 }
             }
@@ -152,6 +157,7 @@ fun UpcomingAlertCard(
     alert: UpcomingAlert,
     onDone: () -> Unit,
     onSnooze: () -> Unit,
+    onOpenContact: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val config = when (alert) {
@@ -169,12 +175,12 @@ fun UpcomingAlertCard(
             badgeText = alert.dueText.uppercase(),
             descriptionText = alert.taskDescription
         )
-        is UpcomingAlert.CadenceAlert -> AlertVisualConfig(
-            icon = Icons.Rounded.Refresh,
+        is UpcomingAlert.SerendipityPrompt -> AlertVisualConfig(
+            icon = Icons.Rounded.AutoAwesome,
             iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            badgeText = "Check in",
-            descriptionText = alert.promptText
+            badgeText = "Say hi",
+            descriptionText = alert.contextText
         )
     }
 
@@ -319,7 +325,7 @@ fun UpcomingAlertCard(
                     }
                 }
 
-                is UpcomingAlert.CadenceAlert -> {
+                is UpcomingAlert.SerendipityPrompt -> {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -331,11 +337,17 @@ fun UpcomingAlertCard(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Text("Later", style = MaterialTheme.typography.labelSmall)
+                            Text("Skip", style = MaterialTheme.typography.labelSmall)
                         }
 
                         FilledTonalButton(
-                            onClick = onDone,
+                            onClick = {
+                                if (alert.contactId.isNotBlank()) {
+                                    onOpenContact(alert.contactId)
+                                } else {
+                                    onDone()
+                                }
+                            },
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
@@ -344,7 +356,7 @@ fun UpcomingAlertCard(
                             )
                         ) {
                             Text(
-                                text = "Update",
+                                text = "View",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -372,19 +384,10 @@ fun UpcomingEmptyState(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                CustomizableIcon(
-                    iconKey = HelloIconKey.COFFEE,
-                    size = 22.dp,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
+            EmptyStateIllustration(
+                drawableRes = R.drawable.ic_empty_upcoming,
+                height = 76.dp
+            )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "All caught up! Take a breather",

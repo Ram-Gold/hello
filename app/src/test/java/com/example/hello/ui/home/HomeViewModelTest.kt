@@ -2,8 +2,9 @@ package com.example.hello.ui.home
 
 import com.example.hello.data.preferences.FakeUserPreferencesRepository
 import com.example.hello.domain.model.HomeNavTab
+import com.example.hello.domain.model.SerendipityPicker
 import com.example.hello.domain.model.SpeedDialAction
-import com.example.hello.domain.model.SubconsciousCheckInCalculator
+import com.example.hello.domain.model.UpcomingAlert
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -85,16 +86,33 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun onReminderSnooze_removesAlertAndSetsFeedback() {
-        val alertId = viewModel.uiState.value.upcomingAlerts.last().id
+    fun onReminderSnooze_forFollowUp_removesAlertAndSetsFeedback() {
+        val followUpAlert = viewModel.uiState.value.upcomingAlerts
+            .filterIsInstance<UpcomingAlert.FollowUpReminder>()
+            .first()
         val initialCount = viewModel.uiState.value.upcomingAlerts.size
 
-        viewModel.onEvent(HomeUiEvent.OnReminderSnooze(alertId))
+        viewModel.onEvent(HomeUiEvent.OnReminderSnooze(followUpAlert.id))
 
         val state = viewModel.uiState.value
         assertEquals(initialCount - 1, state.upcomingAlerts.size)
-        assertTrue(state.upcomingAlerts.none { it.id == alertId })
+        assertTrue(state.upcomingAlerts.none { it.id == followUpAlert.id })
         assertTrue(state.userMessage?.contains("Snoozed") == true)
+    }
+
+    @Test
+    fun onReminderSnooze_forSerendipityPrompt_skipsQuietlyWithoutToast() {
+        val serendipityAlert = viewModel.uiState.value.upcomingAlerts
+            .filterIsInstance<UpcomingAlert.SerendipityPrompt>()
+            .first()
+        val initialCount = viewModel.uiState.value.upcomingAlerts.size
+
+        viewModel.onEvent(HomeUiEvent.OnReminderSnooze(serendipityAlert.id))
+
+        val state = viewModel.uiState.value
+        assertEquals(initialCount - 1, state.upcomingAlerts.size)
+        assertTrue(state.upcomingAlerts.none { it.id == serendipityAlert.id })
+        assertNull(state.userMessage)
     }
 
     @Test
@@ -181,25 +199,29 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun subconsciousCheckInCalculator_computesAdaptiveIntervalAndPrompt() {
-        // 0-1 encounters -> 30-day baseline
-        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(emptyList()))
-        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L)))
+    fun serendipityPicker_respects14DayFloorWeightingDeterminismAndWarmCopy() {
+        val candidates = listOf(
+            SerendipityPicker.WeightedCandidate(item = "recent", stableId = "c-recent", daysSinceLastMet = 5),
+            SerendipityPicker.WeightedCandidate(item = "two-weeks", stableId = "c-14d", daysSinceLastMet = 14),
+            SerendipityPicker.WeightedCandidate(item = "two-months", stableId = "c-60d", daysSinceLastMet = 60),
+            SerendipityPicker.WeightedCandidate(item = "six-months", stableId = "c-180d", daysSinceLastMet = 180)
+        )
 
-        // 2 encounters 20 days apart -> 1.5 * 20 = 30 days
-        assertEquals(30, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 120L)))
+        val day1First = SerendipityPicker.pickWeightedRandom(candidates, todayEpochDay = 20_500L, maxCount = 2)
+        val day1Repeat = SerendipityPicker.pickWeightedRandom(candidates.reversed(), todayEpochDay = 20_500L, maxCount = 2)
 
-        // 3 encounters 4 days apart each -> avg gap 4d -> 1.5 * 4 = 6d -> clamped to min 14d
-        assertEquals(14, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 104L, 108L)))
+        assertEquals(2, day1First.size)
+        assertTrue("Contacts met <14 days ago must never be picked", day1First.none { it.item == "recent" })
+        assertEquals("Daily pick must be deterministic regardless of input ordering", day1First.map { it.stableId }, day1Repeat.map { it.stableId })
+        assertEquals("Picked contacts must be unique", day1First.map { it.stableId }.distinct().size, day1First.size)
 
-        // 2 encounters 80 days apart -> 1.5 * 80 = 120d -> clamped to max 90d
-        assertEquals(90, SubconsciousCheckInCalculator.computeAdaptiveThresholdDays(listOf(100L, 180L)))
+        // Weight clamps cleanly at 14..365
+        assertEquals(14.0, SerendipityPicker.candidateWeight(14), 0.001)
+        assertEquals(365.0, SerendipityPicker.candidateWeight(900), 0.001)
 
-        val metPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 45, hasMultipleEncounters = true)
-        assertEquals("Met 6 weeks ago. Anything new to update?", metPrompt)
-
-        val addedPrompt = SubconsciousCheckInCalculator.formatSubconsciousPrompt(daysSince = 35, hasMultipleEncounters = false)
-        assertEquals("Added 5 weeks ago. Anything new to update?", addedPrompt)
+        // Warm copy without task/overdue phrasing
+        assertEquals("Last met 6 weeks ago", SerendipityPicker.formatSerendipityContext(daysSince = 45, hasMultipleEncounters = true))
+        assertEquals("Added 5 weeks ago", SerendipityPicker.formatSerendipityContext(daysSince = 35, hasMultipleEncounters = false))
     }
 
     @Test

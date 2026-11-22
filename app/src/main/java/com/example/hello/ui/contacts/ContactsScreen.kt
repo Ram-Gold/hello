@@ -1,5 +1,8 @@
 package com.example.hello.ui.contacts
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -785,19 +788,10 @@ fun ContactsEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(if (isFilterActive) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CustomizableIcon(
-                    iconKey = if (isFilterActive) HelloIconKey.SEARCH else HelloIconKey.USER_PLUS,
-                    size = 26.dp,
-                    tint = if (isFilterActive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+            EmptyStateIllustration(
+                drawableRes = if (isFilterActive) R.drawable.ic_empty_search else R.drawable.ic_empty_directory,
+                height = if (isFilterActive) 116.dp else 120.dp
+            )
 
             Text(
                 text = if (isFilterActive) {

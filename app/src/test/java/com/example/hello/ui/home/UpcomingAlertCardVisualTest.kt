@@ -39,18 +39,19 @@ class UpcomingAlertCardVisualTest {
     }
 
     @Test
-    fun cadenceAlert_resolvesStayInTouchBadgeAndPrompt() {
-        val alert = UpcomingAlert.CadenceAlert(
-            id = "c-1",
+    fun serendipityPrompt_resolvesSayHiBadgeAndContext() {
+        val alert = UpcomingAlert.SerendipityPrompt(
+            id = "serendipity-1",
             contactName = "Marcus Aurelius",
             daysSinceLastMet = 45,
-            promptText = "It has been 45 days since your last encounter."
+            contextText = "Last met 6 weeks ago",
+            contactId = "c-1"
         )
 
-        val badgeText = "Stay in touch"
-        val descriptionText = alert.promptText
+        val badgeText = "Say hi"
+        val descriptionText = alert.contextText
 
-        assertEquals("Stay in touch", badgeText)
-        assertEquals("It has been 45 days since your last encounter.", descriptionText)
+        assertEquals("Say hi", badgeText)
+        assertEquals("Last met 6 weeks ago", descriptionText)
     }
 }

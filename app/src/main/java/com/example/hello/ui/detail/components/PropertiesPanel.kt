@@ -39,14 +39,11 @@ import com.example.hello.domain.model.Tag
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.FeatherIconSize
-import com.example.hello.ui.detail.CadenceHealth
-import com.example.hello.ui.detail.CadenceStatusInfo
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PropertiesPanel(
     contact: Contact?,
-    cadenceStatus: CadenceStatusInfo = CadenceStatusInfo(),
     allTags: List<Tag>,
     modifier: Modifier = Modifier
 ) {
@@ -178,80 +175,6 @@ fun PropertiesPanel(
         }
     }
 }
-
-@Composable
-private fun CadenceHealthCard(cadenceStatus: CadenceStatusInfo) {
-    val (statusColor, _, icon) = when (cadenceStatus.health) {
-        CadenceHealth.ON_TRACK -> Triple(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            Icons.Rounded.CheckCircle
-        )
-        CadenceHealth.DUE_SOON -> Triple(
-            MaterialTheme.colorScheme.tertiary,
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
-            Icons.Rounded.AccessTime
-        )
-        CadenceHealth.OVERDUE -> Triple(
-            MaterialTheme.colorScheme.error,
-            MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-            Icons.Rounded.Warning
-        )
-        CadenceHealth.NO_CADENCE -> Triple(
-            MaterialTheme.colorScheme.onSurfaceVariant,
-            MaterialTheme.colorScheme.surfaceVariant,
-            Icons.Rounded.Info
-        )
-    }
-
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(statusColor.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = statusColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = cadenceStatus.displayText,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = cadenceStatus.subText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
 
 @Composable
 private fun PropertyChip(iconKey: HelloIconKey, label: String) {

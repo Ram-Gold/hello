@@ -1,5 +1,8 @@
 package com.example.hello.ui.home.components
 
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -186,19 +189,10 @@ fun EncountersEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CustomizableIcon(
-                    iconKey = HelloIconKey.COFFEE,
-                    size = 24.dp,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
+            EmptyStateIllustration(
+                drawableRes = R.drawable.ic_empty_recent_encounters,
+                height = 120.dp
+            )
 
             Text(
                 text = "No recent encounters logged",

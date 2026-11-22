@@ -55,7 +55,6 @@ object ExportBundleGenerator {
                 append("    \"firstMetAt\": ${quoteJson(c.firstMetAt?.toString())},\n")
                 append("    \"lastMetAt\": ${quoteJson(c.lastMetAt?.toString())},\n")
                 append("    \"meetCount\": ${c.meetCount},\n")
-                append("    \"cadenceDays\": ${c.cadenceDays ?: "null"},\n")
                 append("    \"isArchived\": ${c.isArchived},\n")
                 val customEntries = c.customProperties.entries.joinToString(", ") { "\"${it.key}\": ${quoteJson(it.value)}" }
                 append("    \"customProperties\": {$customEntries}\n")
@@ -188,9 +187,6 @@ object ExportBundleGenerator {
                     if (value.isNotBlank()) {
                         append("$key: \"$value\"\n")
                     }
-                }
-                if (contact.cadenceDays != null) {
-                    append("cadence_days: ${contact.cadenceDays}\n")
                 }
                 append("meet_count: ${contact.meetCount}\n")
                 if (contact.firstMetAt != null) {

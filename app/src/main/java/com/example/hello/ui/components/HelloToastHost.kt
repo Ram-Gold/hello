@@ -5,9 +5,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,6 +19,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -46,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -55,11 +58,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -190,37 +196,50 @@ object HelloToastDefaults {
 val LocalReducedMotion = staticCompositionLocalOf { false }
 
 object HelloToastMotionDefaults {
+    // Emil Kowalski strong ease-out curve: cubic-bezier(0.23, 1, 0.32, 1)
+    val EASE_OUT = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
+    const val ENTER_DURATION_MS = 220
+    const val EXIT_DURATION_MS = 150
+    const val EXIT_FADE_DURATION_MS = 130
+    const val REDUCED_MOTION_FADE_MS = 150
+    const val ACTION_PRESS_DURATION_MS = 160
+    const val SCALE_SUBTLE = 0.97f
+    val BOTTOM_ORIGIN = TransformOrigin(0.5f, 1f)
+
     fun enterTransition(isReducedMotion: Boolean = false): EnterTransition {
-        if (isReducedMotion) return EnterTransition.None
-        val springSpec = spring<androidx.compose.ui.unit.IntOffset>(
-            dampingRatio = 0.82f,
-            stiffness = Spring.StiffnessMediumLow
-        )
-        val scaleSpring = spring<Float>(
-            dampingRatio = 0.82f,
-            stiffness = Spring.StiffnessMediumLow
-        )
+        if (isReducedMotion) {
+            return fadeIn(animationSpec = tween(durationMillis = REDUCED_MOTION_FADE_MS, easing = EASE_OUT))
+        }
+        val slideSpec = tween<IntOffset>(durationMillis = ENTER_DURATION_MS, easing = EASE_OUT)
+        val floatSpec = tween<Float>(durationMillis = ENTER_DURATION_MS, easing = EASE_OUT)
         return slideInVertically(
-            animationSpec = springSpec,
-            initialOffsetY = { it / 2 }
+            animationSpec = slideSpec,
+            initialOffsetY = { it / 4 }
         ) + fadeIn(
-            animationSpec = tween(durationMillis = 180)
+            animationSpec = floatSpec
         ) + scaleIn(
-            animationSpec = scaleSpring,
-            initialScale = 0.92f
+            animationSpec = floatSpec,
+            initialScale = SCALE_SUBTLE,
+            transformOrigin = BOTTOM_ORIGIN
         )
     }
 
     fun exitTransition(isReducedMotion: Boolean = false): ExitTransition {
-        if (isReducedMotion) return ExitTransition.None
+        if (isReducedMotion) {
+            return fadeOut(animationSpec = tween(durationMillis = REDUCED_MOTION_FADE_MS, easing = EASE_OUT))
+        }
+        val slideSpec = tween<IntOffset>(durationMillis = EXIT_DURATION_MS, easing = EASE_OUT)
+        val scaleSpec = tween<Float>(durationMillis = EXIT_DURATION_MS, easing = EASE_OUT)
+        val fadeSpec = tween<Float>(durationMillis = EXIT_FADE_DURATION_MS, easing = EASE_OUT)
         return slideOutVertically(
-            animationSpec = tween(durationMillis = 160),
-            targetOffsetY = { it / 2 }
+            animationSpec = slideSpec,
+            targetOffsetY = { it / 4 }
         ) + fadeOut(
-            animationSpec = tween(durationMillis = 140)
+            animationSpec = fadeSpec
         ) + scaleOut(
-            animationSpec = tween(durationMillis = 160),
-            targetScale = 0.94f
+            animationSpec = scaleSpec,
+            targetScale = SCALE_SUBTLE,
+            transformOrigin = BOTTOM_ORIGIN
         )
     }
 }
@@ -247,6 +266,7 @@ suspend fun SnackbarHostState.showHelloToast(
     actionLabel: String? = null,
     durationMs: Long = resolveToastDurationMs(message, actionLabel)
 ): SnackbarResult {
+    currentSnackbarData?.dismiss()
     val visuals = HelloToastVisuals(
         message = message,
         actionLabel = actionLabel,
@@ -457,12 +477,31 @@ fun HelloToastPill(
                 )
 
                 if (hasAction) {
+                    val isReducedMotion = LocalReducedMotion.current
+                    val actionInteractionSource = remember { MutableInteractionSource() }
+                    val isActionPressed by actionInteractionSource.collectIsPressedAsState()
+                    val actionScale by animateFloatAsState(
+                        targetValue = if (isActionPressed && !isReducedMotion) HelloToastMotionDefaults.SCALE_SUBTLE else 1f,
+                        animationSpec = tween(
+                            durationMillis = HelloToastMotionDefaults.ACTION_PRESS_DURATION_MS,
+                            easing = HelloToastMotionDefaults.EASE_OUT
+                        ),
+                        label = "ToastActionPressScale"
+                    )
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = actionScale
+                                scaleY = actionScale
+                            }
                             .heightIn(min = 32.dp)
                             .clip(CircleShape)
-                            .clickable(onClick = onAction)
+                            .clickable(
+                                interactionSource = actionInteractionSource,
+                                indication = null,
+                                onClick = onAction
+                            )
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(

@@ -1,5 +1,9 @@
 package com.example.hello.ui.timeline
 
+import androidx.annotation.DrawableRes
+import com.example.hello.R
+import com.example.hello.ui.components.EmptyStateIllustration
+
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -169,7 +173,9 @@ fun TimelineScreen(
                             item(key = "empty-future") {
                                 EmptyTimelineStateCard(
                                     title = "No upcoming events in your horizon",
-                                    subtitle = "Scheduled follow-ups, birthdays, and cadence check-ins will appear here."
+                                    subtitle = "Scheduled follow-ups and upcoming birthdays will appear here.",
+                                    illustrationRes = R.drawable.ic_empty_timeline_future,
+                                    illustrationHeight = 96.dp
                                 )
                             }
                         } else if (futureGroups.isNotEmpty()) {
@@ -242,7 +248,9 @@ fun TimelineScreen(
                             item(key = "empty-past") {
                                 EmptyTimelineStateCard(
                                     title = "No encounters logged yet",
-                                    subtitle = "People you add or meet again will form your living timeline."
+                                    subtitle = "People you add or meet again will form your living timeline.",
+                                    illustrationRes = R.drawable.ic_empty_timeline_past,
+                                    illustrationHeight = 112.dp
                                 )
                             }
                         } else {
@@ -1144,7 +1152,9 @@ private fun PastTimelineNodeRow(
 @Composable
 private fun EmptyTimelineStateCard(
     title: String,
-    subtitle: String
+    subtitle: String,
+    @DrawableRes illustrationRes: Int,
+    illustrationHeight: androidx.compose.ui.unit.Dp = 112.dp
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -1160,21 +1170,11 @@ private fun EmptyTimelineStateCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.EventNote,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
+            EmptyStateIllustration(
+                drawableRes = illustrationRes,
+                height = illustrationHeight
+            )
+            Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
