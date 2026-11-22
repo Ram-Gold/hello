@@ -17,11 +17,11 @@ Previously, Hello's **Living Timeline** existed only inside an individual `Conta
 
 ## 2. Decisions
 
-### Decision 1: Three-Tab Floating Bottom Dock (`Home` | `Timeline` | `People`) with Persistent Icons & Constant Pill Width
+### Decision 1: Three-Tab Floating Bottom Dock (`Home` | `People` | `Timeline`) with Persistent Icons & Constant Pill Width
 - `HomeNavTab` expands from two tabs to three primary root destinations:
   1. `HOME` ("Home") — Slot 0 (Left): `Icons.Outlined.Home` (inactive) → `Icons.Filled.Home` (active)
-  2. `TIMELINE` ("Timeline") — Slot 1 (Center): `Icons.Outlined.Schedule` (inactive) → `Icons.Filled.Schedule` (active)
-  3. `PEOPLE` (Dynamic `RelationshipTerminology` label: People / Friends / Connections / Contacts) — Slot 2 (Right): `Icons.Outlined.People` (inactive) → `Icons.Filled.People` (active)
+  2. `PEOPLE` (Dynamic `RelationshipTerminology` label: People / Friends / Connections / Contacts) — Slot 1 (Center): `Icons.Outlined.People` (inactive) → `Icons.Filled.People` (active)
+  3. `TIMELINE` ("Timeline") — Slot 2 (Right): `Icons.Outlined.Schedule` (inactive) → `Icons.Filled.Schedule` (active)
 - **Icon/Text Inversion & Constant-Width Pill Invariant:**
   - Icons are **always visible** on all three tabs: inactive tabs display only their **Outlined** icon inside a compact `1:1` slot (`inactiveSlotWidthDp`), while the active tab displays its **Filled** icon + expanding **Text Label** (`[Filled Icon + Label]`).
   - Both the **outer Floating Bottom Dock container** (`activePillWidth + 2 * inactiveSlotWidth + padding`) and the **inner sliding Selection Pill** (`activePillWidth`) maintain a **100% constant width** across all states (`0f`, `1f`, `2f`). At any progress `p` in `0f..2f`, the pill's left offset is `p * inactiveSlotWidth` and its width is `activePillWidth`.

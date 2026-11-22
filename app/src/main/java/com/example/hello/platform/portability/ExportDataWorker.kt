@@ -35,7 +35,7 @@ class ExportDataWorker(
             val encounters = db.encounterDao().getAllEncountersFlow().firstOrNull().orEmpty().map { it.toDomain() }
             val places = db.placeDao().getAllPlacesFlow().firstOrNull().orEmpty().map { it.toDomain() }
             val tags = db.tagDao().getAllTagsFlow().firstOrNull().orEmpty().map { it.toDomain() }
-            val followUps = db.followUpDao().getPendingFollowUpsFlow().firstOrNull().orEmpty().map { it.toDomain() }
+            val followUps = db.followUpDao().getAllFollowUps().map { it.toDomain() }
 
             val uriString = inputData.getString(KEY_OUTPUT_URI)
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))

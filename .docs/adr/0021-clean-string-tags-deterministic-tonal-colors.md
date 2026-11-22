@@ -19,10 +19,11 @@ This presented several UI and domain frictions:
    - Pre-seed canonical tags (Work, Family, Friends, Tech, Design, Coffee, AI, etc.) with distinct warm palette hues from `TagColorPalette`.
    - Automatically assign new ad-hoc tags a deterministic color using a hash of the clean tag name mapped over `TagColorPalette.PALETTE_HEX`, guaranteeing instant, stable color assignment without user friction.
    - Users can still manually override or fine-tune tag colors in Settings (`SettingsTagsScreen` and `TagDialogs`).
-3. **Material 3 Expressive Tonal Tag Pill**:
-   - Standardize all tag presentations across Contact Cards, Contact Profile, Edit Screen, Quick Action, and Settings onto the `TonalTagPill` component.
-   - **Unselected / Display State**: Soft tinted background (~14–18% alpha of tag color), matching saturated colored text, and subtle rounded squircle shape (`RoundedCornerShape(8.dp)` to `12.dp`).
-   - **Selected / Active State** (in filter strips & edit pickers): Full solid fill using the tag's color with contrasting white/dark text and a checkmark indicator.
+3. **Material 3 Expressive Tonal Tag Pill** (amended by [ADR-0038](0038-seamless-design-philosophy-and-borderless-pill-to-squircle-tags.md)):
+   - Standardize all tag and selectable chip presentations across Contact Cards, Contact Profile, Edit Screen, Quick Action, Reminders, and Settings onto the borderless `TonalTagPill` / `TonalFilterPill` system.
+   - **Zero Borders & Uniform Sizing**: Strictly borderless (`0.dp` border, background fill only), uniform `28.dp` height, proportional 2:1 padding (`horizontal = 12.dp, vertical = 6.dp`), and natural text-relative width everywhere.
+   - **Unselected / Display State**: Soft tinted background fill from `TagColorPalette`, matching saturated colored text, and full stadium pill shape (`CircleShape`).
+   - **Selected / Active State** (in filter strips, edit pickers, and capture chips): Smoothly morphs from stadium pill to an `8.dp` squircle (`RoundedCornerShape(8.dp)`) with solid saturated tag fill and contrasting foreground text.
 
 ## Consequences
 - Tags feel intentional, modern, and harmonious with Hello's warm earthy M3 Expressive design language.

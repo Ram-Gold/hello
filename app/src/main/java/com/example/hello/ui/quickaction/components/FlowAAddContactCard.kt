@@ -73,6 +73,7 @@ import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.HelloIconKey
 import com.example.hello.ui.components.CustomizableIcon
 import com.example.hello.ui.components.LocalReducedMotion
+import com.example.hello.ui.components.TonalFilterPill
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.quickaction.QuickActionUiEvent
 import com.example.hello.ui.quickaction.QuickActionUiState
@@ -677,38 +678,25 @@ internal fun MinimalSelectableChip(
     modifier: Modifier = Modifier,
     leadingIconKey: HelloIconKey? = null
 ) {
-    val selectedFillAndBorder = MaterialTheme.colorScheme.primaryContainer
-    val containerColor = if (selected) selectedFillAndBorder else Color.Transparent
-    val borderColor = if (selected) selectedFillAndBorder else MaterialTheme.colorScheme.outlineVariant
-    val contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-
-    Row(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(containerColor)
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = MaterialTheme.shapes.small
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        if (leadingIconKey != null) {
-            CustomizableIcon(
-                iconKey = leadingIconKey,
-                size = 14.dp,
-                tint = contentColor
-            )
+    TonalFilterPill(
+        label = label,
+        isSelected = selected,
+        unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        onClick = onClick,
+        modifier = modifier,
+        leadingIcon = if (leadingIconKey != null) {
+            { tintColor ->
+                CustomizableIcon(
+                    iconKey = leadingIconKey,
+                    size = 14.dp,
+                    tint = tintColor
+                )
+            }
+        } else {
+            null
         }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
-            ),
-            color = contentColor
-        )
-    }
+    )
 }

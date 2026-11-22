@@ -320,6 +320,50 @@ class ContactPersistenceReactiveTest {
         )
     }
 
+    @Test
+    fun batchArchive_and_batchDelete_undo_persistsAllContactsTransactionallyInRoom() = runTest(testDispatcher) {
+        val repository = ContactRepository(
+            database = database,
+            ioDispatcher = testDispatcher,
+            coroutineScope = backgroundScope
+        )
+        advanceUntilIdle()
+
+        // Wait for initial Room seeding to complete on Room's query executor
+        val initialContacts = database.contactDao().getAllContactsFlow().first { it.size >= 10 }
+        val allIds = initialContacts.map { it.id }.toSet()
+
+        // 1. Batch archive all contacts -> verify all archived in Room -> undo -> verify all restored
+        repository.archiveContacts(allIds, archived = true)
+        advanceUntilIdle()
+        val afterArchive = database.contactDao().getAllContactsFlow().first { list ->
+            list.size == allIds.size && list.all { it.isArchived }
+        }
+        assertEquals(allIds.size, afterArchive.count { it.isArchived })
+
+        assertEquals(allIds.size, repository.undoLastArchiveBatch())
+        advanceUntilIdle()
+        val afterUndoArchive = database.contactDao().getAllContactsFlow().first { list ->
+            list.size == allIds.size && list.none { it.isArchived }
+        }
+        assertEquals(0, afterUndoArchive.count { it.isArchived })
+        assertEquals(allIds.size, afterUndoArchive.size)
+
+        // 2. Batch delete all contacts -> verify 0 in Room -> undo -> verify all restored in Room
+        val initialEncounterCount = database.encounterDao().getAllEncountersFlow().first().size
+        repository.deleteContacts(allIds)
+        advanceUntilIdle()
+        database.contactDao().getAllContactsFlow().first { it.isEmpty() }
+        assertEquals(0, database.contactDao().getAllContacts().size)
+        assertEquals(0, database.encounterDao().getAllEncountersFlow().first().count { it.contactId in allIds })
+
+        assertEquals(allIds.size, repository.undoLastDeleteContacts())
+        advanceUntilIdle()
+        database.contactDao().getAllContactsFlow().first { it.size == allIds.size }
+        assertEquals(allIds.size, database.contactDao().getAllContacts().size)
+        assertEquals(initialEncounterCount, database.encounterDao().getAllEncountersFlow().first().size)
+    }
+
     private fun createMockContext(): Context {
         val tempDir = Files.createTempDirectory("test_db_contacts").toFile()
         return object : android.content.ContextWrapper(null) {

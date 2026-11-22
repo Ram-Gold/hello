@@ -2,6 +2,7 @@ package com.example.hello.ui.settings
 
 import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.data.preferences.ThemeStyle
+import com.example.hello.data.preferences.WeekStartDay
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.RelationshipTerminology
@@ -20,6 +21,7 @@ data class SettingsUiState(
     val exportSharePayload: String? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
+    val firstDayOfWeek: WeekStartDay = WeekStartDay.MONDAY,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
     val notificationHour: Int = 9,
@@ -57,6 +59,7 @@ sealed interface SettingsUiEvent {
     data object OnClearExportPayload : SettingsUiEvent
     data class OnSelectThemeMode(val themeMode: ThemeMode) : SettingsUiEvent
     data class OnSelectThemeStyle(val themeStyle: ThemeStyle) : SettingsUiEvent
+    data class OnSelectFirstDayOfWeek(val firstDayOfWeek: WeekStartDay) : SettingsUiEvent
     data class OnToggleDynamicColor(val enabled: Boolean) : SettingsUiEvent
     data class OnToggleReduceAnimations(val enabled: Boolean) : SettingsUiEvent
     data class OnSetNotificationTime(val hour: Int, val minute: Int) : SettingsUiEvent

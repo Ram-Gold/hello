@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.AlertDialog
@@ -42,6 +43,7 @@ import com.example.hello.ui.components.HelloHorizontalLogo
 fun SettingsAboutScreen(
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit = {},
+    onReplayOnboarding: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -85,13 +87,29 @@ fun SettingsAboutScreen(
                     SettingsItem(
                         title = "Hello Personal CRM",
                         subtitle = "v1.0.0-alpha, Native Kotlin & Jetpack Compose",
-                        shape = shapeFor(0, 2),
+                        shape = shapeFor(0, 3),
                         onClick = {}
+                    )
+                    SettingsItem(
+                        title = "Replay Onboarding",
+                        subtitle = "Walk through welcome, appearance, week start, and setup again",
+                        shape = shapeFor(1, 3),
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Replay, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingContent = {
+                            Icon(
+                                Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = onReplayOnboarding
                     )
                     SettingsItem(
                         title = "Open-Source Licenses",
                         subtitle = "Third-party libraries and bundled typefaces",
-                        shape = shapeFor(1, 2),
+                        shape = shapeFor(2, 3),
                         leadingIcon = {
                             Icon(Icons.Rounded.Description, null, tint = MaterialTheme.colorScheme.primary)
                         },

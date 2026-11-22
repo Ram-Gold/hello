@@ -1,6 +1,13 @@
 package com.example.hello.ui.detail
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,9 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,29 +51,31 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.core.app.ActivityCompat
+import com.example.hello.platform.notification.FollowUpNotificationHelper
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
+import com.example.hello.ui.components.NotificationExplainerDialog
 import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
 import com.example.hello.ui.components.showHelloToast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -73,12 +86,14 @@ import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
 import com.example.hello.ui.detail.components.PropertiesPanel
+import com.example.hello.ui.detail.components.ReminderEditorBottomSheet
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
 import com.example.hello.ui.navigation.predictiveSelectionTrayExit
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
+import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +113,35 @@ fun PersonDetailScreen(
     val snackbarHostState = externalSnackbarHostState ?: localSnackbarHostState
     val haptics = LocalHelloHaptics.current
     val isReducedMotion = LocalReducedMotion.current
+    val context = LocalContext.current
     var selectionBackProgress by remember { mutableFloatStateOf(0f) }
+    var showNotificationExplainer by remember { mutableStateOf(false) }
+    var explainerOpensSettings by remember { mutableStateOf(false) }
+    var hasPromptedNotificationPermission by remember { mutableStateOf(false) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        hasPromptedNotificationPermission = true
+    }
+
+    fun maybePromptNotificationPermission() {
+        if (FollowUpNotificationHelper.isFullyDeliverable(context)) return
+        val needsRuntimePermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !FollowUpNotificationHelper.hasNotificationPermission(context)
+        if (needsRuntimePermission) {
+            val activity = context.findActivity()
+            val showRationale = activity != null && ActivityCompat.shouldShowRequestPermissionRationale(
+                activity,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+            explainerOpensSettings = hasPromptedNotificationPermission && !showRationale
+            showNotificationExplainer = true
+        } else {
+            explainerOpensSettings = true
+            showNotificationExplainer = true
+        }
+    }
 
     ScrubbablePredictiveBackHandler(
         enabled = uiState.isSelectionMode,
@@ -114,9 +157,10 @@ fun PersonDetailScreen(
         }
     )
 
-    LaunchedEffect(uiState.userMessage) {
+    LaunchedEffect(uiState.userMessage, uiState.undoKind) {
         uiState.userMessage?.let { msg ->
-            val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
+            val undoKind = uiState.undoKind
+            val hasUndo = undoKind != PersonDetailUndoKind.NONE || msg.startsWith("Deleted", ignoreCase = true)
             val result = if (hasUndo) {
                 snackbarHostState.showHelloToast(
                     message = msg,
@@ -131,7 +175,10 @@ fun PersonDetailScreen(
             }
             if (result == SnackbarResult.ActionPerformed) {
                 haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-                onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+                when (undoKind) {
+                    PersonDetailUndoKind.REMINDER -> onEvent(PersonDetailUiEvent.OnUndoReminderMutation)
+                    PersonDetailUndoKind.ENCOUNTER, PersonDetailUndoKind.NONE -> onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
+                }
             } else {
                 onEvent(PersonDetailUiEvent.OnDismissUserMessage)
             }
@@ -286,6 +333,19 @@ fun PersonDetailScreen(
                             onEncounterLongClick = {
                                 haptics.perform(SemanticHapticType.EDIT_ENTRY)
                                 onEvent(PersonDetailUiEvent.OnEncounterLongClick(it))
+                            },
+                            contactName = contactName,
+                            reminders = uiState.reminders,
+                            onReminderClick = { followUp ->
+                                onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(followUp))
+                            },
+                            onMarkReminderDone = { id ->
+                                haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                                onEvent(PersonDetailUiEvent.OnMarkReminderDone(id))
+                            },
+                            onSnoozeReminder = { id ->
+                                haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                                onEvent(PersonDetailUiEvent.OnSnoozeReminder(id))
                             }
                         )
                     }
@@ -356,9 +416,77 @@ fun PersonDetailScreen(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
                 }
+
+                // Create / Edit Reminder Bottom Sheet (ADR-0037)
+                if (uiState.isCreateReminderSheetOpen || uiState.editingReminder != null) {
+                    val editing = uiState.editingReminder
+                    ReminderEditorBottomSheet(
+                        contactName = contactName,
+                        editingReminder = editing,
+                        defaultHour = uiState.defaultNotificationHour,
+                        defaultMinute = uiState.defaultNotificationMinute,
+                        onDismiss = { onEvent(PersonDetailUiEvent.OnDismissReminderSheet) },
+                        onSave = { dueDate, note, hasExplicitTime, explicitTime ->
+                            haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                            if (editing != null) {
+                                onEvent(
+                                    PersonDetailUiEvent.OnUpdateReminder(
+                                        followUpId = editing.id,
+                                        dueDate = dueDate,
+                                        note = note,
+                                        hasExplicitTime = hasExplicitTime,
+                                        explicitTime = explicitTime
+                                    )
+                                )
+                            } else {
+                                onEvent(
+                                    PersonDetailUiEvent.OnCreateReminder(
+                                        dueDate = dueDate,
+                                        note = note,
+                                        hasExplicitTime = hasExplicitTime,
+                                        explicitTime = explicitTime
+                                    )
+                                )
+                                maybePromptNotificationPermission()
+                            }
+                        },
+                        onDelete = { followUpId ->
+                            haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                            onEvent(PersonDetailUiEvent.OnDeleteReminder(followUpId))
+                        }
+                    )
+                }
+
+                // In-App Notification Permission Explainer (Prime Directive 3, ADR-0037)
+                if (showNotificationExplainer) {
+                    NotificationExplainerDialog(
+                        openSystemSettings = explainerOpensSettings,
+                        onAllowClick = {
+                            showNotificationExplainer = false
+                            if (explainerOpensSettings) {
+                                val settingsIntent = if (!FollowUpNotificationHelper.hasNotificationPermission(context)) {
+                                    FollowUpNotificationHelper.createAppNotificationSettingsIntent(context)
+                                } else {
+                                    FollowUpNotificationHelper.createChannelNotificationSettingsIntent(context)
+                                }
+                                runCatching { context.startActivity(settingsIntent) }
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                hasPromptedNotificationPermission = true
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                        onDismissClick = { showNotificationExplainer = false }
+                    )
+                }
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Preview(name = "Person Detail Light", showBackground = true, widthDp = 390, heightDp = 844)

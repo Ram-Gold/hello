@@ -14,10 +14,10 @@ This created two issues:
 
 ## Decision
 
-1. **In-Place Morph from `Floating Bottom Dock` to `Profile Encounter Pill`**:
+1. **In-Place Morph from `Floating Bottom Dock` to Split Profile Action Bar (`Profile Reminder Pill` + `Profile Encounter Pill`)**:
    - When navigating between a Root Tab and `PersonDetailRoute` (while not in `Timeline Selection Mode`), the shell-level `FloatingDockOverlay` remains at its resting vertical position (`translationY = 0`, `dockVisibility = 1f`) instead of sliding down off-screen.
-   - `HomeFloatingBottomDock` is driven by a continuous `profileMorphProgress` parameter in `0f..1f` (`0f` = Root Tab 3-tab dock + Quick-Add FAB; `1f` = `Profile Encounter Pill`).
-   - Remove the inline `+ Log Met` button from the `LivingTimeline` section header on `PersonDetailScreen` so the bottom `Profile Encounter Pill` is the single primary encounter-logging trigger on the Contact Profile Screen.
+   - `HomeFloatingBottomDock` is driven by a continuous `profileMorphProgress` parameter in `0f..1f` (`0f` = Root Tab 3-tab dock + Quick-Add FAB; `1f` = split `60.dp` stadium pills: left `Profile Reminder Pill` (`Remind`) + `14.dp` gap + right `Profile Encounter Pill` (`+ Catching up?`)).
+   - Remove both the inline `+ Log Met` and inline `+ Remind` buttons from the `LivingTimeline` section header on `PersonDetailScreen` so the bottom dock houses both primary actions at thumb level.
 
 2. **Unclipped Whole-Navbar Blur & Solid Right-to-Left Pill Sweep (350ms Window)**:
    - **Zero Vertical Drop / Constant 60dp Height**: Both the 3-tab navigation pill and the right-anchored Quick-Add `+` button remain locked at full `60.dp` height (`translationY = 0`) throughout the entire transition—never sliding downward or shrinking into a center dot.

@@ -657,20 +657,25 @@ class DockPerformanceTest {
         assertTrue("Label alpha must fade in strongly under ease-out", revealMid.labelAlpha in 0.65f..0.99f)
         assertTrue("Label must still be gliding right-to-left toward 0dp offset", revealMid.labelSlideOffsetDp in 0.2f..8f)
 
-        // 1.0: Final Profile Encounter Pill resting state ("+ Catching up?" spanning total dock footprint at 60dp height)
+        // 1.0: Final Split Profile Action Bar resting state ([Remind (114dp)] + [14dp gap] + ["+ Catching up?"])
         val end = DockMotionConfig.calculateProfileMorphState(progress = 1f, dockWidthDp = dockWidth)
+        val expectedPillLeft = DockMotionConfig.PROFILE_REMINDER_PILL_WIDTH_DP + DockMotionConfig.DOCK_FAB_GAP_DP
+        val expectedPillWidth = totalWidth - expectedPillLeft
         assertEquals(0f, end.navPillAlpha, 0.001f)
         assertEquals(0f, end.navShadowAlpha, 0.001f)
         assertEquals(DockMotionConfig.PROFILE_MORPH_MAX_BLUR_DP.toFloat(), end.navPillBlurDp, 0.001f)
-        assertEquals(0f, end.pillLeftDp, 0.001f)
-        assertEquals(totalWidth, end.pillWidthDp, 0.001f)
+        assertEquals(expectedPillLeft, end.pillLeftDp, 0.001f)
+        assertEquals(expectedPillWidth, end.pillWidthDp, 0.001f)
         assertEquals(60f, end.pillHeightDp, 0.001f)
         assertEquals(30f, end.pillCornerRadiusDp, 0.001f)
-        assertEquals(totalWidth / 2f, end.pillCenterXDp, 0.001f)
+        assertEquals(expectedPillLeft + expectedPillWidth / 2f, end.pillCenterXDp, 0.001f)
         assertEquals(22f, end.plusIconSizeDp, 0.001f)
         assertEquals(1f, end.labelRevealWeight, 0.001f)
         assertEquals(1f, end.labelAlpha, 0.001f)
         assertEquals(0f, end.labelSlideOffsetDp, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_REMINDER_PILL_WIDTH_DP, end.reminderPillWidthDp, 0.001f)
+        assertEquals(1f, end.reminderPillAlpha, 0.001f)
+        assertEquals(0f, end.reminderPillSlideOffsetDp, 0.001f)
 
         // Out-of-bounds clamping
         assertEquals(start, DockMotionConfig.calculateProfileMorphState(progress = -0.5f, dockWidthDp = dockWidth))
@@ -702,8 +707,10 @@ class DockPerformanceTest {
         assertTrue("Label must slide outward right", revEarly.labelSlideOffsetDp > 10f)
 
         val revAtOne = DockMotionConfig.calculateProfileMorphState(progress = 1f, dockWidthDp = dockWidth, isReversing = true)
-        assertEquals(totalWidth, revAtOne.pillWidthDp, 0.001f)
+        val expectedPillLeft = DockMotionConfig.PROFILE_REMINDER_PILL_WIDTH_DP + DockMotionConfig.DOCK_FAB_GAP_DP
+        assertEquals(totalWidth - expectedPillLeft, revAtOne.pillWidthDp, 0.001f)
         assertEquals(1f, revAtOne.labelAlpha, 0.001f)
+        assertEquals(1f, revAtOne.reminderPillAlpha, 0.001f)
         assertEquals(0f, revAtOne.navPillAlpha, 0.001f)
 
         val revAtZero = DockMotionConfig.calculateProfileMorphState(progress = 0f, dockWidthDp = dockWidth, isReversing = true)
@@ -744,6 +751,63 @@ class DockPerformanceTest {
             )
             previousLeft = state.pillLeftDp
             previousCenterX = state.pillCenterXDp
+        }
+    }
+
+    @Test
+    fun profileMorph_reminderPillMaterializesInPlaceWithScaleAndSoftBlurAndExitsFaster() {
+        val dims = DockMotionConfig.resolveThreeTabDockDimensions("People")
+        val dockWidth = dims.dockWidthDp.toFloat()
+
+        val start = DockMotionConfig.calculateProfileMorphState(progress = 0f, dockWidthDp = dockWidth)
+        assertEquals(0f, start.reminderPillAlpha, 0.001f)
+        assertEquals(0f, start.reminderPillSlideOffsetDp, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_REMINDER_PILL_INITIAL_SCALE, start.reminderPillScale, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_REMINDER_PILL_MAX_BLUR_DP, start.reminderPillBlurDp, 0.001f)
+
+        val mid = DockMotionConfig.calculateProfileMorphState(progress = 0.65f, dockWidthDp = dockWidth)
+        assertEquals("Remind pill must materialize in place with zero sideways slide", 0f, mid.reminderPillSlideOffsetDp, 0.001f)
+        assertTrue("Remind pill alpha must resolve strongly via ease-out", mid.reminderPillAlpha in 0.55f..0.98f)
+        assertTrue(
+            "Remind pill scale must resolve from 0.94 toward 1.0 (never scale(0))",
+            mid.reminderPillScale in DockMotionConfig.PROFILE_REMINDER_PILL_INITIAL_SCALE..1f
+        )
+        assertTrue(
+            "Remind pill blur must dissolve smoothly from 4dp toward 0dp",
+            mid.reminderPillBlurDp in 0f..DockMotionConfig.PROFILE_REMINDER_PILL_MAX_BLUR_DP
+        )
+
+        val end = DockMotionConfig.calculateProfileMorphState(progress = 1f, dockWidthDp = dockWidth)
+        assertEquals(1f, end.reminderPillAlpha, 0.001f)
+        assertEquals(0f, end.reminderPillSlideOffsetDp, 0.001f)
+        assertEquals(1f, end.reminderPillScale, 0.001f)
+        assertEquals(0f, end.reminderPillBlurDp, 0.001f)
+
+        // Asymmetric reverse exit (r = 0.15 at progress = 0.85): dissolves in place faster than entrance
+        val revEarly = DockMotionConfig.calculateProfileMorphState(progress = 0.85f, dockWidthDp = dockWidth, isReversing = true)
+        assertEquals(0f, revEarly.reminderPillSlideOffsetDp, 0.001f)
+        assertTrue("Reverse exit alpha must drop quickly with StrongEaseOut", revEarly.reminderPillAlpha < 0.35f)
+        assertTrue("Reverse exit scale must contract toward 0.94", revEarly.reminderPillScale < 0.97f)
+        assertTrue("Reverse exit blur must build smoothly toward 4dp", revEarly.reminderPillBlurDp > 2f)
+
+        val revDone = DockMotionConfig.calculateProfileMorphState(progress = 0f, dockWidthDp = dockWidth, isReversing = true)
+        assertEquals(0f, revDone.reminderPillAlpha, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_REMINDER_PILL_INITIAL_SCALE, revDone.reminderPillScale, 0.001f)
+        assertEquals(DockMotionConfig.PROFILE_REMINDER_PILL_MAX_BLUR_DP, revDone.reminderPillBlurDp, 0.001f)
+
+        // Monotonic forward check across 0..100
+        var prevAlpha = -1f
+        var prevScale = 0f
+        var prevBlur = Float.MAX_VALUE
+        for (step in 0..100) {
+            val s = DockMotionConfig.calculateProfileMorphState(step / 100f, dockWidth)
+            assertEquals(0f, s.reminderPillSlideOffsetDp, 0.001f)
+            assertTrue(s.reminderPillAlpha >= prevAlpha - 0.001f)
+            assertTrue(s.reminderPillScale >= prevScale - 0.001f)
+            assertTrue(s.reminderPillBlurDp <= prevBlur + 0.001f)
+            prevAlpha = s.reminderPillAlpha
+            prevScale = s.reminderPillScale
+            prevBlur = s.reminderPillBlurDp
         }
     }
 }

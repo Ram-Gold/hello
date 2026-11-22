@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterList
@@ -221,29 +222,36 @@ fun ContactsScreen(
             // Scroll-Driven Archive Reveal Header (Pull-to-action)
             PullToActionArchiveHeader(state = pullToActionState)
 
-            // 3. Contacts List View or Empty State
-            if (uiState.contacts.isEmpty()) {
-                val isFilterActive = uiState.searchQuery.isNotBlank() || activeTagFilters.isNotEmpty()
-                ContactsEmptyState(
-                    isFilterActive = isFilterActive,
-                    query = uiState.searchQuery,
-                    selectedTag = activeTagFilter,
-                    terminology = terminology,
-                    onClearFilters = { onEvent(ContactsUiEvent.OnClearFilters) },
-                    onAddContactClick = onAddContactClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 32.dp)
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(pullNestedScrollConnection),
-                    contentPadding = PaddingValues(bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+            // 3. Contacts List View or Empty State (always hosted in LazyColumn so pull-to-archive stays active)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(pullNestedScrollConnection),
+                contentPadding = PaddingValues(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                if (uiState.contacts.isEmpty()) {
+                    val isFilterActive = uiState.searchQuery.isNotBlank() || activeTagFilters.isNotEmpty()
+                    item(
+                        key = "contacts_empty_state",
+                        contentType = "empty_state"
+                    ) {
+                        ContactsEmptyState(
+                            isFilterActive = isFilterActive,
+                            query = uiState.searchQuery,
+                            selectedTag = activeTagFilter,
+                            terminology = terminology,
+                            archivedCount = uiState.archivedContacts.size,
+                            onClearFilters = { onEvent(ContactsUiEvent.OnClearFilters) },
+                            onAddContactClick = onAddContactClick,
+                            onOpenArchive = onNavigateToArchivedContacts,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 32.dp)
+                        )
+                    }
+                } else {
                     if (!uiState.isSelectionMode && uiState.searchQuery.isBlank() && activeTagFilters.isEmpty() && uiState.favoriteContacts.isNotEmpty()) {
                         item(
                             key = "people_favorites_strip",
@@ -774,8 +782,12 @@ fun ContactsEmptyState(
     onClearFilters: () -> Unit,
     onAddContactClick: () -> Unit,
     selectedTag: String? = null,
+    archivedCount: Int = 0,
+    onOpenArchive: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isAllArchived = !isFilterActive && archivedCount > 0
+
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -789,23 +801,27 @@ fun ContactsEmptyState(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             EmptyStateIllustration(
-                drawableRes = if (isFilterActive) R.drawable.ic_empty_search else R.drawable.ic_empty_directory,
+                drawableRes = when {
+                    isFilterActive -> R.drawable.ic_empty_search
+                    isAllArchived -> R.drawable.ic_empty_archived
+                    else -> R.drawable.ic_empty_directory
+                },
                 height = if (isFilterActive) 116.dp else 120.dp
             )
 
             Text(
-                text = if (isFilterActive) {
-                    "No matching ${terminology.pluralTitle.lowercase()}"
-                } else {
-                    terminology.emptyDirectoryTitle()
+                text = when {
+                    isFilterActive -> "No matching ${terminology.pluralTitle.lowercase()}"
+                    isAllArchived -> "All ${terminology.pluralTitle.lowercase()} are archived"
+                    else -> terminology.emptyDirectoryTitle()
                 },
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
-                text = if (isFilterActive) {
-                    when {
+                text = when {
+                    isFilterActive -> when {
                         query.isNotBlank() ->
                             "No ${terminology.pluralTitle.lowercase()} found matching \"$query\". Try a different keyword or reset filters."
                         selectedTag != null ->
@@ -813,37 +829,77 @@ fun ContactsEmptyState(
                         else ->
                             "No ${terminology.pluralTitle.lowercase()} match your active filter."
                     }
-                } else {
-                    "Your directory is ready! Start adding ${terminology.pluralTitle.lowercase()}, tagging life spheres (friends, work), and logging encounters."
+                    isAllArchived ->
+                        "Restore someone from your archive anytime, or add someone new."
+                    else ->
+                        "Your directory is ready! Start adding ${terminology.pluralTitle.lowercase()}, tagging life spheres (friends, work), and logging encounters."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (isFilterActive) {
-                Button(
-                    onClick = onClearFilters,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Text("Clear filters", style = MaterialTheme.typography.labelMedium)
+            when {
+                isFilterActive -> {
+                    Button(
+                        onClick = onClearFilters,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Text("Clear filters", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
-            } else {
-                Button(
-                    onClick = onAddContactClick,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(
-                        text = terminology.emptyDirectoryPrompt(),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                isAllArchived -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Button(
+                            onClick = onOpenArchive,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Archive,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "View Archive ($archivedCount)",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                        TextButton(
+                            onClick = onAddContactClick,
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(
+                                text = terminology.addActionTitle(),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    Button(
+                        onClick = onAddContactClick,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            text = terminology.emptyDirectoryPrompt(),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
         }

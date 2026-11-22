@@ -1,6 +1,6 @@
 # Hello Domain Model
 
-Local-first personal CRM and relationship keeper for Android, helping users cultivate meaningful personal and professional relationships through lightweight tracking and proactive cadences.
+Local-first personal CRM and relationship keeper for Android, designed around ease of use and seamlessness to help users cultivate meaningful personal and professional relationships through effortless capture and organic serendipity.
 
 ## Relationships
 
@@ -25,8 +25,8 @@ A clean, lightweight freeform label (strictly without `#` prefix) attached to Co
 _Avoid_: Circle, Group, Sphere, Category, Label, Folder, Hashtag
 
 **Tonal Tag Pill**:
-A Material 3 Expressive visual component displaying a Tag's name using a soft tinted background (~14%–18% alpha of the tag's palette color), matching saturated colored text, and subtle tonal border, replacing legacy hashtag text.
-_Avoid_: Hashtag chip, Plain badge, Category box
+A borderless Material 3 Expressive visual component displaying a Tag's name using a soft tinted background fill and matching saturated text with uniform proportional padding. Renders as a full stadium pill when unselected or displayed as a badge, and smoothly morphs into a saturated squircle when selected.
+_Avoid_: Hashtag chip, Outlined tag, Bordered badge, Category box
 
 **Encounter**:
 A recorded interaction or meeting between the user and a Contact, preserving context, notes, and recency.
@@ -37,7 +37,7 @@ A named physical venue or location where Encounters take place.
 _Avoid_: Venue, Location, Spot
 
 **FollowUp**:
-An actionable stay-in-touch reminder or task tied to a Contact, with a scheduled due date and completion state.
+An actionable stay-in-touch reminder tied to a Contact, with a scheduled due time and completion state; presented to users in the interface as a "Reminder".
 _Avoid_: Task, To-do, Ping
 
 **Serendipity Prompt**:
@@ -65,12 +65,16 @@ _Avoid_: Field, Form Item, Input Widget
 ## Presentation & Navigation
 
 **Floating Bottom Dock**:
-The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Timeline Tab, and Relationship Tab) alongside the companion Quick-Add Floating Action Button on root destinations, and morphs in place into the Profile Encounter Pill when navigating to the Contact Profile Screen. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
+The floating bottom navigation bar that houses the three primary navigation tabs (Home Tab, Relationship Tab, and Timeline Tab) alongside the companion Quick-Add Floating Action Button on root destinations, and morphs in place into the split Profile Action Bar (Profile Reminder Pill + Profile Encounter Pill) when navigating to the Contact Profile Screen. Icons are permanently visible across all tabs (outlined when inactive, filled when active), while the active tab's text label expands beside its filled icon inside a constant-width selection pill.
 _Avoid_: Navbar, Bottom bar, Tab bar
 
 **Profile Encounter Pill**:
-The bottom-docked primary action button (`+ Catching up?`) on the Contact Profile Screen that morphs in place from the Floating Bottom Dock's Quick-Add Floating Action Button to log a new Encounter for the viewed Contact.
+The right-anchored bottom-docked primary action button (`+ Catching up?`) on the Contact Profile Screen that morphs in place from the Floating Bottom Dock's Quick-Add Floating Action Button alongside the companion Profile Reminder Pill to log a new Encounter for the viewed Contact.
 _Avoid_: Log Meet button, Profile FAB, Inline Log Met button, Catch-up bar
+
+**Profile Reminder Pill**:
+The left-anchored bottom-docked companion action button (`Remind`) on the Contact Profile Screen that sits at thumb level beside the Profile Encounter Pill (`+ Catching up?`) to open the bottom-sheet Reminder flow for the viewed Contact.
+_Avoid_: Inline reminder form, Top-bar bell button, Ping button
 
 **Toast Pill**:
 A crisp, floating tactile notification card (`RoundedCornerShape(8.dp)` with 1dp border) rendered as an inverted high-contrast surface (`#121212` in light mode, `#FFFFFF` in dark mode) to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs semantic leading icons (Archive, Delete, Star, CheckCircle, Info) and a bottom countdown line with concise message copy and a right-anchored action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`).

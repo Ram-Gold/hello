@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.hello.data.local.entity.ContactEntity
 import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.local.entity.SyncMetadataEntity
+import com.example.hello.data.local.entity.toDomain
+import com.example.hello.data.local.entity.toEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -187,6 +189,79 @@ class HelloDatabaseTest {
         } finally {
             connection.close()
         }
+    }
+
+    @Test
+    fun migration7To8_addsHasExplicitTimeDefaultZeroAndPreservesFollowUps() {
+        val connection = androidx.sqlite.driver.bundled.BundledSQLiteDriver().open(":memory:")
+        try {
+            connection.prepare(
+                """
+                CREATE TABLE `follow_ups` (
+                    `id` TEXT NOT NULL,
+                    `contactId` TEXT NOT NULL,
+                    `dueAt` TEXT NOT NULL,
+                    `note` TEXT NOT NULL,
+                    `doneAt` TEXT,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            ).use { it.step() }
+
+            connection.prepare(
+                """
+                INSERT INTO `follow_ups` (`id`, `contactId`, `dueAt`, `note`, `doneAt`)
+                VALUES ('fu-mig-1', 'c-1', '2026-12-01T09:00:00Z', 'Send book link', NULL)
+                """.trimIndent()
+            ).use { it.step() }
+
+            HelloDatabase.MIGRATION_7_8.migrate(connection)
+
+            val columns = mutableListOf<String>()
+            connection.prepare("PRAGMA table_info(`follow_ups`)").use { stmt ->
+                while (stmt.step()) {
+                    columns += stmt.getText(1)
+                }
+            }
+            assertTrue("hasExplicitTime column must be added by MIGRATION_7_8", "hasExplicitTime" in columns)
+
+            connection.prepare("SELECT `id`, `note`, `hasExplicitTime` FROM `follow_ups` WHERE `id` = 'fu-mig-1'").use { stmt ->
+                assertTrue("Existing follow-up row must survive migration", stmt.step())
+                assertEquals("fu-mig-1", stmt.getText(0))
+                assertEquals("Send book link", stmt.getText(1))
+                assertEquals(0L, stmt.getLong(2))
+            }
+        } finally {
+            connection.close()
+        }
+    }
+
+    @Test
+    fun followUpEntity_preservesDoneAtAndHasExplicitTimeInRoom() = runTest {
+        database = HelloDatabase.createInMemory(context)
+        val now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+        val completed = com.example.hello.domain.model.FollowUp(
+            id = "fu-done-1",
+            contactId = "c-1",
+            dueAt = now,
+            note = "Wish luck before talk",
+            doneAt = now,
+            hasExplicitTime = true
+        )
+        database.followUpDao().insertFollowUp(completed.toEntity())
+
+        val fetched = database.followUpDao().getFollowUpById("fu-done-1")?.toDomain()
+        assertNotNull(fetched)
+        assertEquals(completed.doneAt, fetched?.doneAt)
+        assertTrue(fetched?.hasExplicitTime == true)
+        assertTrue(fetched?.isDone == true)
+        assertTrue(database.followUpDao().getAllFollowUps().any { it.id == "fu-done-1" })
+        assertTrue(database.followUpDao().getPendingFollowUps().none { it.id == "fu-done-1" })
+
+        database.followUpDao().clearDone("fu-done-1")
+        val restored = database.followUpDao().getFollowUpById("fu-done-1")?.toDomain()
+        assertEquals(null, restored?.doneAt)
+        assertTrue(database.followUpDao().getPendingFollowUps().any { it.id == "fu-done-1" })
     }
 
     private fun createMockContext(): Context {

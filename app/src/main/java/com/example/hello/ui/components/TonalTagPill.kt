@@ -3,12 +3,12 @@ package com.example.hello.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
@@ -39,26 +40,40 @@ import com.example.hello.ui.theme.LocalIsDarkTheme
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Resolved mode-aware colors for rendering a tag pill or swatch.
+ * Canonical tag & chip geometry tokens (ADR-0038):
+ * - Uniform 28.dp height
+ * - Proportional 2:1 padding (12.dp horizontal, 6.dp vertical)
+ * - Stadium pill (CircleShape) when unselected/static -> 8.dp squircle when selected
+ * - Zero borders (background fill only)
+ */
+object TagPillDefaults {
+    val Height: Dp = 28.dp
+    val HorizontalPadding: Dp = 12.dp
+    val VerticalPadding: Dp = 6.dp
+    val SelectedSquircleRadius: Dp = 8.dp
+    val SelectedShape: Shape = RoundedCornerShape(SelectedSquircleRadius)
+    val UnselectedShape: Shape = CircleShape
+}
+
+/**
+ * Resolved mode-aware colors for rendering a borderless tag pill or swatch.
  */
 data class ResolvedTagColors(
     val unselectedContainer: Color,
     val unselectedContent: Color,
-    val unselectedBorder: Color,
     val selectedContainer: Color,
     val selectedContent: Color
 )
 
 /**
  * High-performance concurrent cache for parsed tag colors, contrasting content colors,
- * container fills, and border strokes. Prevents string parsing and object allocation churn
+ * and container fills. Prevents string parsing and object allocation churn
  * during list scrolling and navigation transitions.
  */
 object TagColorCache {
     private val colorMap = ConcurrentHashMap<String, Color>()
     private val contrastMap = ConcurrentHashMap<Color, Color>()
     private val containerAlphaMap = ConcurrentHashMap<Color, Color>()
-    private val borderMap = ConcurrentHashMap<Color, BorderStroke>()
     private val resolvedMap = ConcurrentHashMap<String, ResolvedTagColors>()
 
     fun parseColor(hex: String, fallback: Color = Color(0xFF121212)): Color {
@@ -86,12 +101,6 @@ object TagColorCache {
         }
     }
 
-    fun getBorder(tagColor: Color): BorderStroke {
-        return borderMap.computeIfAbsent(tagColor) { c ->
-            BorderStroke(1.dp, c.copy(alpha = 0.28f))
-        }
-    }
-
     fun resolvePillColors(hex: String, isDark: Boolean): ResolvedTagColors {
         val cacheKey = "${hex.trim().uppercase()}|$isDark"
         return resolvedMap.computeIfAbsent(cacheKey) {
@@ -101,7 +110,6 @@ object TagColorCache {
                 ResolvedTagColors(
                     unselectedContainer = parseColor(tone.containerHex),
                     unselectedContent = parseColor(tone.contentHex),
-                    unselectedBorder = parseColor(tone.borderHex),
                     selectedContainer = parseColor(tone.selectedContainerHex),
                     selectedContent = parseColor(tone.selectedContentHex)
                 )
@@ -117,7 +125,6 @@ object TagColorCache {
                 ResolvedTagColors(
                     unselectedContainer = getContainerColor(baseColor),
                     unselectedContent = unselectedContent,
-                    unselectedBorder = baseColor.copy(alpha = 0.28f),
                     selectedContainer = baseColor,
                     selectedContent = getContrastingColor(baseColor)
                 )
@@ -126,24 +133,16 @@ object TagColorCache {
     }
 }
 
-/**
- * High-performance concurrent cache for parsed tag colors, contrasting content colors,
- * container fills, and border strokes. Prevents string parsing and object allocation churn
- * during list scrolling and navigation transitions.
- */
 fun parseTagColor(hex: String, fallback: Color = Color(0xFF121212)): Color =
     TagColorCache.parseColor(hex, fallback)
 
-/**
- * Calculates high-contrast foreground color based on background luminance.
- */
 fun getContrastingColor(background: Color): Color =
     TagColorCache.getContrastingColor(background)
 
 /**
- * Material 3 Expressive Tonal Tag Pill displaying clean-string tag name without '#' prefix.
- * Supports both static badge display (zero animation allocation fast-path) and interactive
- * selectable states with a smooth, zero-relayout stadium-to-squircle morph animation.
+ * Borderless Material 3 Expressive Tonal Tag Pill displaying clean-string tag name without '#' prefix.
+ * Uses uniform 28.dp height, 12.dp x 6.dp proportional padding, and natural text-relative width.
+ * Renders as a full stadium pill when unselected/static and morphs to an 8.dp squircle when selected.
  */
 @Composable
 fun TonalTagPill(
@@ -152,8 +151,7 @@ fun TonalTagPill(
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
     maxNameLength: Int? = null,
-    shape: Shape = if (isSelected) RoundedCornerShape(6.dp) else CircleShape,
-    border: BorderStroke? = null
+    shape: Shape = if (isSelected) TagPillDefaults.SelectedShape else TagPillDefaults.UnselectedShape
 ) {
     val cleanName = tag.name.trim().removePrefix("#")
     val displayName = if (maxNameLength != null && cleanName.length > maxNameLength) {
@@ -189,11 +187,13 @@ fun TonalTagPill(
     Surface(
         shape = shape,
         color = containerColor,
-        border = border,
-        modifier = modifier
+        modifier = modifier.height(TagPillDefaults.Height)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(
+                horizontal = TagPillDefaults.HorizontalPadding,
+                vertical = TagPillDefaults.VerticalPadding
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -210,8 +210,8 @@ fun TonalTagPill(
 }
 
 /**
- * Interactive filter pill that smoothly morphs between a full stadium pill (unselected)
- * and a crisp 6.dp squircle (selected) purely in the draw phase with zero layout churn.
+ * Interactive borderless filter/suggestion pill that smoothly morphs between a full stadium pill
+ * (unselected) and a crisp 8.dp squircle (selected) purely in the draw phase with zero layout churn.
  */
 @Composable
 fun TonalFilterPill(
@@ -222,7 +222,8 @@ fun TonalFilterPill(
     unselectedContentColor: Color,
     selectedContentColor: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    leadingIcon: (@Composable (Color) -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -249,6 +250,7 @@ fun TonalFilterPill(
 
     Row(
         modifier = modifier
+            .height(TagPillDefaults.Height)
             .semantics {
                 role = Role.Checkbox
                 selected = isSelected
@@ -259,7 +261,7 @@ fun TonalFilterPill(
             }
             .drawBehind {
                 val stadiumRadius = size.height / 2f
-                val squircleRadius = 6.dp.toPx()
+                val squircleRadius = TagPillDefaults.SelectedSquircleRadius.toPx()
                 val cornerRadius = stadiumRadius + (squircleRadius - stadiumRadius) * selectionProgress
                 val bgColor = lerp(unselectedContainerColor, selectedContainerColor, selectionProgress)
                 drawRoundRect(
@@ -272,10 +274,16 @@ fun TonalFilterPill(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(
+                horizontal = TagPillDefaults.HorizontalPadding,
+                vertical = TagPillDefaults.VerticalPadding
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        if (leadingIcon != null) {
+            leadingIcon(contentColor)
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -286,4 +294,3 @@ fun TonalFilterPill(
         )
     }
 }
-

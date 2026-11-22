@@ -27,13 +27,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -240,21 +240,22 @@ private fun ArchivedContactCard(
             Spacer(modifier = Modifier.width(8.dp))
 
             val haptics = LocalHelloHaptics.current
-            TextButton(
+            FilledIconButton(
                 onClick = {
                     haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                     onRestore()
                 },
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.size(40.dp)
             ) {
-                Text(
-                    text = "Restore",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    ),
-                    color = MaterialTheme.colorScheme.primary
+                Icon(
+                    imageVector = Icons.Rounded.Replay,
+                    contentDescription = "Restore ${contact.name}",
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }

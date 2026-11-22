@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -89,14 +90,22 @@ class ContactRepository(
     val upcomingAlerts: StateFlow<List<UpcomingAlert>> = _upcomingAlerts.asStateFlow()
 
     // In-memory undo buffer for transient 7-second recovery (ADR-0027)
-    private var lastArchiveOperation: Pair<String, Boolean>? = null
-    private var lastDeletedContact: Contact? = null
-    private var lastDeletedContactEncounters: List<Encounter> = emptyList()
-    private var lastDeletedContactFollowUps: List<FollowUp> = emptyList()
+    private var lastArchiveOperations: List<Pair<String, Boolean>> = emptyList()
+    private var lastDeletedContacts: List<Contact> = emptyList()
+    private var lastDeletedContactsEncounters: List<Encounter> = emptyList()
+    private var lastDeletedContactsFollowUps: List<FollowUp> = emptyList()
     private var lastDeletedEncounters: List<Encounter> = emptyList()
     private var lastDeletedTag: Tag? = null
     private var lastDeletedTagContactIds: Set<String> = emptySet()
+    private var lastFollowUpUndo: Pair<List<FollowUp>, Boolean>? = null // (followUps, wasCompleted)
+    private var lastContactMutationDbJob: Job? = null
     private var lastTagDeleteDbJob: Job? = null
+    private var lastFollowUpDbJob: Job? = null
+
+    @Volatile
+    private var defaultNotificationHour: Int = 9
+    @Volatile
+    private var defaultNotificationMinute: Int = 0
 
     // In-memory daily skip list for weighted-random serendipity prompts (ADR-0036)
     private var skippedSerendipityDate: LocalDate = LocalDate.now()
@@ -212,23 +221,39 @@ class ContactRepository(
             db.followUpDao().getPendingFollowUpsFlow().collect { entities ->
                 val domainFollowUps = entities.map { it.toDomain() }
                 _followUps.value = domainFollowUps
-
-                val reminders = domainFollowUps.map { fu ->
-                    val contactName = _fullContacts.value[fu.contactId]?.name ?: "Contact"
-                    val daysUntil = ChronoUnit.DAYS.between(Instant.now(), fu.dueAt).coerceAtLeast(0)
-                    val dueText = if (daysUntil <= 0) "Today" else "In $daysUntil days"
-                    UpcomingAlert.FollowUpReminder(
-                        id = fu.id,
-                        contactName = contactName,
-                        taskDescription = fu.note,
-                        dueText = dueText
-                    )
-                }
-                _upcomingAlerts.update { currentAlerts ->
-                    val nonFollowUps = currentAlerts.filterNot { it is UpcomingAlert.FollowUpReminder }
-                    reminders + nonFollowUps
-                }
+                rebuildFollowUpAlerts()
             }
+        }
+    }
+
+    private fun rebuildFollowUpAlerts(
+        today: LocalDate = LocalDate.now(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ) {
+        val contactsMap = _fullContacts.value
+        val reminders = _followUps.value
+            .filter { fu -> !fu.isDone && contactsMap[fu.contactId]?.isArchived != true }
+            .sortedBy { it.dueAt }
+            .map { fu ->
+                val contactName = contactsMap[fu.contactId]?.name ?: "Contact"
+                val dueDate = fu.dueAt.atZone(zoneId).toLocalDate()
+                val daysUntil = ChronoUnit.DAYS.between(today, dueDate)
+                val dueText = when {
+                    daysUntil < 0L -> "Overdue"
+                    daysUntil == 0L -> "Today"
+                    daysUntil == 1L -> "Tomorrow"
+                    else -> "In $daysUntil days"
+                }
+                UpcomingAlert.FollowUpReminder(
+                    id = fu.id,
+                    contactName = contactName,
+                    taskDescription = fu.note,
+                    dueText = dueText
+                )
+            }
+        _upcomingAlerts.update { currentAlerts ->
+            val nonFollowUps = currentAlerts.filterNot { it is UpcomingAlert.FollowUpReminder }
+            reminders + nonFollowUps
         }
     }
 
@@ -471,69 +496,147 @@ class ContactRepository(
     }
 
     fun archiveContact(contactId: String, archived: Boolean = true) {
-        val existing = _fullContacts.value[contactId] ?: return
-        lastArchiveOperation = Pair(contactId, existing.isArchived)
-        val updated = existing.copy(isArchived = archived)
-        updateContact(updated)
+        archiveContacts(setOf(contactId), archived)
+    }
 
-        if (archived) {
-            val firstName = existing.name.split(" ").firstOrNull() ?: existing.name
+    fun archiveContacts(contactIds: Set<String>, archived: Boolean = true) {
+        if (contactIds.isEmpty()) return
+        val existingContacts = contactIds.mapNotNull { _fullContacts.value[it] }
+        if (existingContacts.isEmpty()) return
+
+        lastArchiveOperations = existingContacts.map { it.id to it.isArchived }
+        applyArchiveStates(existingContacts.map { it.id to archived })
+    }
+
+    private fun applyArchiveStates(targetStates: List<Pair<String, Boolean>>) {
+        if (targetStates.isEmpty()) return
+        val stateById = targetStates.toMap()
+        val now = Instant.now()
+
+        val updatedContacts = mutableListOf<Contact>()
+        _fullContacts.update { currentMap ->
+            val mutable = currentMap.toMutableMap()
+            for ((contactId, targetArchived) in targetStates) {
+                val existing = mutable[contactId] ?: continue
+                val updated = existing.copy(isArchived = targetArchived, updatedAt = now)
+                mutable[contactId] = updated
+                updatedContacts.add(updated)
+            }
+            mutable
+        }
+
+        val applySummaryUpdate: (ContactSummary) -> ContactSummary = { summary ->
+            val targetArchived = stateById[summary.id]
+            if (targetArchived != null) {
+                summary.copy(isArchived = targetArchived, updatedAt = now)
+            } else {
+                summary
+            }
+        }
+        _contacts.update { list -> list.map(applySummaryUpdate) }
+        _recentContacts.update { list -> list.map(applySummaryUpdate) }
+        refreshFavorites()
+        refreshBirthdayAlerts(_fullContacts.value.values)
+
+        val newlyArchived = updatedContacts.filter { it.isArchived }
+        if (newlyArchived.isNotEmpty()) {
+            val archivedIds = newlyArchived.map { it.id }.toSet()
+            val archivedNames = newlyArchived.map { it.name }
+            val archivedFirstNames = newlyArchived.map { it.name.split(" ").firstOrNull() ?: it.name }
+            _followUps.value
+                .filter { !it.isDone && it.contactId in archivedIds }
+                .forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
             _upcomingAlerts.update { alerts ->
                 alerts.filterNot { alert ->
                     alert is UpcomingAlert.SerendipityPrompt &&
-                        (alert.contactId == contactId ||
-                            alert.contactName.equals(existing.name, ignoreCase = true) ||
-                            alert.contactName.startsWith(firstName, ignoreCase = true))
+                        (alert.contactId in archivedIds ||
+                            archivedNames.any { alert.contactName.equals(it, ignoreCase = true) } ||
+                            archivedFirstNames.any { alert.contactName.startsWith(it, ignoreCase = true) })
                 }
             }
         }
+        val newlyRestored = updatedContacts.filterNot { it.isArchived }
+        if (newlyRestored.isNotEmpty()) {
+            val restoredById = newlyRestored.associateBy { it.id }
+            _followUps.value
+                .filter { !it.isDone && it.contactId in restoredById }
+                .forEach { fu ->
+                    val contact = restoredById[fu.contactId]
+                    if (contact != null) {
+                        alarmScheduler?.scheduleFollowUp(fu, contact.name)
+                    }
+                }
+        }
+        rebuildFollowUpAlerts()
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
-                val entity = db.contactDao().getContactById(contactId)
-                if (entity != null) {
-                    db.contactDao().updateContact(entity.copy(isArchived = archived))
+            val previousJob = lastContactMutationDbJob
+            lastContactMutationDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.withTransactionSafe {
+                    for ((contactId, targetArchived) in targetStates) {
+                        val entity = db.contactDao().getContactById(contactId)
+                        if (entity != null) {
+                            db.contactDao().updateContact(entity.copy(isArchived = targetArchived, updatedAt = now))
+                        }
+                    }
                 }
             }
         }
     }
 
     fun deleteContact(contactId: String) {
-        val contactFollowUps = _followUps.value.filter { it.contactId == contactId }
-        contactFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
+        deleteContacts(setOf(contactId))
+    }
 
-        val existing = _fullContacts.value[contactId]
-        if (existing != null) {
-            lastDeletedContact = existing
-            lastDeletedContactEncounters = _encounters.value.filter { it.contactId == contactId }
-            lastDeletedContactFollowUps = contactFollowUps
+    fun deleteContacts(contactIds: Set<String>) {
+        if (contactIds.isEmpty()) return
+        val existingContacts = contactIds.mapNotNull { _fullContacts.value[it] }
+        val deletedIds = contactIds
+
+        val affectedFollowUps = _followUps.value.filter { it.contactId in deletedIds }
+        affectedFollowUps.forEach { fu -> alarmScheduler?.cancelAlarm(fu.id) }
+
+        if (existingContacts.isNotEmpty()) {
+            val existingIds = existingContacts.map { it.id }.toSet()
+            lastDeletedContacts = existingContacts
+            lastDeletedContactsEncounters = _encounters.value.filter { it.contactId in existingIds }
+            lastDeletedContactsFollowUps = affectedFollowUps.filter { it.contactId in existingIds }
         }
-        _fullContacts.update { it - contactId }
-        _contacts.update { list -> list.filterNot { it.id == contactId } }
-        _recentContacts.update { list -> list.filterNot { it.id == contactId } }
-        _encounters.update { list -> list.filterNot { it.contactId == contactId } }
-        _followUps.update { list -> list.filterNot { it.contactId == contactId } }
-        refreshFavorites()
 
-        if (existing != null) {
-            val firstName = existing.name.split(" ").firstOrNull() ?: existing.name
+        _fullContacts.update { it - deletedIds }
+        _contacts.update { list -> list.filterNot { it.id in deletedIds } }
+        _recentContacts.update { list -> list.filterNot { it.id in deletedIds } }
+        _encounters.update { list -> list.filterNot { it.contactId in deletedIds } }
+        _followUps.update { list -> list.filterNot { it.contactId in deletedIds } }
+        refreshFavorites()
+        refreshBirthdayAlerts(_fullContacts.value.values)
+
+        if (existingContacts.isNotEmpty()) {
+            val deletedNames = existingContacts.map { it.name }
+            val deletedFirstNames = existingContacts.map { it.name.split(" ").firstOrNull() ?: it.name }
             _upcomingAlerts.update { alerts ->
                 alerts.filterNot { alert ->
-                    alert.contactName.equals(existing.name, ignoreCase = true) ||
-                        alert.contactName.startsWith(firstName, ignoreCase = true)
+                    (alert is UpcomingAlert.SerendipityPrompt && alert.contactId in deletedIds) ||
+                        deletedNames.any { alert.contactName.equals(it, ignoreCase = true) } ||
+                        deletedFirstNames.any { alert.contactName.startsWith(it, ignoreCase = true) }
                 }
             }
         }
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
+            val previousJob = lastContactMutationDbJob
+            lastContactMutationDbJob = coroutineScope.launch {
+                previousJob?.join()
                 db.withTransactionSafe {
-                    db.contactDao().deleteContactById(contactId)
-                    db.contactDao().deleteContactFtsByContactId(contactId)
-                    db.encounterDao().deleteEncountersForContact(contactId)
-                    db.followUpDao().deleteFollowUpsForContact(contactId)
+                    for (contactId in deletedIds) {
+                        db.contactDao().deleteContactById(contactId)
+                        db.contactDao().deleteContactFtsByContactId(contactId)
+                        db.encounterDao().deleteEncountersForContact(contactId)
+                        db.followUpDao().deleteFollowUpsForContact(contactId)
+                    }
                 }
             }
         }
@@ -839,21 +942,22 @@ class ContactRepository(
 
         var createdFollowUp: FollowUp? = null
         if (followUpDays != null && followUpDays > 0) {
+            val dueDate = LocalDate.now().plusDays(followUpDays.toLong())
             val followUp = FollowUp(
                 id = "fu-${UUID.randomUUID()}",
                 contactId = newContact.id,
-                dueAt = now.plus(followUpDays.toLong(), ChronoUnit.DAYS),
-                note = note.trim().ifEmpty { "Follow up with ${newContact.name}" }
+                dueAt = FollowUp.computeDueAt(
+                    date = dueDate,
+                    hasExplicitTime = false,
+                    defaultHour = defaultNotificationHour,
+                    defaultMinute = defaultNotificationMinute
+                ),
+                note = note.trim().ifEmpty { "Follow up with ${newContact.name}" },
+                hasExplicitTime = false
             )
             createdFollowUp = followUp
             _followUps.update { listOf(followUp) + it }
-            val alert = UpcomingAlert.FollowUpReminder(
-                id = followUp.id,
-                contactName = newContact.name,
-                taskDescription = followUp.note,
-                dueText = "In $followUpDays days"
-            )
-            _upcomingAlerts.update { listOf(alert) + it }
+            rebuildFollowUpAlerts()
             alarmScheduler?.scheduleFollowUp(followUp, newContact.name)
         }
 
@@ -1068,51 +1172,78 @@ class ContactRepository(
     }
 
     /**
-     * Reverts the most recent archive operation within the transient 7-second window (ADR-0027).
+     * Reverts the most recent single or batch archive operation within the transient 7-second
+     * window (ADR-0027), returning the number of contacts restored.
      */
-    fun undoLastArchive(): Boolean {
-        val (contactId, previousArchived) = lastArchiveOperation ?: return false
-        archiveContact(contactId, archived = previousArchived)
-        lastArchiveOperation = null
-        return true
+    fun undoLastArchiveBatch(): Int {
+        val operations = lastArchiveOperations
+        if (operations.isEmpty()) return 0
+        lastArchiveOperations = emptyList()
+        applyArchiveStates(operations)
+        return operations.size
     }
 
     /**
-     * Reverts the most recent contact deletion, restoring full contact data, encounters,
-     * and follow-ups within the transient 7-second window (ADR-0027).
+     * Reverts the most recent archive operation within the transient 7-second window (ADR-0027).
      */
-    fun undoLastDeleteContact(): Boolean {
-        val contactToRestore = lastDeletedContact ?: return false
-        val encountersToRestore = lastDeletedContactEncounters
-        val followUpsToRestore = lastDeletedContactFollowUps
+    fun undoLastArchive(): Boolean = undoLastArchiveBatch() > 0
 
-        val summary = contactToRestore.toSummary(_tags.value)
-        _fullContacts.update { it + (contactToRestore.id to contactToRestore) }
-        _contacts.update { listOf(summary) + it.filterNot { c -> c.id == contactToRestore.id } }
-        _recentContacts.update { listOf(summary) + it.filterNot { c -> c.id == contactToRestore.id } }
+    /**
+     * Reverts the most recent single or batch contact deletion, restoring full contact data,
+     * encounters, and follow-ups within the transient 7-second window (ADR-0027), returning the
+     * number of contacts restored.
+     */
+    fun undoLastDeleteContacts(): Int {
+        val contactsToRestore = lastDeletedContacts
+        if (contactsToRestore.isEmpty()) return 0
+        val encountersToRestore = lastDeletedContactsEncounters
+        val followUpsToRestore = lastDeletedContactsFollowUps
+
+        lastDeletedContacts = emptyList()
+        lastDeletedContactsEncounters = emptyList()
+        lastDeletedContactsFollowUps = emptyList()
+
+        val restoredIds = contactsToRestore.map { it.id }.toSet()
+        val summaries = contactsToRestore.map { it.toSummary(_tags.value) }
+        val contactNamesById = contactsToRestore.associate { it.id to it.name }
+
+        _fullContacts.update { current ->
+            current + contactsToRestore.associateBy { it.id }
+        }
+        _contacts.update { summaries + it.filterNot { c -> c.id in restoredIds } }
+        _recentContacts.update { summaries + it.filterNot { c -> c.id in restoredIds } }
         if (encountersToRestore.isNotEmpty()) {
-            _encounters.update { encountersToRestore + it }
+            val restoredEncounterIds = encountersToRestore.map { it.id }.toSet()
+            _encounters.update { encountersToRestore + it.filterNot { enc -> enc.id in restoredEncounterIds } }
         }
         if (followUpsToRestore.isNotEmpty()) {
-            _followUps.update { followUpsToRestore + it }
+            val restoredFollowUpIds = followUpsToRestore.map { it.id }.toSet()
+            _followUps.update { followUpsToRestore + it.filterNot { fu -> fu.id in restoredFollowUpIds } }
+            followUpsToRestore.filterNot { it.isDone }.forEach { fu ->
+                alarmScheduler?.scheduleFollowUp(fu, contactNamesById[fu.contactId] ?: "Contact")
+            }
         }
         refreshFavorites()
         refreshBirthdayAlerts(_fullContacts.value.values)
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
+            val previousJob = lastContactMutationDbJob
+            lastContactMutationDbJob = coroutineScope.launch {
+                previousJob?.join()
                 db.withTransactionSafe {
-                    db.contactDao().insertContact(contactToRestore.toEntity())
-                    db.contactDao().deleteContactFtsByContactId(contactToRestore.id)
-                    db.contactDao().insertContactFts(
-                        com.example.hello.data.local.entity.ContactFtsEntity(
-                            contactId = contactToRestore.id,
-                            name = contactToRestore.name,
-                            aliases = contactToRestore.aliases.joinToString(" "),
-                            notes = contactToRestore.notes
+                    contactsToRestore.forEach { contact ->
+                        db.contactDao().insertContact(contact.toEntity())
+                        db.contactDao().deleteContactFtsByContactId(contact.id)
+                        db.contactDao().insertContactFts(
+                            com.example.hello.data.local.entity.ContactFtsEntity(
+                                contactId = contact.id,
+                                name = contact.name,
+                                aliases = contact.aliases.joinToString(" "),
+                                notes = contact.notes
+                            )
                         )
-                    )
+                    }
                     encountersToRestore.forEach { enc ->
                         db.encounterDao().insertEncounter(enc.toEntity())
                     }
@@ -1123,11 +1254,14 @@ class ContactRepository(
             }
         }
 
-        lastDeletedContact = null
-        lastDeletedContactEncounters = emptyList()
-        lastDeletedContactFollowUps = emptyList()
-        return true
+        return contactsToRestore.size
     }
+
+    /**
+     * Reverts the most recent contact deletion, restoring full contact data, encounters,
+     * and follow-ups within the transient 7-second window (ADR-0027).
+     */
+    fun undoLastDeleteContact(): Boolean = undoLastDeleteContacts() > 0
 
     /**
      * Reverts the most recent encounter deletion, restoring encounters and recalculating
@@ -1272,44 +1406,220 @@ class ContactRepository(
         return true
     }
 
+    fun setDefaultNotificationTime(hour: Int, minute: Int) {
+        defaultNotificationHour = hour.coerceIn(0, 23)
+        defaultNotificationMinute = minute.coerceIn(0, 59)
+    }
+
+    fun getFollowUpsForContact(contactId: String): Flow<List<FollowUp>> =
+        _followUps.map { list ->
+            list.filter { it.contactId == contactId && !it.isDone }
+                .sortedBy { it.dueAt }
+        }
+
+    fun addFollowUp(
+        contactId: String,
+        dueDate: LocalDate,
+        note: String,
+        hasExplicitTime: Boolean = false,
+        explicitTime: LocalTime? = null,
+        defaultHour: Int = defaultNotificationHour,
+        defaultMinute: Int = defaultNotificationMinute,
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): FollowUp {
+        val contact = _fullContacts.value[contactId]
+        val contactName = contact?.name ?: _contacts.value.firstOrNull { it.id == contactId }?.name ?: "Contact"
+        val resolvedNote = note.trim().ifEmpty { "Follow up with $contactName" }
+        val resolvedDueAt = FollowUp.computeDueAt(
+            date = dueDate,
+            hasExplicitTime = hasExplicitTime,
+            explicitTime = explicitTime,
+            defaultHour = defaultHour,
+            defaultMinute = defaultMinute,
+            zoneId = zoneId
+        )
+        val followUp = FollowUp(
+            id = "fu-${UUID.randomUUID()}",
+            contactId = contactId,
+            dueAt = resolvedDueAt,
+            note = resolvedNote,
+            hasExplicitTime = hasExplicitTime
+        )
+        _followUps.update { (it + followUp).sortedBy { item -> item.dueAt } }
+        rebuildFollowUpAlerts(zoneId = zoneId)
+        if (contact?.isArchived != true) {
+            alarmScheduler?.scheduleFollowUp(followUp, contactName)
+        }
+
+        val db = database
+        if (db != null) {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.followUpDao().insertFollowUp(followUp.toEntity())
+            }
+        }
+        return followUp
+    }
+
+    fun updateFollowUp(
+        followUpId: String,
+        dueDate: LocalDate,
+        note: String,
+        hasExplicitTime: Boolean,
+        explicitTime: LocalTime? = null,
+        defaultHour: Int = defaultNotificationHour,
+        defaultMinute: Int = defaultNotificationMinute,
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): FollowUp? {
+        val existing = _followUps.value.firstOrNull { it.id == followUpId } ?: return null
+        val contact = _fullContacts.value[existing.contactId]
+        val contactName = contact?.name ?: _contacts.value.firstOrNull { it.id == existing.contactId }?.name ?: "Contact"
+        val resolvedNote = note.trim().ifEmpty { "Follow up with $contactName" }
+        val resolvedDueAt = FollowUp.computeDueAt(
+            date = dueDate,
+            hasExplicitTime = hasExplicitTime,
+            explicitTime = explicitTime,
+            defaultHour = defaultHour,
+            defaultMinute = defaultMinute,
+            zoneId = zoneId
+        )
+        val updated = existing.copy(
+            dueAt = resolvedDueAt,
+            note = resolvedNote,
+            hasExplicitTime = hasExplicitTime
+        )
+        _followUps.update { list ->
+            list.map { if (it.id == followUpId) updated else it }.sortedBy { it.dueAt }
+        }
+        rebuildFollowUpAlerts(zoneId = zoneId)
+        if (contact?.isArchived == true) {
+            alarmScheduler?.cancelAlarm(followUpId)
+        } else {
+            alarmScheduler?.scheduleFollowUp(updated, contactName)
+        }
+
+        val db = database
+        if (db != null) {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.followUpDao().updateFollowUp(updated.toEntity())
+            }
+        }
+        return updated
+    }
+
+    fun deleteFollowUp(followUpId: String) {
+        deleteFollowUps(setOf(followUpId))
+    }
+
     fun deleteFollowUps(followUpIds: Set<String>) {
         if (followUpIds.isEmpty()) return
-        _upcomingAlerts.update { alerts -> alerts.filterNot { it.id in followUpIds } }
+        val deleted = _followUps.value.filter { it.id in followUpIds }
+        if (deleted.isNotEmpty()) {
+            lastFollowUpUndo = Pair(deleted, false)
+        }
         _followUps.update { followUps -> followUps.filterNot { it.id in followUpIds } }
+        rebuildFollowUpAlerts()
         followUpIds.forEach { alertId ->
             alarmScheduler?.cancelAlarm(alertId)
         }
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
-                followUpIds.forEach { followUpId ->
-                    db.followUpDao().deleteFollowUpById(followUpId)
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.withTransactionSafe {
+                    followUpIds.forEach { followUpId ->
+                        db.followUpDao().deleteFollowUpById(followUpId)
+                    }
                 }
             }
         }
     }
 
     fun markFollowUpDone(alertId: String) {
-        _upcomingAlerts.update { alerts -> alerts.filterNot { it.id == alertId } }
+        val existing = _followUps.value.firstOrNull { it.id == alertId }
+        if (existing != null) {
+            lastFollowUpUndo = Pair(listOf(existing), true)
+        }
         _followUps.update { followUps -> followUps.filterNot { it.id == alertId } }
+        rebuildFollowUpAlerts()
         alarmScheduler?.cancelAlarm(alertId)
 
         val db = database
         if (db != null) {
-            coroutineScope.launch {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
                 db.followUpDao().markDone(alertId, Instant.now())
             }
         }
     }
 
-    fun snoozeFollowUp(alertId: String, days: Long = 3) {
-        _upcomingAlerts.update { alerts -> alerts.filterNot { it.id == alertId } }
+    fun undoLastFollowUpMutation(): Boolean {
+        val (toRestore, wasCompleted) = lastFollowUpUndo ?: return false
+        if (toRestore.isEmpty()) return false
+        lastFollowUpUndo = null
 
-        val newDueAt = Instant.now().plus(days, ChronoUnit.DAYS)
+        val restoredIds = toRestore.map { it.id }.toSet()
+        _followUps.update { current ->
+            (current.filterNot { it.id in restoredIds } + toRestore.map { it.copy(doneAt = null) })
+                .sortedBy { it.dueAt }
+        }
+        rebuildFollowUpAlerts()
+
+        for (fu in toRestore) {
+            val contact = _fullContacts.value[fu.contactId]
+            if (contact?.isArchived != true) {
+                val contactName = contact?.name ?: _contacts.value.firstOrNull { it.id == fu.contactId }?.name ?: "Contact"
+                alarmScheduler?.scheduleFollowUp(fu.copy(doneAt = null), contactName)
+            }
+        }
+
+        val db = database
+        if (db != null) {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.withTransactionSafe {
+                    toRestore.forEach { fu ->
+                        if (wasCompleted) {
+                            db.followUpDao().clearDone(fu.id)
+                        } else {
+                            db.followUpDao().insertFollowUp(fu.copy(doneAt = null).toEntity())
+                        }
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    fun snoozeFollowUp(
+        alertId: String,
+        days: Long = 3,
+        defaultHour: Int = defaultNotificationHour,
+        defaultMinute: Int = defaultNotificationMinute,
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ) {
         val targetFollowUp = _followUps.value.firstOrNull { it.id == alertId }
-        val contactName = targetFollowUp?.let { _fullContacts.value[it.contactId]?.name } ?: "Contact"
-        if (targetFollowUp != null) {
+        val newDueAt = if (targetFollowUp != null) {
+            FollowUp.computeSnoozedDueAt(
+                followUp = targetFollowUp,
+                days = days,
+                defaultHour = defaultHour,
+                defaultMinute = defaultMinute,
+                zoneId = zoneId
+            )
+        } else {
+            Instant.now().plus(days, ChronoUnit.DAYS)
+        }
+        val contact = targetFollowUp?.let { _fullContacts.value[it.contactId] }
+        val contactName = contact?.name ?: "Contact"
+        if (targetFollowUp != null && contact?.isArchived != true) {
             alarmScheduler?.scheduleAlarm(
                 followUpId = alertId,
                 contactId = targetFollowUp.contactId,
@@ -1322,13 +1632,69 @@ class ContactRepository(
         _followUps.update { followUps ->
             followUps.map {
                 if (it.id == alertId) it.copy(dueAt = newDueAt) else it
+            }.sortedBy { it.dueAt }
+        }
+        rebuildFollowUpAlerts(zoneId = zoneId)
+
+        val db = database
+        if (db != null) {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.followUpDao().snooze(alertId, newDueAt)
+            }
+        }
+    }
+
+    /**
+     * Retroactively shifts and reschedules all pending date-only FollowUps (hasExplicitTime == false)
+     * when the user updates their preferred notification delivery hour in Settings (ADR-0037).
+     */
+    fun rescheduleDateOnlyFollowUps(
+        hour: Int,
+        minute: Int,
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ) {
+        setDefaultNotificationTime(hour, minute)
+        val shifted = mutableListOf<FollowUp>()
+        _followUps.update { current ->
+            current.map { fu ->
+                if (!fu.isDone && !fu.hasExplicitTime) {
+                    val updated = fu.copy(
+                        dueAt = FollowUp.shiftDateOnlyDueAt(
+                            currentDueAt = fu.dueAt,
+                            newHour = defaultNotificationHour,
+                            newMinute = defaultNotificationMinute,
+                            zoneId = zoneId
+                        )
+                    )
+                    shifted.add(updated)
+                    updated
+                } else {
+                    fu
+                }
+            }.sortedBy { it.dueAt }
+        }
+        rebuildFollowUpAlerts(zoneId = zoneId)
+
+        for (fu in shifted) {
+            val contact = _fullContacts.value[fu.contactId]
+            if (contact?.isArchived != true) {
+                val contactName = contact?.name ?: "Contact"
+                alarmScheduler?.scheduleFollowUp(fu, contactName)
             }
         }
 
         val db = database
-        if (db != null) {
-            coroutineScope.launch {
-                db.followUpDao().snooze(alertId, newDueAt)
+        if (db != null && shifted.isNotEmpty()) {
+            val previousJob = lastFollowUpDbJob
+            lastFollowUpDbJob = coroutineScope.launch {
+                previousJob?.join()
+                db.withTransactionSafe {
+                    shifted.forEach { fu ->
+                        db.followUpDao().updateFollowUp(fu.toEntity())
+                    }
+                }
             }
         }
     }

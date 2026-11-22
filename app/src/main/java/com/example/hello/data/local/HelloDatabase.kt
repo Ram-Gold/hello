@@ -42,7 +42,7 @@ import com.example.hello.data.local.entity.TagEntity
         CaptureFlowPresetEntity::class,
         CaptureFlowComponentEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -116,6 +116,14 @@ abstract class HelloDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE `follow_ups` ADD COLUMN `hasExplicitTime` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         @Volatile
         private var instance: HelloDatabase? = null
 
@@ -131,7 +139,7 @@ abstract class HelloDatabase : RoomDatabase() {
                 HelloDatabase::class.java,
                 DATABASE_NAME
             )
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .fallbackToDestructiveMigration(true)
             .setDriver(BundledSQLiteDriver())
             .build()

@@ -596,4 +596,139 @@ class ContactRepositoryTest {
         assertEquals(2, afterSkipPicks.size)
         assertTrue("Skipped contact must not reappear on the same day", afterSkipPicks.none { it.contactId == firstPickedId })
     }
+
+    @Test
+    fun archiveContacts_allPreloaded_andUndoLastArchiveBatch_restoresEveryContact() {
+        val initialActiveIds = repository.contacts.value.filterNot { it.isArchived }.map { it.id }.toSet()
+        assertTrue("Expected multiple preloaded contacts", initialActiveIds.size >= 10)
+
+        repository.archiveContacts(initialActiveIds, archived = true)
+        assertTrue(repository.contacts.value.none { !it.isArchived })
+        assertEquals(initialActiveIds.size, repository.contacts.value.count { it.isArchived })
+
+        val restoredCount = repository.undoLastArchiveBatch()
+        assertEquals(initialActiveIds.size, restoredCount)
+        assertEquals(initialActiveIds.size, repository.contacts.value.count { !it.isArchived })
+        assertEquals(0, repository.contacts.value.count { it.isArchived })
+        // Second undo is a no-op
+        assertEquals(0, repository.undoLastArchiveBatch())
+    }
+
+    @Test
+    fun deleteContacts_allPreloaded_andUndoLastDeleteContacts_restoresEveryContactAndRelatedRecords() {
+        val initialIds = repository.contacts.value.map { it.id }.toSet()
+        val initialEncounterCount = repository.encounters.value.size
+        val initialFollowUpCount = repository.followUps.value.size
+        assertTrue("Expected multiple preloaded contacts", initialIds.size >= 10)
+
+        repository.deleteContacts(initialIds)
+        assertTrue(repository.contacts.value.isEmpty())
+        assertTrue(repository.encounters.value.none { it.contactId in initialIds })
+        assertTrue(repository.followUps.value.none { it.contactId in initialIds })
+
+        val restoredCount = repository.undoLastDeleteContacts()
+        assertEquals(initialIds.size, restoredCount)
+        assertEquals(initialIds, repository.contacts.value.map { it.id }.toSet())
+        assertEquals(initialEncounterCount, repository.encounters.value.size)
+        assertEquals(initialFollowUpCount, repository.followUps.value.size)
+        // Second undo is a no-op
+        assertEquals(0, repository.undoLastDeleteContacts())
+    }
+
+    @Test
+    fun addUpdateDeleteDoneAndUndoFollowUp_managesLifecycleAndDefaultReason() {
+        val dueDate = LocalDate.of(2026, 12, 10)
+        val zone = java.time.ZoneOffset.UTC
+
+        // Blank note falls back to "Follow up with <Contact Name>"
+        val created = repository.addFollowUp(
+            contactId = "c-1",
+            dueDate = dueDate,
+            note = "   ",
+            hasExplicitTime = false,
+            defaultHour = 9,
+            defaultMinute = 0,
+            zoneId = zone
+        )
+        assertEquals("Follow up with Alex Rivera", created.note)
+        assertFalse(created.hasExplicitTime)
+        assertEquals(9, created.dueAt.atZone(zone).hour)
+        assertTrue(repository.followUps.value.any { it.id == created.id })
+
+        // Update with explicit time & custom reason
+        val updated = repository.updateFollowUp(
+            followUpId = created.id,
+            dueDate = dueDate.plusDays(1),
+            note = "Send architecture notes",
+            hasExplicitTime = true,
+            explicitTime = java.time.LocalTime.of(14, 30),
+            zoneId = zone
+        )
+        assertNotNull(updated)
+        assertEquals("Send architecture notes", updated?.note)
+        assertTrue(updated?.hasExplicitTime == true)
+        assertEquals(14, updated?.dueAt?.atZone(zone)?.hour)
+        assertEquals(30, updated?.dueAt?.atZone(zone)?.minute)
+
+        // Complete + Undo
+        repository.markFollowUpDone(created.id)
+        assertTrue(repository.followUps.value.none { it.id == created.id })
+        assertTrue(repository.undoLastFollowUpMutation())
+        assertTrue(repository.followUps.value.any { it.id == created.id })
+        assertFalse(repository.undoLastFollowUpMutation())
+
+        // Delete + Undo
+        repository.deleteFollowUp(created.id)
+        assertTrue(repository.followUps.value.none { it.id == created.id })
+        assertTrue(repository.undoLastFollowUpMutation())
+        assertTrue(repository.followUps.value.any { it.id == created.id })
+    }
+
+    @Test
+    fun rescheduleDateOnlyFollowUps_shiftsOnlyDateOnlyReminders() {
+        val zone = java.time.ZoneOffset.UTC
+        val dateOnly = repository.addFollowUp(
+            contactId = "c-1",
+            dueDate = LocalDate.of(2026, 12, 5),
+            note = "Date only",
+            hasExplicitTime = false,
+            defaultHour = 9,
+            defaultMinute = 0,
+            zoneId = zone
+        )
+        val explicit = repository.addFollowUp(
+            contactId = "c-1",
+            dueDate = LocalDate.of(2026, 12, 5),
+            note = "Exact call",
+            hasExplicitTime = true,
+            explicitTime = java.time.LocalTime.of(15, 45),
+            zoneId = zone
+        )
+
+        repository.rescheduleDateOnlyFollowUps(hour = 18, minute = 0, zoneId = zone)
+
+        val updatedDateOnly = repository.followUps.value.first { it.id == dateOnly.id }
+        val updatedExplicit = repository.followUps.value.first { it.id == explicit.id }
+        assertEquals(18, updatedDateOnly.dueAt.atZone(zone).hour)
+        assertEquals(0, updatedDateOnly.dueAt.atZone(zone).minute)
+        assertEquals(15, updatedExplicit.dueAt.atZone(zone).hour)
+        assertEquals(45, updatedExplicit.dueAt.atZone(zone).minute)
+    }
+
+    @Test
+    fun archiveContact_hidesFollowUpAlertWithoutDeletingAndRestoresOnUnarchive() {
+        val created = repository.addFollowUp(
+            contactId = "c-1",
+            dueDate = LocalDate.now().plusDays(2),
+            note = "Check in on prototype"
+        )
+        assertTrue(repository.upcomingAlerts.value.any { it.id == created.id })
+
+        repository.archiveContact("c-1", archived = true)
+        assertTrue("Pending FollowUp must remain stored in repository", repository.followUps.value.any { it.id == created.id })
+        assertFalse("Archived contact's reminder must be hidden from Upcoming alerts", repository.upcomingAlerts.value.any { it.id == created.id })
+
+        repository.archiveContact("c-1", archived = false)
+        assertTrue("Restored contact's reminder must return to Upcoming alerts", repository.upcomingAlerts.value.any { it.id == created.id })
+    }
 }

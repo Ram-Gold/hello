@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storage
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -52,8 +51,6 @@ import com.example.hello.ui.theme.HelloTheme
 
 private val PROFILE_COLORS_DARK = Color(0xFF3E2D1A) to Color(0xFFFFCC99)
 private val PROFILE_COLORS_LIGHT = Color(0xFFFBE4D5) to Color(0xFFC05E28)
-private val TERM_COLORS_DARK = Color(0xFF5E1700) to Color(0xFFFFB59B)
-private val TERM_COLORS_LIGHT = Color(0xFFFFDBCF) to Color(0xFFB84A1A)
 private val FLOW_COLORS_DARK = Color(0xFF4A2800) to Color(0xFFFFC07F)
 private val FLOW_COLORS_LIGHT = Color(0xFFFFECD6) to Color(0xFF9E5400)
 private val TAG_COLORS_DARK = Color(0xFF2B4426) to Color(0xFFB5CBAE)
@@ -123,7 +120,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                val totalItems = 8
+                val totalItems = 7
                 ExpressiveSettingsGroup {
                     // 0. Profile / Name
                     val profileColors = if (isDark) PROFILE_COLORS_DARK else PROFILE_COLORS_LIGHT
@@ -136,18 +133,7 @@ fun SettingsScreen(
                         shape = shapeFor(0, totalItems)
                     )
 
-                    // 1. Terminology
-                    val termColors = if (isDark) TERM_COLORS_DARK else TERM_COLORS_LIGHT
-                    ExpressiveNavigationItem(
-                        title = "Display Terminology",
-                        subtitle = "${uiState.terminology.pluralTitle}, directory label",
-                        icon = Icons.Rounded.Tune,
-                        colors = termColors,
-                        onClick = onNavigateToTerminology,
-                        shape = shapeFor(1, totalItems)
-                    )
-
-                    // 2. Capture Flows (ADR-0012)
+                    // 1. Capture Flows (ADR-0012)
                     val flowColors = if (isDark) FLOW_COLORS_DARK else FLOW_COLORS_LIGHT
                     val activePresetName = uiState.flowPresets.firstOrNull { it.id == uiState.activeFlowPresetId }?.name ?: "Default"
                     ExpressiveNavigationItem(
@@ -156,10 +142,10 @@ fun SettingsScreen(
                         icon = Icons.AutoMirrored.Rounded.AltRoute,
                         colors = flowColors,
                         onClick = onNavigateToFlows,
-                        shape = shapeFor(2, totalItems)
+                        shape = shapeFor(1, totalItems)
                     )
 
-                    // 3. Tag Taxonomy
+                    // 2. Tag Taxonomy
                     val tagColors = if (isDark) TAG_COLORS_DARK else TAG_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Tag Taxonomy",
@@ -167,7 +153,7 @@ fun SettingsScreen(
                         icon = Icons.AutoMirrored.Rounded.Label,
                         colors = tagColors,
                         onClick = onNavigateToTags,
-                        shape = shapeFor(3, totalItems),
+                        shape = shapeFor(2, totalItems),
                         trailingBadge = {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -183,7 +169,7 @@ fun SettingsScreen(
                         }
                     )
 
-                    // 4. Data & Sovereign Storage
+                    // 3. Data & Sovereign Storage
                     val dataColors = if (isDark) DATA_COLORS_DARK else DATA_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Data & Storage",
@@ -191,10 +177,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Storage,
                         colors = dataColors,
                         onClick = onNavigateToData,
-                        shape = shapeFor(4, totalItems)
+                        shape = shapeFor(3, totalItems)
                     )
 
-                    // 5. Appearance
+                    // 4. Appearance
                     val appColors = if (isDark) APP_COLORS_DARK else APP_COLORS_LIGHT
                     val motionSubtitle = if (uiState.reduceAnimations) "Reduced motion (0ms)" else "Standard motion"
                     ExpressiveNavigationItem(
@@ -203,10 +189,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Palette,
                         colors = appColors,
                         onClick = onNavigateToAppearance,
-                        shape = shapeFor(5, totalItems)
+                        shape = shapeFor(4, totalItems)
                     )
 
-                    // 6. Preferences
+                    // 5. Preferences
                     val prefColors = if (isDark) PREF_COLORS_DARK else PREF_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "Preferences",
@@ -214,10 +200,10 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Settings,
                         colors = prefColors,
                         onClick = onNavigateToPreferences,
-                        shape = shapeFor(6, totalItems)
+                        shape = shapeFor(5, totalItems)
                     )
 
-                    // 7. About Hello
+                    // 6. About Hello
                     val aboutColors = if (isDark) ABOUT_COLORS_DARK else ABOUT_COLORS_LIGHT
                     ExpressiveNavigationItem(
                         title = "About Hello",
@@ -225,7 +211,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Info,
                         colors = aboutColors,
                         onClick = onNavigateToAbout,
-                        shape = shapeFor(7, totalItems)
+                        shape = shapeFor(6, totalItems)
                     )
                 }
             }

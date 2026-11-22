@@ -35,12 +35,14 @@ class SettingsViewModel(
         // Collect preferences from repository
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
+                contactRepository.setDefaultNotificationTime(prefs.notificationHour, prefs.notificationMinute)
                 _uiState.update {
                     it.copy(
                         userName = prefs.userName,
                         terminology = prefs.preferredTerminology,
                         themeMode = prefs.themeMode,
                         themeStyle = prefs.themeStyle,
+                        firstDayOfWeek = prefs.firstDayOfWeek,
                         dynamicColor = prefs.dynamicColor,
                         reduceAnimations = prefs.reduceAnimations,
                         notificationHour = prefs.notificationHour,
@@ -266,6 +268,18 @@ class SettingsViewModel(
                 }
             }
 
+            is SettingsUiEvent.OnSelectFirstDayOfWeek -> {
+                viewModelScope.launch {
+                    preferencesRepository.setFirstDayOfWeek(event.firstDayOfWeek)
+                    _uiState.update {
+                        it.copy(
+                            firstDayOfWeek = event.firstDayOfWeek,
+                            userMessage = "Week start set to ${event.firstDayOfWeek.title}"
+                        )
+                    }
+                }
+            }
+
             is SettingsUiEvent.OnToggleDynamicColor -> {
                 viewModelScope.launch {
                     preferencesRepository.setDynamicColor(event.enabled)
@@ -286,6 +300,10 @@ class SettingsViewModel(
             is SettingsUiEvent.OnSetNotificationTime -> {
                 viewModelScope.launch {
                     preferencesRepository.setNotificationTime(event.hour, event.minute)
+                    contactRepository.rescheduleDateOnlyFollowUps(event.hour, event.minute)
+                    _uiState.update {
+                        it.copy(userMessage = "Reminder delivery time updated")
+                    }
                 }
             }
 

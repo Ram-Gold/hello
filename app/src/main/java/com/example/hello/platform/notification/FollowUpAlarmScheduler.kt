@@ -4,21 +4,35 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
+import com.example.hello.data.local.HelloDatabase
+import com.example.hello.data.local.entity.toDomain
 import com.example.hello.domain.model.FollowUp
 import java.time.Instant
 
 /**
- * Manages scheduling and cancelling exact alarms for FollowUp stay-in-touch reminders.
- * Adheres to Android 12+ (API 31+) exact alarm permission regulations with graceful windowed fallback.
+ * Manages scheduling and cancelling local alarms for FollowUp reminders (ADR-0037).
+ * Defaults to zero-permission setAndAllowWhileIdle() and upgrades automatically to
+ * setExactAndAllowWhileIdle() when SCHEDULE_EXACT_ALARM is granted.
  */
 class FollowUpAlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
 
+    fun canScheduleExactAlarms(): Boolean {
+        val manager = alarmManager ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            manager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+    }
+
     /**
-     * Schedules an exact (or allowed windowed) wake-up alarm for a given FollowUp.
+     * Schedules an exact (when permitted) or inexact Doze-safe wake-up alarm for a given FollowUp.
      */
     fun scheduleAlarm(
         followUpId: String,
@@ -34,6 +48,7 @@ class FollowUpAlarmScheduler(private val context: Context) {
         val effectiveTrigger = triggerMillis.coerceAtLeast(System.currentTimeMillis() + 1000L)
 
         val intent = Intent(context, FollowUpAlarmReceiver::class.java).apply {
+            data = Uri.parse("$URI_SCHEME_PREFIX$followUpId")
             putExtra(EXTRA_FOLLOW_UP_ID, followUpId)
             putExtra(EXTRA_CONTACT_ID, contactId)
             putExtra(EXTRA_CONTACT_NAME, contactName)
@@ -57,7 +72,6 @@ class FollowUpAlarmScheduler(private val context: Context) {
                         pendingIntent
                     )
                 } else {
-                    // Graceful fallback when exact alarm permission is revoked or not granted
                     manager.setAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         effectiveTrigger,
@@ -85,6 +99,7 @@ class FollowUpAlarmScheduler(private val context: Context) {
      * Helper to schedule directly from a FollowUp domain model and contact name.
      */
     fun scheduleFollowUp(followUp: FollowUp, contactName: String) {
+        if (followUp.isDone) return
         scheduleAlarm(
             followUpId = followUp.id,
             contactId = followUp.contactId,
@@ -99,7 +114,9 @@ class FollowUpAlarmScheduler(private val context: Context) {
      */
     fun cancelAlarm(followUpId: String) {
         val manager = alarmManager ?: return
-        val intent = Intent(context, FollowUpAlarmReceiver::class.java)
+        val intent = Intent(context, FollowUpAlarmReceiver::class.java).apply {
+            data = Uri.parse("$URI_SCHEME_PREFIX$followUpId")
+        }
         val requestCode = followUpId.hashCode()
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -118,5 +135,36 @@ class FollowUpAlarmScheduler(private val context: Context) {
         const val EXTRA_CONTACT_ID = "com.example.hello.extra.CONTACT_ID"
         const val EXTRA_CONTACT_NAME = "com.example.hello.extra.CONTACT_NAME"
         const val EXTRA_NOTE = "com.example.hello.extra.NOTE"
+
+        private const val URI_SCHEME_PREFIX = "hello://followup/alarm/"
+
+        fun createExactAlarmSettingsIntent(context: Context): Intent {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+            } else {
+                FollowUpNotificationHelper.createAppNotificationSettingsIntent(context)
+            }
+        }
+
+        /**
+         * Reconciles and re-arms alarms for all pending reminders belonging to active (non-archived) contacts.
+         * Safe to call after reboot, app update, clock/timezone changes, exact-alarm grant, or app startup.
+         */
+        suspend fun rescheduleAllPendingFromDatabase(context: Context) {
+            val appContext = context.applicationContext
+            val db = HelloDatabase.getInstance(appContext)
+            val scheduler = FollowUpAlarmScheduler(appContext)
+            val pending = db.followUpDao().getPendingFollowUps()
+            for (entity in pending) {
+                val contact = db.contactDao().getContactById(entity.contactId)
+                if (contact == null || contact.isArchived) {
+                    scheduler.cancelAlarm(entity.id)
+                } else {
+                    scheduler.scheduleFollowUp(entity.toDomain(), contact.name)
+                }
+            }
+        }
     }
 }

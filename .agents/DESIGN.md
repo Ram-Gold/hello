@@ -229,16 +229,19 @@ val DesignColorScheme = lightColorScheme(
 
 ---
 
-## 5. Shapes & Elevation
+## 5. Design Philosophy, Shapes & Elevation
 
-- **Corner Radius:** Standard `rounded-md` equates to `RoundedCornerShape(8.dp)`.
-- **Elevation:** Flat design with crisp `1.dp` borders (`PaletteBorder = #E2E8F0`). Avoid heavy drop shadows; rely on tonal clarity and borders.
+- **Core Philosophy — Ease of Use & Seamlessness:** Prioritize frictionless, intuitive interactions and fluid visual continuity over rigid boxed frames. Surfaces rely on soft tonal background fills (`surfaceContainer`, `surfaceContainerHigh`, and curated tag palette containers) and connected Material 3 Expressive container geometry (`24.dp` outer corners / `4.dp` inner seams) rather than `1.dp` structural borders.
+- **Tag & Chip Standard (Borderless Pill-to-Squircle, ADR-0038):**
+  - **Zero Borders:** All tags (`TonalTagPill`), filter/suggestion chips (`TonalFilterPill`, `MinimalSelectableChip`), and tag color dots/swatches render exclusively with background fills (`0.dp` border in both unselected and selected states).
+  - **Shape Morph:** Unselected and static display tags are full stadium pills (`CircleShape`, corner radius `height / 2`). When selected, interactive tags, chips, and color swatches smoothly morph in the draw phase to an `8.dp` squircle (`RoundedCornerShape(8.dp)`).
+  - **Uniform Proportional Sizing:** Every tag pill and selectable chip shares a uniform `28.dp` height, proportional 2:1 padding (`horizontal = 12.dp, vertical = 6.dp`), and natural text-relative width across all screens.
 
 ```kotlin
 val DesignShapes = Shapes(
-    small = RoundedCornerShape(6.dp),
-    medium = RoundedCornerShape(8.dp),   // Default card / button / input radius
-    large = RoundedCornerShape(12.dp)
+    small = RoundedCornerShape(8.dp),    // Selected tag squircle radius
+    medium = RoundedCornerShape(16.dp),  // Standard dialogs / inner cards
+    large = RoundedCornerShape(24.dp)    // Connected M3 Expressive outer container radius
 )
 ```
 
@@ -282,10 +285,10 @@ fun DesignPrimaryButton(
 ```
 
 ### B. Surface Card
-- Background: `PaletteBackground` (`#FFFFFF`)
-- Border: `1.dp` solid `PaletteBorder` (`#E2E8F0`)
+- Background: `MaterialTheme.colorScheme.surfaceContainer` (soft tonal fill)
+- Border: `0.dp` (borderless tonal separation for seamlessness)
 - Padding: `16.dp` to `24.dp`
-- Shape: `RoundedCornerShape(8.dp)`
+- Shape: `RoundedCornerShape(24.dp)` (or `shapeFor(index, totalItems)` for connected groups)
 
 ```kotlin
 @Composable
@@ -295,9 +298,8 @@ fun DesignCard(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = PaletteBackground,
-        border = BorderStroke(1.dp, PaletteBorder)
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -394,4 +396,4 @@ fun DesignDivider(modifier: Modifier = Modifier) {
 1. **Tokens Over Raw Values:** Never hardcode raw hex values (e.g. `Color(0xFF161616)`) or font family strings directly inside feature composables. Always reference `MaterialTheme.colorScheme`, `MaterialTheme.typography`, or the defined design tokens.
 2. **Density Independence:** All dimensions, padding, margins, borders, and icon dimensions must use `dp`. All text sizes and line heights must use `sp`. Never use raw `px`.
 3. **Touch Targets:** Maintain minimum touch targets of `48.dp` for all interactive elements in accordance with Android accessibility guidelines.
-4. **Consistency:** Keep decorative elements minimal. The aesthetic is clean, typography-led, high-contrast monochrome with subtle borders. When in doubt, eliminate unnecessary ornaments.
+4. **Seamlessness & Consistency:** Design for ease of use and seamlessness. Keep decorative elements minimal and prefer soft tonal background fills over structural 1dp borders. Tags and selectable chips must remain strictly borderless (`0.dp` border), pill-shaped (`CircleShape`) when unselected, morphing to an `8.dp` squircle when selected, with uniform `28.dp` height and `12.dp × 6.dp` padding everywhere.

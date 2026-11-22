@@ -121,6 +121,7 @@ object ExportBundleGenerator {
                 append("    \"contactId\": ${quoteJson(fu.contactId)},\n")
                 append("    \"dueAt\": ${quoteJson(fu.dueAt.toString())},\n")
                 append("    \"note\": ${quoteJson(fu.note)},\n")
+                append("    \"hasExplicitTime\": ${fu.hasExplicitTime},\n")
                 append("    \"doneAt\": ${quoteJson(fu.doneAt?.toString())}\n")
                 append("  }${if (i < followUps.size - 1) "," else ""}\n")
             }

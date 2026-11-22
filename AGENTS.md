@@ -64,16 +64,18 @@ Every AI agent and contributor working on this codebase **MUST** uphold these no
 
 ## 3. Design System & UI Principles
 
-- **Vibe:** Minimalist, editorial, and tactile (Mallow & Vellum per `.agents/design.md`).
+- **Core Philosophy:** **Ease of Use & Seamlessness** — minimalist, editorial, and tactile (Mallow & Vellum per `.agents/DESIGN.md`), prioritizing frictionless interaction and visual continuity over boxed borders.
 - **Color Palette (Monochrome Minimalist):**
     - Backgrounds: Crisp Canvas (`#FFFFFF` light, `#121212` dark)
-    - Cards & Surfaces: Flat surfaces with crisp 1dp borders (`#E2E8F0` light, `#27272A` dark)
+    - Cards & Surfaces: Borderless tonal surfaces (`surfaceContainer`, `surfaceContainerHigh`) grouped in connected Material 3 Expressive containers (`24.dp` outer / `4.dp` inner seams, `2.dp` item gaps)
     - Primary: `#121212` (light) / `#FFFFFF` (dark)
     - Foreground: `#161616` (light) / `#E4E4E7` (dark)
     - Foreground Muted: `#3A3A3A` (light) / `#A1A1AA` (dark)
-    - Accent / Borders: `#E2E8F0` outline with subtle contrast
+- **Tags & Selectable Chips (ADR-0038):**
+    - Strictly borderless (`0.dp` border; background fill only).
+    - Full stadium pill (`CircleShape`) when unselected or static; smoothly morphs to an `8.dp` squircle (`RoundedCornerShape(8.dp)`) when selected.
+    - Uniform `28.dp` height, proportional 2:1 padding (`horizontal = 12.dp, vertical = 6.dp`), and natural text-relative width across every screen.
 - **Visual Personality:**
-    - Standardized `RoundedCornerShape(8.dp)` for cards, buttons, dialogs, and toast notifications.
     - Typography: Mallow (Headings) and Vellum (Body / Captions).
     - Motion physics: Snappy spring animations (`spring(dampingRatio = ..., stiffness = ...)`).
 

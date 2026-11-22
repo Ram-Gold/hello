@@ -3,6 +3,7 @@ package com.example.hello.ui.settings
 import com.example.hello.data.preferences.FakeUserPreferencesRepository
 import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.data.preferences.UserPreferences
+import com.example.hello.data.preferences.WeekStartDay
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CaptureComponentType
 import com.example.hello.domain.model.FlowPreset
@@ -348,5 +349,18 @@ class SettingsViewModelTest {
         val updatedPreset = viewModel.uiState.value.flowPresets.first { it.id == defaultPreset.id }
         assertEquals(initialSize + 1, updatedPreset.components.size)
         assertTrue(updatedPreset.components.any { it.type == CaptureComponentType.BIRTHDAY })
+    }
+
+    @Test
+    fun onSelectFirstDayOfWeek_updatesStatePersistsAndShowsMessage() = runTest {
+        advanceUntilIdle()
+        assertEquals(WeekStartDay.MONDAY, viewModel.uiState.value.firstDayOfWeek)
+
+        viewModel.onEvent(SettingsUiEvent.OnSelectFirstDayOfWeek(WeekStartDay.SUNDAY))
+        advanceUntilIdle()
+
+        assertEquals(WeekStartDay.SUNDAY, viewModel.uiState.value.firstDayOfWeek)
+        assertEquals(WeekStartDay.SUNDAY, fakePreferencesRepository.userPreferencesFlow.first().firstDayOfWeek)
+        assertEquals("Week start set to Sunday", viewModel.uiState.value.userMessage)
     }
 }

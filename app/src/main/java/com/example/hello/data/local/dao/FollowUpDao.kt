@@ -15,6 +15,15 @@ interface FollowUpDao {
     @Query("SELECT * FROM follow_ups WHERE doneAt IS NULL ORDER BY dueAt ASC")
     fun getPendingFollowUpsFlow(): Flow<List<FollowUpEntity>>
 
+    @Query("SELECT * FROM follow_ups WHERE doneAt IS NULL ORDER BY dueAt ASC")
+    suspend fun getPendingFollowUps(): List<FollowUpEntity>
+
+    @Query("SELECT * FROM follow_ups ORDER BY dueAt ASC")
+    suspend fun getAllFollowUps(): List<FollowUpEntity>
+
+    @Query("SELECT * FROM follow_ups WHERE id = :id LIMIT 1")
+    suspend fun getFollowUpById(id: String): FollowUpEntity?
+
     @Query("SELECT * FROM follow_ups WHERE contactId = :contactId ORDER BY dueAt ASC")
     fun getFollowUpsForContactFlow(contactId: String): Flow<List<FollowUpEntity>>
 
@@ -29,6 +38,9 @@ interface FollowUpDao {
 
     @Query("UPDATE follow_ups SET doneAt = :doneAt WHERE id = :id")
     suspend fun markDone(id: String, doneAt: Instant)
+
+    @Query("UPDATE follow_ups SET doneAt = NULL WHERE id = :id")
+    suspend fun clearDone(id: String)
 
     @Query("UPDATE follow_ups SET dueAt = :newDueAt WHERE id = :id")
     suspend fun snooze(id: String, newDueAt: Instant)

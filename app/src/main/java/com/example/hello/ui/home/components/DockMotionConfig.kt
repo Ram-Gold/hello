@@ -36,6 +36,18 @@ object DockMotionConfig {
     const val PROFILE_MORPH_PILL_ICON_SIZE_DP = 22f
     const val PROFILE_MORPH_LABEL_SLIDE_DP = 20f
     const val PROFILE_ENCOUNTER_PILL_LABEL = "Catching up?"
+    const val PROFILE_REMINDER_PILL_LABEL = "Remind"
+    const val PROFILE_REMINDER_SAVED_LABEL = "Saved"
+    const val PROFILE_REMINDER_PILL_WIDTH_DP = 114f
+    const val PROFILE_REMINDER_PILL_INITIAL_SCALE = 0.94f
+    const val PROFILE_REMINDER_PILL_MAX_BLUR_DP = 4f
+    const val PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP = 2f
+    const val PROFILE_REMINDER_PRESS_SCALE = 0.96f
+    const val PROFILE_REMINDER_PRESS_BELL_TILT_DEG = -8f
+    const val PROFILE_REMINDER_RELEASE_BELL_SWING_DEG = 7f
+    const val PROFILE_REMINDER_SETTLE_BELL_NOD_DEG = 6f
+    const val PROFILE_REMINDER_POST_SHEET_DELAY_MS = 140L
+    const val PROFILE_REMINDER_SAVED_HOLD_MS = 1100L
     const val PROFILE_MORPH_DURATION_MS = MotionTokens.DETAIL_SLIDE_DURATION_MS
 
     const val SPEED_DIAL_CHIP_HEIGHT_DP = DOCK_HEIGHT_DP
@@ -230,7 +242,7 @@ object DockMotionConfig {
     const val TIMELINE_PILL_WIDTH_DP = 104
 
     /**
-     * Resolves pre-configured, deterministic 3-tab dock dimensions (`Home` | `Timeline` | `People`)
+     * Resolves pre-configured, deterministic 3-tab dock dimensions (`Home` | `People` | `Timeline`)
      * per relationship terminology (ADR-0014).
      * Active tab expands to `activePillWidthDp` (icon + label), while the 2 inactive tabs use
      * compact icon-only slots (`inactiveSlotWidthDp`), keeping total dock width and selection pill width 100% constant.
@@ -254,7 +266,7 @@ object DockMotionConfig {
 
     /**
      * Calculates constant-width selection pill bounds `(left, right)` across the 3-slot dock
-     * where `progress` is in `0f..2f` (`0f` = Home, `1f` = Timeline, `2f` = People).
+     * where `progress` is in `0f..2f` (`0f` = Home, `1f` = People, `2f` = Timeline).
      * Because the active slot has width `activePillWidth` and each inactive slot has width `inactiveSlotWidth`,
      * the pill's left edge translates cleanly by `progress * inactiveSlotWidth` while maintaining a strictly
      * constant width of `activePillWidth`.
@@ -476,6 +488,8 @@ object DockMotionConfig {
         val dockHeight = DOCK_HEIGHT_DP.toFloat()
         val startCornerRadius = DOCK_FAB_CORNER_RADIUS_DP.toFloat()
         val pillRadius = dockHeight / 2f
+        val startPillLeft = dockWidthDp + DOCK_FAB_GAP_DP
+        val targetPillLeft = PROFILE_REMINDER_PILL_WIDTH_DP + DOCK_FAB_GAP_DP
         val easeOut = MotionTokens.StrongEaseOut
         val easeInOut = MotionTokens.StrongEaseInOut
 
@@ -492,8 +506,8 @@ object DockMotionConfig {
             val pillCornerRadiusDp = startCornerRadius + (pillRadius - startCornerRadius) * roundT
 
             val sweepT = easeInOut.transform(phase(p, 0.00f, 0.85f))
-            val pillLeftDp = ((dockWidthDp + DOCK_FAB_GAP_DP) * (1f - sweepT))
-                .coerceIn(0f, dockWidthDp + DOCK_FAB_GAP_DP)
+            val pillLeftDp = (startPillLeft + (targetPillLeft - startPillLeft) * sweepT)
+                .coerceIn(targetPillLeft, startPillLeft)
             val pillWidthDp = totalWidth - pillLeftDp
             val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
 
@@ -504,6 +518,13 @@ object DockMotionConfig {
             val labelAlpha = easeOut.transform(phase(p, 0.50f, 0.92f))
             val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP *
                 (1f - easeOut.transform(phase(p, 0.45f, 0.98f)))
+
+            val reminderAlpha = easeOut.transform(phase(p, 0.42f, 0.90f))
+            val reminderScaleT = easeOut.transform(phase(p, 0.42f, 0.96f))
+            val reminderScale = PROFILE_REMINDER_PILL_INITIAL_SCALE +
+                (1f - PROFILE_REMINDER_PILL_INITIAL_SCALE) * reminderScaleT
+            val reminderBlurDp = PROFILE_REMINDER_PILL_MAX_BLUR_DP *
+                (1f - easeOut.transform(phase(p, 0.42f, 0.88f)))
 
             ProfileMorphState(
                 navPillAlpha = navPillAlpha,
@@ -517,7 +538,12 @@ object DockMotionConfig {
                 plusIconSizeDp = plusIconSizeDp,
                 labelRevealWeight = labelRevealWeight,
                 labelAlpha = labelAlpha,
-                labelSlideOffsetDp = labelSlideOffsetDp
+                labelSlideOffsetDp = labelSlideOffsetDp,
+                reminderPillWidthDp = PROFILE_REMINDER_PILL_WIDTH_DP,
+                reminderPillAlpha = reminderAlpha,
+                reminderPillSlideOffsetDp = 0f,
+                reminderPillScale = reminderScale,
+                reminderPillBlurDp = reminderBlurDp
             )
         } else {
             val r = (1f - p).coerceIn(0f, 1f)
@@ -526,9 +552,15 @@ object DockMotionConfig {
             val labelAlpha = (1f - easeOut.transform(phase(r, 0.00f, 0.34f))).coerceIn(0f, 1f)
             val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * labelExitT
 
+            val reminderExitAlphaT = easeOut.transform(phase(r, 0.00f, 0.30f))
+            val reminderAlpha = (1f - reminderExitAlphaT).coerceIn(0f, 1f)
+            val reminderScaleExitT = easeOut.transform(phase(r, 0.00f, 0.34f))
+            val reminderScale = 1f - (1f - PROFILE_REMINDER_PILL_INITIAL_SCALE) * reminderScaleExitT
+            val reminderBlurDp = PROFILE_REMINDER_PILL_MAX_BLUR_DP * reminderExitAlphaT
+
             val sweepBackT = easeInOut.transform(phase(r, 0.12f, 0.94f))
-            val pillLeftDp = ((dockWidthDp + DOCK_FAB_GAP_DP) * sweepBackT)
-                .coerceIn(0f, dockWidthDp + DOCK_FAB_GAP_DP)
+            val pillLeftDp = (targetPillLeft + (startPillLeft - targetPillLeft) * sweepBackT)
+                .coerceIn(targetPillLeft, startPillLeft)
             val pillWidthDp = totalWidth - pillLeftDp
             val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
 
@@ -556,7 +588,12 @@ object DockMotionConfig {
                 plusIconSizeDp = plusIconSizeDp,
                 labelRevealWeight = labelRevealWeight,
                 labelAlpha = labelAlpha,
-                labelSlideOffsetDp = labelSlideOffsetDp
+                labelSlideOffsetDp = labelSlideOffsetDp,
+                reminderPillWidthDp = PROFILE_REMINDER_PILL_WIDTH_DP,
+                reminderPillAlpha = reminderAlpha,
+                reminderPillSlideOffsetDp = 0f,
+                reminderPillScale = reminderScale,
+                reminderPillBlurDp = reminderBlurDp
             )
         }
     }
@@ -564,7 +601,7 @@ object DockMotionConfig {
 
 /**
  * Snapshot of all continuous geometry and visual properties for the whole-navbar soft blur
- * and solid right-to-left Floating Bottom Dock to Profile Encounter Pill morph (ADR-0034).
+ * and solid right-to-left Floating Bottom Dock to Split Profile Action Bar morph (ADR-0034, RAM-60).
  */
 data class ProfileMorphState(
     val navPillAlpha: Float,
@@ -578,7 +615,12 @@ data class ProfileMorphState(
     val plusIconSizeDp: Float,
     val labelRevealWeight: Float,
     val labelAlpha: Float,
-    val labelSlideOffsetDp: Float
+    val labelSlideOffsetDp: Float,
+    val reminderPillWidthDp: Float = DockMotionConfig.PROFILE_REMINDER_PILL_WIDTH_DP,
+    val reminderPillAlpha: Float = 0f,
+    val reminderPillSlideOffsetDp: Float = 0f,
+    val reminderPillScale: Float = 1f,
+    val reminderPillBlurDp: Float = 0f
 )
 
 /**

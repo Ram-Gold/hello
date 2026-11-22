@@ -3,14 +3,19 @@ package com.example.hello.ui.detail.components
 import com.example.hello.R
 import com.example.hello.ui.components.EmptyStateIllustration
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,9 +28,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,16 +42,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.domain.model.Encounter
+import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.ui.components.BirthdayInputUtils
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -58,14 +72,19 @@ fun LivingTimeline(
     selectedEncounterIds: Set<String> = emptySet(),
     isSelectionMode: Boolean = false,
     onEncounterClick: (String) -> Unit = {},
-    onEncounterLongClick: (String) -> Unit = {}
+    onEncounterLongClick: (String) -> Unit = {},
+    contactName: String = "Contact",
+    reminders: List<FollowUp> = emptyList(),
+    onReminderClick: (FollowUp) -> Unit = {},
+    onMarkReminderDone: (String) -> Unit = {},
+    onSnoozeReminder: (String) -> Unit = {}
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Section Header Row (Encounter logging now hosted by the bottom Profile Encounter Pill per ADR-0034)
+        // Section Header Row (Encounter logging and Reminder creation hosted by bottom split Profile Action Bar per ADR-0034 & RAM-60)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,7 +92,7 @@ fun LivingTimeline(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "LIVING TIMELINE",
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -82,15 +101,21 @@ fun LivingTimeline(
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val encountersLabel = "${encounters.size} ${if (encounters.size == 1) "encounter" else "encounters"} recorded"
+                val subtitle = if (reminders.isNotEmpty()) {
+                    "$encountersLabel, ${reminders.size} upcoming"
+                } else {
+                    encountersLabel
+                }
                 Text(
-                    text = "${encounters.size} ${if (encounters.size == 1) "encounter" else "encounters"} recorded",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         val today = LocalDate.now()
         if (birthday != null && BirthdayInputUtils.isUpcomingWithinOneMonth(birthday, today)) {
@@ -98,6 +123,21 @@ fun LivingTimeline(
                 birthday = birthday,
                 today = today
             )
+        }
+
+        // Future Horizon: Active & Overdue Reminders on a dashed spine above TODAY divider
+        if (reminders.isNotEmpty()) {
+            reminders.forEach { reminder ->
+                FutureReminderNodeItem(
+                    followUp = reminder,
+                    today = today,
+                    onClick = { onReminderClick(reminder) },
+                    onDoneClick = { onMarkReminderDone(reminder.id) },
+                    onSnoozeClick = { onSnoozeReminder(reminder.id) }
+                )
+            }
+
+            TodayTimelineDivider(today = today)
         }
 
         if (encounters.isEmpty()) {
@@ -122,6 +162,184 @@ fun LivingTimeline(
                         onEncounterLongClick(encounter.id)
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodayTimelineDivider(today: LocalDate) {
+    val label = "TODAY, ${today.format(DateTimeFormatter.ofPattern("MMM d")).uppercase()}"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+@Composable
+private fun FutureReminderNodeItem(
+    followUp: FollowUp,
+    today: LocalDate,
+    onClick: () -> Unit,
+    onDoneClick: () -> Unit,
+    onSnoozeClick: () -> Unit
+) {
+    val zoneId = ZoneId.systemDefault()
+    val localDateTime = followUp.dueAt.atZone(zoneId)
+    val dueDate = localDateTime.toLocalDate()
+    val isOverdue = followUp.dueAt.isBefore(Instant.now())
+    val timeLabel = localDateTime.toLocalTime().format(DateTimeFormatter.ofPattern("h:mm a"))
+    val daysDiff = ChronoUnit.DAYS.between(today, dueDate)
+    val dueBadgeText = when {
+        isOverdue && daysDiff < 0L -> "Overdue (${-daysDiff}d ago)"
+        isOverdue -> "Overdue, $timeLabel"
+        daysDiff == 0L -> "Today, $timeLabel"
+        daysDiff == 1L -> "Tomorrow, $timeLabel"
+        daysDiff <= 7L -> "In $daysDiff days, $timeLabel"
+        else -> "${dueDate.format(DateTimeFormatter.ofPattern("MMM d"))}, $timeLabel"
+    }
+
+    val spineColor = if (isOverdue) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+    }
+    val cardBg = if (isOverdue) {
+        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val cardBorder = if (isOverdue) {
+        MaterialTheme.colorScheme.error.copy(alpha = 0.45f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+    ) {
+        // Dashed vertical future spine + node dot
+        Box(
+            modifier = Modifier
+                .width(28.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Canvas(modifier = Modifier.fillMaxHeight().width(2.dp)) {
+                drawLine(
+                    color = spineColor,
+                    start = Offset(size.width / 2f, 20.dp.toPx()),
+                    end = Offset(size.width / 2f, size.height),
+                    strokeWidth = 2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surface)
+                    .border(
+                        width = 2.dp,
+                        color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(14.dp),
+            color = cardBg,
+            border = BorderStroke(1.dp, cardBorder),
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        Text(
+                            text = dueBadgeText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (isOverdue) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = followUp.note.ifBlank { "Scheduled reminder" },
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
+                            .clickable(onClick = onDoneClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "Mark reminder done",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onSnoozeClick,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Schedule,
+                            contentDescription = "Snooze 3 days",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
+import java.time.DayOfWeek
 
 val Context.helloDataStore: DataStore<Preferences> by preferencesDataStore(name = "hello_user_preferences")
 
@@ -39,12 +40,38 @@ enum class ThemeStyle(val id: String, val title: String, val subtitle: String) {
     }
 }
 
+enum class WeekStartDay(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val dayOfWeek: DayOfWeek
+) {
+    MONDAY(
+        id = "monday",
+        title = "Monday",
+        subtitle = "Weeks run Monday to Sunday (ISO standard)",
+        dayOfWeek = DayOfWeek.MONDAY
+    ),
+    SUNDAY(
+        id = "sunday",
+        title = "Sunday",
+        subtitle = "Weeks run Sunday to Saturday",
+        dayOfWeek = DayOfWeek.SUNDAY
+    );
+
+    companion object {
+        fun fromId(id: String?): WeekStartDay =
+            entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: MONDAY
+    }
+}
+
 data class UserPreferences(
     val userName: String = "Alex",
     val hasCompletedOnboarding: Boolean = false,
     val preferredTerminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeStyle: ThemeStyle = ThemeStyle.MONOCHROME,
+    val firstDayOfWeek: WeekStartDay = WeekStartDay.MONDAY,
     val dynamicColor: Boolean = false,
     val reduceAnimations: Boolean = false,
     val notificationHour: Int = 9,
@@ -60,6 +87,7 @@ interface UserPreferencesRepository {
     suspend fun setPreferredTerminology(terminology: RelationshipTerminology)
     suspend fun setThemeMode(themeMode: ThemeMode)
     suspend fun setThemeStyle(themeStyle: ThemeStyle)
+    suspend fun setFirstDayOfWeek(firstDayOfWeek: WeekStartDay)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setReduceAnimations(enabled: Boolean)
     suspend fun setNotificationTime(hour: Int, minute: Int)
@@ -88,6 +116,7 @@ class DataStoreUserPreferencesRepository(
             val themeMode = ThemeMode.fromId(themeModeId)
             val themeStyleId = preferences[KEY_THEME_STYLE]
             val themeStyle = ThemeStyle.fromId(themeStyleId)
+            val firstDayOfWeek = WeekStartDay.fromId(preferences[KEY_FIRST_DAY_OF_WEEK])
             val dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: false
             val reduceAnimations = preferences[KEY_REDUCE_ANIMATIONS] ?: false
             val notifHour = preferences[KEY_NOTIFICATION_HOUR] ?: 9
@@ -101,6 +130,7 @@ class DataStoreUserPreferencesRepository(
                 preferredTerminology = terminology,
                 themeMode = themeMode,
                 themeStyle = themeStyle,
+                firstDayOfWeek = firstDayOfWeek,
                 dynamicColor = dynamicColor,
                 reduceAnimations = reduceAnimations,
                 notificationHour = notifHour,
@@ -137,6 +167,12 @@ class DataStoreUserPreferencesRepository(
     override suspend fun setThemeStyle(themeStyle: ThemeStyle) {
         dataStore.edit { preferences ->
             preferences[KEY_THEME_STYLE] = themeStyle.id
+        }
+    }
+
+    override suspend fun setFirstDayOfWeek(firstDayOfWeek: WeekStartDay) {
+        dataStore.edit { preferences ->
+            preferences[KEY_FIRST_DAY_OF_WEEK] = firstDayOfWeek.id
         }
     }
 
@@ -177,6 +213,7 @@ class DataStoreUserPreferencesRepository(
         val KEY_PREFERRED_TERMINOLOGY = stringPreferencesKey("preferred_terminology")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_THEME_STYLE = stringPreferencesKey("theme_style")
+        val KEY_FIRST_DAY_OF_WEEK = stringPreferencesKey("first_day_of_week")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
         val KEY_NOTIFICATION_HOUR = intPreferencesKey("notification_hour")

@@ -71,6 +71,7 @@ data object ArchivedContactsRoute {
 
 data object OnboardingRoute {
     const val ROUTE_NAME = "onboarding"
+    const val REPLAY_ROUTE_NAME = "onboarding/replay"
 }
 
 data object PersonDetailRoute {
@@ -92,7 +93,7 @@ data object AvatarPlaygroundRoute {
 }
 
 /**
- * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute], [TimelineRoute], or [PeopleRoute]).
+ * Returns true if [route] is one of the top-level bottom dock root tabs ([HomeRoute], [PeopleRoute], or [TimelineRoute]).
  * Matches PixelPlayer's `MainRootRoutes.kt`.
  */
 fun isMainRootRoute(route: String?): Boolean = when (route) {

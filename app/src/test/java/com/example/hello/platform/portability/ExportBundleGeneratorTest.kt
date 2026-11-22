@@ -279,4 +279,24 @@ class ExportBundleGeneratorTest {
             tempAvatarFile.delete()
         }
     }
+
+    @Test
+    fun generateJsonFiles_includesHasExplicitTimeAndCompletedFollowUps() {
+        val completedFollowUp = sampleFollowUp.copy(
+            id = "fu-done",
+            doneAt = java.time.Instant.parse("2026-11-22T10:00:00Z"),
+            hasExplicitTime = true
+        )
+        val jsonFiles = ExportBundleGenerator.generateJsonFiles(
+            contacts = listOf(sampleContact),
+            encounters = emptyList(),
+            places = emptyList(),
+            tags = emptyList(),
+            followUps = listOf(sampleFollowUp, completedFollowUp)
+        )
+        val followUpsJson = jsonFiles["followups.json"]!!
+        assertTrue(followUpsJson.contains("\"hasExplicitTime\": false"))
+        assertTrue(followUpsJson.contains("\"hasExplicitTime\": true"))
+        assertTrue(followUpsJson.contains("\"doneAt\": \"2026-11-22T10:00:00Z\""))
+    }
 }

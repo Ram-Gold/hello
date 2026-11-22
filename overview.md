@@ -22,6 +22,6 @@
 ### 2. You Own Your Data
 * **Easy backups & portability:** You can export your entire history at any time into a bundle of standard, human-readable files (including plain-text notes and spreadsheets) and save them wherever you like on your device.
 
-### 3. Calm, Editorial Design
-* **Minimalist look & feel:** Built with a clean, paper-like aesthetic in both light and dark modes, using subtle borders, rounded cards, and readable typography (**Mallow** for headings and **Vellum** for body text) so your notes are pleasant to read and write.
+### 3. Ease of Use & Seamlessness
+* **Effortless, borderless look & feel:** Built around ease of use and seamlessness in both light and dark modes, using soft tonal surfaces (`surfaceContainer`), connected Material 3 Expressive cards, borderless pill-to-squircle tags, and readable typography (**Mallow** for headings and **Vellum** for body text) so your notes are effortless to read and write.
 * **Quick access:** Includes home screen widgets and a dedicated quick-add experience so logging a new person or memory takes minimal effort.

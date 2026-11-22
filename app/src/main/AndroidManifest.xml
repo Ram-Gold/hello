@@ -13,6 +13,7 @@
     <!-- Alarm & Notification permissions for FollowUp reminders -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Tactile haptic feedback permission for Vibrator API fallbacks -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -36,6 +37,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Hello.Splash"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -45,10 +47,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Dedicated ultra-fast (<50ms) QuickCaptureActivity -->
+        <!-- Dedicated ultra-fast (<50ms) QuickCaptureActivity isolated from MainActivity task -->
         <activity
             android:name=".ui.quickaction.QuickCaptureActivity"
+            android:excludeFromRecents="true"
             android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
             android:theme="@style/Theme.Hello.QuickCapture"
             android:windowSoftInputMode="stateVisible|adjustResize" />
 
@@ -60,6 +65,19 @@
         <receiver
             android:name=".platform.notification.FollowUpActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".platform.notification.FollowUpRescheduleReceiver"
+            android:directBootAware="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Glance 1x1 App Widget Receiver -->
         <receiver

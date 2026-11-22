@@ -150,7 +150,7 @@ fun shouldUseRootBridgeForBack(
     previousRoute: String?
 ): Boolean {
     if (currentRoute == null || previousRoute == null) return false
-    if (isMainRootRoute(currentRoute) || currentRoute == OnboardingRoute.ROUTE_NAME) return false
+    if (isMainRootRoute(currentRoute) || currentRoute == OnboardingRoute.ROUTE_NAME || currentRoute == OnboardingRoute.REPLAY_ROUTE_NAME) return false
     return isMainRootRoute(previousRoute)
 }
 

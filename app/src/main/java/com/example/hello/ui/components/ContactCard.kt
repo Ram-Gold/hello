@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -155,30 +156,37 @@ fun ContactCard(
                     ) {
                         visibleTags.forEach { tag ->
                             TonalTagPill(
-                                tag = tag,
-                                maxNameLength = 10
+                                tag = tag
                             )
                         }
 
                         if (extraTagsCount > 0) {
                             Surface(
-                                shape = CircleShape,
+                                shape = TagPillDefaults.UnselectedShape,
                                 color = if (isSelected) {
                                     MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.12f)
                                 } else {
                                     MaterialTheme.colorScheme.surfaceContainerHigh
-                                }
+                                },
+                                modifier = Modifier.height(TagPillDefaults.Height)
                             ) {
-                                Text(
-                                    text = "+$extraTagsCount",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSelected) {
-                                        MaterialTheme.colorScheme.onErrorContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = TagPillDefaults.HorizontalPadding,
+                                        vertical = TagPillDefaults.VerticalPadding
+                                    ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "+$extraTagsCount",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSelected) {
+                                            MaterialTheme.colorScheme.onErrorContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -200,7 +208,6 @@ fun ContactTagPill(
 ) {
     TonalTagPill(
         tag = tag,
-        modifier = modifier,
-        maxNameLength = 10
+        modifier = modifier
     )
 }

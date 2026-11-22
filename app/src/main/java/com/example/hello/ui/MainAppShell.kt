@@ -38,6 +38,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -337,6 +338,8 @@ fun MainAppShell(
     val dockVisibilityAnimatable = remember { Animatable(targetDockVisibility) }
     val profileMorphAnimatable = remember { Animatable(targetProfileMorph) }
     var isProfileMorphReversing by remember { mutableStateOf(false) }
+    var profileReminderTrigger by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var profileReminderSavedEventId by remember { mutableLongStateOf(0L) }
 
     val effectiveSelectionBackProgress = maxOf(selectionBackProgress, detailSelectionBackProgress).coerceIn(0f, 1f)
     val isProfileToRootBackScrub =
@@ -485,6 +488,7 @@ fun MainAppShell(
         contactsViewModel = contactsViewModel,
         quickActionViewModel = quickActionViewModel,
         snackbarHostState = snackbarHostState,
+        terminology = preferredTerminology,
         helloHaptics = helloHaptics
     )
 
@@ -556,7 +560,9 @@ fun MainAppShell(
                         navController.popBackStack()
                     },
                     onDetailSelectionModeChanged = { isDetailSelectionMode = it },
-                    onDetailSelectionBackProgress = { detailSelectionBackProgress = it }
+                    onDetailSelectionBackProgress = { detailSelectionBackProgress = it },
+                    onRegisterProfileReminderTrigger = { profileReminderTrigger = it },
+                    onProfileReminderSaved = { profileReminderSavedEventId += 1L }
                 )
 
                 RootTabBackCoordinator(
@@ -571,7 +577,7 @@ fun MainAppShell(
                     onClearTimelineSelection = { timelineViewModel.onEvent(TimelineUiEvent.OnClearSelection) }
                 )
 
-                // Scrim & Floating Bottom Navigation Dock / Profile Encounter Pill scoped to prevent NavHost recomposition
+                // Scrim & Floating Bottom Navigation Dock / Split Profile Action Bar scoped to prevent NavHost recomposition
                 FloatingDockOverlay(
                     navController = navController,
                     currentRoute = currentRoute,
@@ -602,6 +608,11 @@ fun MainAppShell(
                             quickActionViewModel.onEvent(QuickActionUiEvent.OnOpenLogEncounterForContact(summary))
                         }
                     },
+                    onProfileReminderClick = {
+                        profileReminderTrigger?.invoke()
+                    },
+                    activeDetailContactId = activeDetailContactId,
+                    profileReminderSavedEventId = profileReminderSavedEventId,
                     overridePillProgress = if (rootTabBackProgress > 0f && isMainRootRoute(currentRoute) && activeTab != HomeNavTab.HOME) {
                         interpolateTabProgressForPredictiveBack(
                             currentTab = activeTab,
@@ -959,7 +970,9 @@ private fun MainAppNavHost(
     onDeeperRouteBackProgress: (Float) -> Unit,
     onDeeperRouteBackCommit: (String) -> Unit,
     onDetailSelectionModeChanged: (Boolean) -> Unit,
-    onDetailSelectionBackProgress: (Float) -> Unit
+    onDetailSelectionBackProgress: (Float) -> Unit,
+    onRegisterProfileReminderTrigger: ((() -> Unit)?) -> Unit = {},
+    onProfileReminderSaved: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -981,7 +994,13 @@ private fun MainAppNavHost(
                 enterTransition = { fadeIn(animationSpec = MotionTokens.screenFadeSpec()) },
                 exitTransition = { fadeOut(animationSpec = MotionTokens.screenFadeSpec()) }
             ) {
-                val onboardingViewModel = remember { OnboardingViewModel(preferencesRepository) }
+                val onboardingViewModel = remember {
+                    OnboardingViewModel(
+                        preferencesRepository = preferencesRepository,
+                        contactRepository = quickActionViewModel.repository,
+                        isReplay = false
+                    )
+                }
                 val onboardingUiState by onboardingViewModel.uiState.collectAsState()
 
                 OnboardingScreen(
@@ -993,6 +1012,27 @@ private fun MainAppNavHost(
                             launchSingleTop = true
                         }
                     }
+                )
+            }
+
+            composable(
+                route = OnboardingRoute.REPLAY_ROUTE_NAME,
+                enterTransition = { fadeIn(animationSpec = MotionTokens.screenFadeSpec()) },
+                exitTransition = { fadeOut(animationSpec = MotionTokens.screenFadeSpec()) }
+            ) {
+                val onboardingViewModel = remember {
+                    OnboardingViewModel(
+                        preferencesRepository = preferencesRepository,
+                        contactRepository = quickActionViewModel.repository,
+                        isReplay = true
+                    )
+                }
+                val onboardingUiState by onboardingViewModel.uiState.collectAsState()
+
+                OnboardingScreen(
+                    uiState = onboardingUiState,
+                    onEvent = onboardingViewModel::onEvent,
+                    onFinish = { navController.popBackStack() }
                 )
             }
 
@@ -1235,7 +1275,8 @@ private fun MainAppNavHost(
             ) {
                 SettingsAboutScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToLicenses = { navController.navigateSafely(SettingsLicensesRoute.ROUTE_NAME) }
+                    onNavigateToLicenses = { navController.navigateSafely(SettingsLicensesRoute.ROUTE_NAME) },
+                    onReplayOnboarding = { navController.navigateSafely(OnboardingRoute.REPLAY_ROUTE_NAME) }
                 )
             }
 
@@ -1285,10 +1326,23 @@ private fun MainAppNavHost(
             ) { backStackEntry ->
                 val contactId = backStackEntry.arguments?.getString(PersonDetailRoute.ARG_CONTACT_ID) ?: ""
                 val detailViewModel = remember(contactId) {
-                    PersonDetailViewModel(contactId = contactId, repository = quickActionViewModel.repository)
+                    PersonDetailViewModel(
+                        contactId = contactId,
+                        repository = quickActionViewModel.repository,
+                        preferencesRepository = preferencesRepository
+                    )
                 }
                 val detailUiState by detailViewModel.uiState.collectAsState()
+                var lastReportedReminderSaveId by remember(backStackEntry.id) {
+                    mutableLongStateOf(detailUiState.reminderSavedEventId)
+                }
 
+                LaunchedEffect(detailUiState.reminderSavedEventId) {
+                    if (detailUiState.reminderSavedEventId > lastReportedReminderSaveId) {
+                        lastReportedReminderSaveId = detailUiState.reminderSavedEventId
+                        onProfileReminderSaved()
+                    }
+                }
                 LaunchedEffect(detailUiState.isSelectionMode) {
                     onDetailSelectionModeChanged(detailUiState.isSelectionMode)
                     if (!detailUiState.isSelectionMode) {
@@ -1296,7 +1350,11 @@ private fun MainAppNavHost(
                     }
                 }
                 DisposableEffect(backStackEntry.id) {
+                    onRegisterProfileReminderTrigger {
+                        detailViewModel.onEvent(com.example.hello.ui.detail.PersonDetailUiEvent.OnOpenCreateReminderSheet)
+                    }
                     onDispose {
+                        onRegisterProfileReminderTrigger(null)
                         onDetailSelectionModeChanged(false)
                         onDetailSelectionBackProgress(0f)
                     }
@@ -1640,6 +1698,9 @@ private fun FloatingDockOverlay(
     isProfileMorphReversing: () -> Boolean,
     isProfileEncounterMode: Boolean,
     onProfileEncounterClick: () -> Unit,
+    onProfileReminderClick: () -> Unit = {},
+    activeDetailContactId: String? = null,
+    profileReminderSavedEventId: Long = 0L,
     overridePillProgress: Float? = null,
     dockHeightPx: Int,
     onDockHeightChanged: (Int) -> Unit,
@@ -1650,6 +1711,14 @@ private fun FloatingDockOverlay(
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val isSpeedDialOpen = homeUiState.isSpeedDialOpen
+    val allFollowUps by quickActionViewModel.repository.followUps.collectAsState()
+    val pendingReminderCount = remember(activeDetailContactId, allFollowUps) {
+        if (activeDetailContactId.isNullOrBlank()) {
+            0
+        } else {
+            allFollowUps.count { it.contactId == activeDetailContactId && !it.isDone }
+        }
+    }
 
     androidx.activity.compose.BackHandler(enabled = isSpeedDialOpen && isMainRootRoute(currentRoute)) {
         homeViewModel.onEvent(HomeUiEvent.OnCloseSpeedDial)
@@ -1706,6 +1775,10 @@ private fun FloatingDockOverlay(
             isProfileMorphReversing = isProfileMorphReversing,
             isProfileEncounterMode = isProfileEncounterMode,
             onProfileEncounterClick = onProfileEncounterClick,
+            onProfileReminderClick = onProfileReminderClick,
+            pendingReminderCount = pendingReminderCount,
+            reminderSavedEventId = profileReminderSavedEventId,
+            profileContextKey = activeDetailContactId,
             modifier = modifier
                 .onSizeChanged { size ->
                     if (size.height > 0) {
@@ -1743,6 +1816,7 @@ private fun SnackbarFeedbackCollector(
     contactsViewModel: ContactsViewModel,
     quickActionViewModel: QuickActionViewModel,
     snackbarHostState: SnackbarHostState,
+    terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     helloHaptics: HelloHaptics = LocalHelloHaptics.current
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
@@ -1781,23 +1855,41 @@ private fun SnackbarFeedbackCollector(
             if (result == SnackbarResult.ActionPerformed) {
                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                 if (msg.contains("archive", ignoreCase = true)) {
-                    if (quickActionViewModel.repository.undoLastArchive()) {
+                    val restoredCount = quickActionViewModel.repository.undoLastArchiveBatch()
+                    if (restoredCount > 0) {
+                        val restoredMsg = if (restoredCount == 1) {
+                            "${terminology.singularTitle} restored"
+                        } else {
+                            "$restoredCount ${terminology.pluralTitle.lowercase()} restored"
+                        }
                         snackbarHostState.showHelloToast(
-                            message = "Contact restored",
+                            message = restoredMsg,
                             durationMs = TOAST_DURATION_INFORMATIONAL_MS
                         )
                     }
                 } else if (msg.contains("restored", ignoreCase = true)) {
-                    if (quickActionViewModel.repository.undoLastArchive()) {
+                    val archivedCount = quickActionViewModel.repository.undoLastArchiveBatch()
+                    if (archivedCount > 0) {
+                        val archivedMsg = if (archivedCount == 1) {
+                            "${terminology.singularTitle} archived"
+                        } else {
+                            "$archivedCount ${terminology.pluralTitle.lowercase()} archived"
+                        }
                         snackbarHostState.showHelloToast(
-                            message = "Contact archived",
+                            message = archivedMsg,
                             durationMs = TOAST_DURATION_INFORMATIONAL_MS
                         )
                     }
                 } else {
-                    if (quickActionViewModel.repository.undoLastDeleteContact()) {
+                    val restoredCount = quickActionViewModel.repository.undoLastDeleteContacts()
+                    if (restoredCount > 0) {
+                        val restoredMsg = if (restoredCount == 1) {
+                            "${terminology.singularTitle} restored"
+                        } else {
+                            "$restoredCount ${terminology.pluralTitle.lowercase()} restored"
+                        }
                         snackbarHostState.showHelloToast(
-                            message = "Contact restored",
+                            message = restoredMsg,
                             durationMs = TOAST_DURATION_INFORMATIONAL_MS
                         )
                     }
@@ -1871,6 +1963,7 @@ fun MainAppShellLightPreview() {
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
                     override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
                     override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
+                    override suspend fun setFirstDayOfWeek(firstDayOfWeek: com.example.hello.data.preferences.WeekStartDay) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
@@ -1900,6 +1993,7 @@ fun MainAppShellDarkPreview() {
                     override suspend fun setPreferredTerminology(terminology: RelationshipTerminology) {}
                     override suspend fun setThemeMode(themeMode: com.example.hello.data.preferences.ThemeMode) {}
                     override suspend fun setThemeStyle(themeStyle: com.example.hello.data.preferences.ThemeStyle) {}
+                    override suspend fun setFirstDayOfWeek(firstDayOfWeek: com.example.hello.data.preferences.WeekStartDay) {}
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}

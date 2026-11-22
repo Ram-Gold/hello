@@ -5,20 +5,23 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import com.example.hello.data.local.HelloDatabase
+import com.example.hello.data.local.entity.toDomain
+import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
+import com.example.hello.data.preferences.helloDataStore
+import com.example.hello.domain.model.FollowUp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 
 /**
- * Headless BroadcastReceiver handling inline 'Done' and 'Snooze' notification actions.
- * Executes background Room mutations and alarm rescheduling in <10ms without launching any Activity.
+ * Headless BroadcastReceiver handling inline 'Done' and 'Snooze (3d)' notification actions.
+ * Executes background Room mutations and alarm rescheduling without launching any Activity.
  */
 class FollowUpActionReceiver : BroadcastReceiver() {
-
-    private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent == null) return
@@ -26,43 +29,52 @@ class FollowUpActionReceiver : BroadcastReceiver() {
         val followUpId = intent.getStringExtra(EXTRA_FOLLOW_UP_ID) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, followUpId.hashCode())
 
-        // Instantly dismiss notification for snappy UI response
         try {
             NotificationManagerCompat.from(context).cancel(notificationId)
         } catch (_: Exception) {}
 
         val action = intent.action ?: return
         val pendingResult = goAsync()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        receiverScope.launch {
+        scope.launch {
             try {
-                val db = HelloDatabase.getInstance(context)
+                val appContext = context.applicationContext
+                val db = HelloDatabase.getInstance(appContext)
+                val scheduler = FollowUpAlarmScheduler(appContext)
                 when (action) {
                     ACTION_DONE -> {
                         db.followUpDao().markDone(followUpId, Instant.now())
+                        scheduler.cancelAlarm(followUpId)
                     }
                     ACTION_SNOOZE -> {
-                        val contactId = intent.getStringExtra(EXTRA_CONTACT_ID).orEmpty()
-                        val contactName = intent.getStringExtra(EXTRA_CONTACT_NAME) ?: "Contact"
-                        val note = intent.getStringExtra(EXTRA_NOTE).orEmpty()
+                        val existing = db.followUpDao().getFollowUpById(followUpId) ?: return@launch
+                        if (existing.doneAt != null) return@launch
+                        val contact = db.contactDao().getContactById(existing.contactId)
+                        if (contact == null || contact.isArchived) return@launch
 
-                        val newDueAt = Instant.now().plus(3, ChronoUnit.DAYS)
+                        val prefs = DataStoreUserPreferencesRepository(appContext.helloDataStore)
+                            .userPreferencesFlow.first()
+                        val newDueAt = FollowUp.computeSnoozedDueAt(
+                            followUp = existing.toDomain(),
+                            days = 3L,
+                            defaultHour = prefs.notificationHour,
+                            defaultMinute = prefs.notificationMinute
+                        )
                         db.followUpDao().snooze(followUpId, newDueAt)
-
-                        // Re-arm exact alarm for +3 days
-                        val scheduler = FollowUpAlarmScheduler(context)
                         scheduler.scheduleAlarm(
                             followUpId = followUpId,
-                            contactId = contactId,
-                            contactName = contactName,
-                            note = note,
+                            contactId = contact.id,
+                            contactName = contact.name,
+                            note = existing.note,
                             dueAt = newDueAt
                         )
                     }
                 }
             } catch (_: Exception) {
-                // Failsafe logging if required
+                // Failsafe on background action receiver
             } finally {
+                scope.cancel()
                 pendingResult.finish()
             }
         }

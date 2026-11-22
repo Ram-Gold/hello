@@ -12,7 +12,8 @@ data class FollowUpEntity(
     val contactId: String,
     val dueAt: Instant,
     val note: String,
-    val doneAt: Instant? = null
+    val doneAt: Instant? = null,
+    val hasExplicitTime: Boolean = false
 )
 
 fun FollowUp.toEntity(): FollowUpEntity = FollowUpEntity(
@@ -20,12 +21,15 @@ fun FollowUp.toEntity(): FollowUpEntity = FollowUpEntity(
     contactId = contactId,
     dueAt = dueAt,
     note = note,
-    doneAt = null
+    doneAt = doneAt,
+    hasExplicitTime = hasExplicitTime
 )
 
 fun FollowUpEntity.toDomain(): FollowUp = FollowUp(
     id = id,
     contactId = contactId,
     dueAt = dueAt,
-    note = note
+    note = note,
+    doneAt = doneAt,
+    hasExplicitTime = hasExplicitTime
 )

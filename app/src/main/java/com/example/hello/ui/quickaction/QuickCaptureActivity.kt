@@ -1,5 +1,6 @@
 package com.example.hello.ui.quickaction
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -118,7 +119,7 @@ class QuickCaptureActivity : ComponentActivity() {
                             if (uiState.userMessage != null) {
                                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                             }
-                            finish()
+                            finishWithoutExitFlash()
                         }
                     }
 
@@ -144,7 +145,7 @@ class QuickCaptureActivity : ComponentActivity() {
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
                             ) {
-                                finish()
+                                finishWithoutExitFlash()
                             }
                     )
 
@@ -171,7 +172,7 @@ class QuickCaptureActivity : ComponentActivity() {
                             onEvent = { event ->
                                 when (event) {
                                     is QuickActionUiEvent.OnDismiss -> {
-                                        finish()
+                                        finishWithoutExitFlash()
                                     }
                                     else -> {
                                         viewModel.onEvent(event)
@@ -186,8 +187,17 @@ class QuickCaptureActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (::viewModel.isInitialized) {
+            viewModel.onEvent(QuickActionUiEvent.OnDismiss)
+            viewModel.onEvent(QuickActionUiEvent.OnSelectAddContact)
+        }
+    }
+
     private fun finishWithoutExitFlash() {
-        finish()
+        finishAndRemoveTask()
         if (Build.VERSION.SDK_INT >= 34) {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
         } else {

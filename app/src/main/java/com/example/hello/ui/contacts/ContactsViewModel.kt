@@ -252,9 +252,7 @@ class ContactsViewModel(
             is ContactsUiEvent.OnConfirmArchiveSelected -> {
                 val toArchive = _uiState.value.selectedContactIds
                 if (repository != null) {
-                    toArchive.forEach { contactId ->
-                        repository.archiveContact(contactId, archived = true)
-                    }
+                    repository.archiveContacts(toArchive, archived = true)
                 }
                 allContacts = allContacts.map { c ->
                     if (c.id in toArchive) c.copy(isArchived = true) else c
@@ -280,9 +278,7 @@ class ContactsViewModel(
             is ContactsUiEvent.OnConfirmDeleteSelected -> {
                 val toDelete = _uiState.value.selectedContactIds
                 if (repository != null) {
-                    toDelete.forEach { contactId ->
-                        repository.deleteContact(contactId)
-                    }
+                    repository.deleteContacts(toDelete)
                 }
                 allContacts = allContacts.filterNot { it.id in toDelete }
                 val deleteCount = toDelete.size
@@ -398,15 +394,7 @@ class ContactsViewModel(
                 matchesQuery && matchesTag
             }
 
-            val filteredArchived = if (cleanQuery.isBlank()) {
-                archivedList
-            } else {
-                archivedList.filter { contact ->
-                    contact.name.contains(cleanQuery, ignoreCase = true) ||
-                        contact.contextSubtitle.contains(cleanQuery, ignoreCase = true) ||
-                        contact.notes.contains(cleanQuery, ignoreCase = true)
-                }
-            }.sortedBy { it.name }
+            val sortedArchived = archivedList.sortedBy { it.name }
 
             val dynamicTags = buildList<String> {
                 addAll(ContactsUiState.DEFAULT_SMART_FILTER_TAGS)
@@ -455,7 +443,7 @@ class ContactsViewModel(
                 isDeleteConfirmationVisible = isDeleteConfirmationVisible,
                 isArchiveConfirmationVisible = isArchiveConfirmationVisible,
                 favoriteContacts = favoriteContacts,
-                archivedContacts = filteredArchived,
+                archivedContacts = sortedArchived,
                 isArchivedSheetOpen = isArchivedSheetOpen,
                 userMessage = userMessage
             )

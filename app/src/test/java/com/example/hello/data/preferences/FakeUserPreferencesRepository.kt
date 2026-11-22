@@ -33,6 +33,10 @@ class FakeUserPreferencesRepository(
         _prefs.update { it.copy(themeStyle = themeStyle) }
     }
 
+    override suspend fun setFirstDayOfWeek(firstDayOfWeek: WeekStartDay) {
+        _prefs.update { it.copy(firstDayOfWeek = firstDayOfWeek) }
+    }
+
     override suspend fun setDynamicColor(enabled: Boolean) {
         _prefs.update { it.copy(dynamicColor = enabled) }
     }

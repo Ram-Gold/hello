@@ -573,4 +573,59 @@ class ContactsViewModelTest {
         assertEquals("Archived 1 contact", viewModel.uiState.value.userMessage)
         assertTrue(viewModel.uiState.value.isArchivedSheetOpen)
     }
+
+    @Test
+    fun confirmArchiveAllSelected_andUndo_restoresAllContacts() {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val vm = ContactsViewModel(repository = repo)
+        val initialActiveIds = repo.contacts.value.filterNot { it.isArchived }.map { it.id }.toSet()
+        assertTrue(initialActiveIds.size >= 10)
+
+        vm.syncContacts(repo.contacts.value)
+        vm.onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
+        vm.onEvent(ContactsUiEvent.OnConfirmArchiveSelected)
+        vm.syncContacts(repo.contacts.value)
+
+        assertTrue(vm.uiState.value.contacts.isEmpty())
+        assertEquals(initialActiveIds.size, vm.uiState.value.archivedContacts.size)
+
+        val restoredCount = repo.undoLastArchiveBatch()
+        vm.syncContacts(repo.contacts.value)
+
+        assertEquals(initialActiveIds.size, restoredCount)
+        assertEquals(initialActiveIds.size, vm.uiState.value.contacts.size)
+        assertTrue(vm.uiState.value.archivedContacts.isEmpty())
+    }
+
+    @Test
+    fun confirmDeleteAllSelected_andUndo_restoresAllContacts() {
+        val repo = com.example.hello.data.repository.ContactRepository()
+        val vm = ContactsViewModel(repository = repo)
+        val initialActiveIds = repo.contacts.value.filterNot { it.isArchived }.map { it.id }.toSet()
+        assertTrue(initialActiveIds.size >= 10)
+
+        vm.syncContacts(repo.contacts.value)
+        vm.onEvent(ContactsUiEvent.OnSelectAllVisibleContacts)
+        vm.onEvent(ContactsUiEvent.OnConfirmDeleteSelected)
+        vm.syncContacts(repo.contacts.value)
+
+        assertTrue(vm.uiState.value.contacts.isEmpty())
+
+        val restoredCount = repo.undoLastDeleteContacts()
+        vm.syncContacts(repo.contacts.value)
+
+        assertEquals(initialActiveIds.size, restoredCount)
+        assertEquals(initialActiveIds.size, vm.uiState.value.contacts.size)
+    }
+
+    @Test
+    fun archivedContacts_remainUnfilteredWhenSearchQueryIsActive() {
+        val sample = ContactsViewModel.createSampleContacts().map { it.copy(isArchived = true) }
+        viewModel.syncContacts(sample)
+        viewModel.onEvent(ContactsUiEvent.OnSearchQueryChange("nonexistent-xyz"))
+
+        val state = viewModel.uiState.value
+        assertTrue(state.contacts.isEmpty())
+        assertEquals(sample.size, state.archivedContacts.size)
+    }
 }

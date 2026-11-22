@@ -202,4 +202,81 @@ class PersonDetailViewModelTest {
         assertEquals("Encounter restored", restoredState.userMessage)
         assertTrue(restoredState.encounters.any { it.id == toDelete.id })
     }
+
+    @Test
+    fun profileReminders_createEditDoneSnoozeDeleteAndUndoFlow() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Create via bottom-sheet reminder flow with blank note -> default fallback
+        viewModel.onEvent(PersonDetailUiEvent.OnOpenCreateReminderSheet)
+        assertTrue(viewModel.uiState.value.isCreateReminderSheetOpen)
+
+        viewModel.onEvent(
+            PersonDetailUiEvent.OnCreateReminder(
+                dueDate = java.time.LocalDate.now().plusDays(2),
+                note = "",
+                hasExplicitTime = false
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
+        assertEquals(1L, viewModel.uiState.value.reminderSavedEventId)
+        assertNull(viewModel.uiState.value.userMessage)
+        val created = viewModel.uiState.value.reminders.firstOrNull { it.note == "Follow up with Alex Rivera" }
+        assertNotNull(created)
+
+        // Edit reminder
+        viewModel.onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(created!!))
+        assertEquals(created.id, viewModel.uiState.value.editingReminder?.id)
+        viewModel.onEvent(
+            PersonDetailUiEvent.OnUpdateReminder(
+                followUpId = created.id,
+                dueDate = java.time.LocalDate.now().plusDays(4),
+                note = "Send portfolio link",
+                hasExplicitTime = true,
+                explicitTime = java.time.LocalTime.of(11, 15)
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
+        assertNull(viewModel.uiState.value.userMessage)
+        val edited = viewModel.uiState.value.reminders.first { it.id == created.id }
+        assertEquals("Send portfolio link", edited.note)
+        assertTrue(edited.hasExplicitTime)
+
+        // Snooze reminder keeps toast and does not trigger "Saved" pill confirmation
+        val beforeSnooze = edited.dueAt
+        viewModel.onEvent(PersonDetailUiEvent.OnSnoozeReminder(created.id))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
+        assertEquals("Snoozed for 3 days", viewModel.uiState.value.userMessage)
+        assertTrue(viewModel.uiState.value.reminders.first { it.id == created.id }.dueAt.isAfter(beforeSnooze))
+
+        // Mark Done + Undo keeps toast and does not increment reminderSavedEventId
+        viewModel.onEvent(PersonDetailUiEvent.OnMarkReminderDone(created.id))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
+        assertEquals(PersonDetailUndoKind.REMINDER, viewModel.uiState.value.undoKind)
+        assertTrue(viewModel.uiState.value.reminders.none { it.id == created.id })
+
+        viewModel.onEvent(PersonDetailUiEvent.OnUndoReminderMutation)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
+        assertEquals("Reminder restored", viewModel.uiState.value.userMessage)
+        assertTrue(viewModel.uiState.value.reminders.any { it.id == created.id })
+
+        // Delete + Undo keeps toast and does not increment reminderSavedEventId
+        viewModel.onEvent(PersonDetailUiEvent.OnDeleteReminder(created.id))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
+        assertEquals(PersonDetailUndoKind.REMINDER, viewModel.uiState.value.undoKind)
+        assertTrue(viewModel.uiState.value.reminders.none { it.id == created.id })
+
+        viewModel.onEvent(PersonDetailUiEvent.OnUndoReminderMutation)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.reminders.any { it.id == created.id })
+    }
 }

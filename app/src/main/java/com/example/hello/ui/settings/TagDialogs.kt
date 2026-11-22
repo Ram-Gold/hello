@@ -1,7 +1,9 @@
 package com.example.hello.ui.settings
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,11 +38,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.Tag
 import com.example.hello.ui.components.TagColorCache
+import com.example.hello.ui.components.TagPillDefaults
 import com.example.hello.ui.theme.LocalIsDarkTheme
 
 object TagColorPalette {
@@ -64,16 +70,27 @@ private fun TagColorSwatchGrid(
         TagColorPalette.PALETTE_HEX.forEach { hex ->
             val isSelected = selectedHex.equals(hex, ignoreCase = true)
             val resolved = TagColorCache.resolvePillColors(hex, isDark)
+            val selectionProgress by animateFloatAsState(
+                targetValue = if (isSelected) 1f else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "swatchSelectionMorph"
+            )
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(CircleShape)
-                    .background(resolved.unselectedContainer)
-                    .border(
-                        width = if (isSelected) 2.dp else 1.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else resolved.unselectedBorder,
-                        shape = CircleShape
-                    )
+                    .drawBehind {
+                        val circleRadius = size.height / 2f
+                        val squircleRadius = TagPillDefaults.SelectedSquircleRadius.toPx()
+                        val cornerRadius = circleRadius + (squircleRadius - circleRadius) * selectionProgress
+                        val bgColor = lerp(resolved.unselectedContainer, resolved.selectedContainer, selectionProgress)
+                        drawRoundRect(
+                            color = bgColor,
+                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                        )
+                    }
                     .clickable { onSelectHex(hex) },
                 contentAlignment = Alignment.Center
             ) {
@@ -81,7 +98,7 @@ private fun TagColorSwatchGrid(
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
-                        tint = resolved.unselectedContent,
+                        tint = resolved.selectedContent,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -270,7 +287,6 @@ fun MergeTagDialog(
                                             .size(14.dp)
                                             .clip(CircleShape)
                                             .background(dotColors.unselectedContainer)
-                                            .border(1.dp, dotColors.unselectedBorder, CircleShape)
                                     )
                                     Text(
                                         text = target.name,
