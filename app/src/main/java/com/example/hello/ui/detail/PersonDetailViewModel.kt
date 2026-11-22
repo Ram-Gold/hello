@@ -217,7 +217,7 @@ class PersonDetailViewModel(
                         isCreateReminderSheetOpen = false,
                         editingReminder = null,
                         reminderSavedEventId = it.reminderSavedEventId + 1L,
-                        userMessage = null,
+                        userMessage = "Reminder saved",
                         undoKind = PersonDetailUndoKind.NONE
                     )
                 }
@@ -237,7 +237,7 @@ class PersonDetailViewModel(
                     it.copy(
                         editingReminder = null,
                         reminderSavedEventId = it.reminderSavedEventId + 1L,
-                        userMessage = null,
+                        userMessage = "Reminder saved",
                         undoKind = PersonDetailUndoKind.NONE
                     )
                 }

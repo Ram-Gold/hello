@@ -39,6 +39,7 @@ class HelloToastHostTest {
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Contact restored"))
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Marked as done!"))
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Export finished"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Reminder saved"))
     }
 
     @Test
@@ -68,6 +69,7 @@ class HelloToastHostTest {
     @Test
     fun resolveToastDurationMs_informationalMessagesResolveToStandardDuration() {
         assertEquals(3500L, resolveToastDurationMs("Contact updated"))
+        assertEquals(3500L, resolveToastDurationMs("Reminder saved"))
         assertEquals(3500L, resolveToastDurationMs("Marked as done!"))
         assertEquals(3500L, resolveToastDurationMs("Export finished"))
         assertEquals(3500L, resolveToastDurationMs("Added to favorites"))
@@ -153,6 +155,7 @@ class HelloToastHostTest {
     @Test
     fun shouldShowToastCountdown_informationalMessagesWithoutActionReturnFalse() {
         assertFalse(shouldShowToastCountdown("Contact updated"))
+        assertFalse(shouldShowToastCountdown("Reminder saved"))
         assertFalse(shouldShowToastCountdown("Marked as done!"))
         assertFalse(shouldShowToastCountdown("Export finished"))
         assertFalse(shouldShowToastCountdown("Added to favorites"))

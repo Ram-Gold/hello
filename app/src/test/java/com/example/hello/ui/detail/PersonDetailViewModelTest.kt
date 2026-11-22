@@ -223,9 +223,14 @@ class PersonDetailViewModelTest {
 
         assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
         assertEquals(1L, viewModel.uiState.value.reminderSavedEventId)
-        assertNull(viewModel.uiState.value.userMessage)
+        assertEquals("Reminder saved", viewModel.uiState.value.userMessage)
+        assertEquals(PersonDetailUndoKind.NONE, viewModel.uiState.value.undoKind)
         val created = viewModel.uiState.value.reminders.firstOrNull { it.note == "Follow up with Alex Rivera" }
         assertNotNull(created)
+
+        // Dismiss the toast message before editing
+        viewModel.onEvent(PersonDetailUiEvent.OnDismissUserMessage)
+        assertNull(viewModel.uiState.value.userMessage)
 
         // Edit reminder
         viewModel.onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(created!!))
@@ -242,7 +247,8 @@ class PersonDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(2L, viewModel.uiState.value.reminderSavedEventId)
-        assertNull(viewModel.uiState.value.userMessage)
+        assertEquals("Reminder saved", viewModel.uiState.value.userMessage)
+        assertEquals(PersonDetailUndoKind.NONE, viewModel.uiState.value.undoKind)
         val edited = viewModel.uiState.value.reminders.first { it.id == created.id }
         assertEquals("Send portfolio link", edited.note)
         assertTrue(edited.hasExplicitTime)
@@ -278,5 +284,41 @@ class PersonDetailViewModelTest {
         viewModel.onEvent(PersonDetailUiEvent.OnUndoReminderMutation)
         testDispatcher.scheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.reminders.any { it.id == created.id })
+    }
+
+    @Test
+    fun profileReminders_openAndDismissCreateOrEditOverlayClearsFlagsWithoutSavePulse() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(PersonDetailUiEvent.OnOpenCreateReminderSheet)
+        assertTrue(viewModel.uiState.value.isCreateReminderSheetOpen)
+        assertNull(viewModel.uiState.value.editingReminder)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnDismissReminderSheet)
+        assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
+        assertNull(viewModel.uiState.value.editingReminder)
+        assertEquals(0L, viewModel.uiState.value.reminderSavedEventId)
+
+        // Create one reminder, open edit overlay, and dismiss without saving
+        viewModel.onEvent(
+            PersonDetailUiEvent.OnCreateReminder(
+                dueDate = java.time.LocalDate.now().plusDays(1),
+                note = "Ping about weekend",
+                hasExplicitTime = false
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        val created = viewModel.uiState.value.reminders.first { it.note == "Ping about weekend" }
+        assertEquals(1L, viewModel.uiState.value.reminderSavedEventId)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(created))
+        assertEquals(created.id, viewModel.uiState.value.editingReminder?.id)
+        assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
+
+        viewModel.onEvent(PersonDetailUiEvent.OnDismissReminderSheet)
+        assertNull(viewModel.uiState.value.editingReminder)
+        assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
+        assertEquals(1L, viewModel.uiState.value.reminderSavedEventId)
     }
 }

@@ -66,12 +66,17 @@ import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
 import com.example.hello.ui.components.showHelloToast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -85,8 +90,9 @@ import com.example.hello.domain.model.ContactSummary
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
 import com.example.hello.ui.detail.components.LivingTimeline
+import com.example.hello.ui.detail.components.ProfileReminderOverlayPayload
+import com.example.hello.ui.detail.components.ProfileReminderSheetOverlay
 import com.example.hello.ui.detail.components.PropertiesPanel
-import com.example.hello.ui.detail.components.ReminderEditorBottomSheet
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
@@ -105,7 +111,8 @@ fun PersonDetailScreen(
     onLogEncounterClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     externalSnackbarHostState: SnackbarHostState? = null,
-    onSelectionBackProgressChanged: (Float) -> Unit = {}
+    onSelectionBackProgressChanged: (Float) -> Unit = {},
+    onReminderOverlayChanged: ((ProfileReminderOverlayPayload?) -> Unit)? = null
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
@@ -157,9 +164,15 @@ fun PersonDetailScreen(
         }
     )
 
+    val toastScope = rememberCoroutineScope()
+    val activeToastJob = remember { arrayOfNulls<Job>(1) }
+
     LaunchedEffect(uiState.userMessage, uiState.undoKind) {
-        uiState.userMessage?.let { msg ->
-            val undoKind = uiState.undoKind
+        val msg = uiState.userMessage ?: return@LaunchedEffect
+        val undoKind = uiState.undoKind
+        onEvent(PersonDetailUiEvent.OnDismissUserMessage)
+        activeToastJob[0]?.cancel()
+        activeToastJob[0] = toastScope.launch {
             val hasUndo = undoKind != PersonDetailUndoKind.NONE || msg.startsWith("Deleted", ignoreCase = true)
             val result = if (hasUndo) {
                 snackbarHostState.showHelloToast(
@@ -179,8 +192,6 @@ fun PersonDetailScreen(
                     PersonDetailUndoKind.REMINDER -> onEvent(PersonDetailUiEvent.OnUndoReminderMutation)
                     PersonDetailUndoKind.ENCOUNTER, PersonDetailUndoKind.NONE -> onEvent(PersonDetailUiEvent.OnUndoDeleteEncounter)
                 }
-            } else {
-                onEvent(PersonDetailUiEvent.OnDismissUserMessage)
             }
         }
     }
@@ -417,44 +428,74 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // Create / Edit Reminder Bottom Sheet (ADR-0037)
-                if (uiState.isCreateReminderSheetOpen || uiState.editingReminder != null) {
-                    val editing = uiState.editingReminder
-                    ReminderEditorBottomSheet(
-                        contactName = contactName,
-                        editingReminder = editing,
-                        defaultHour = uiState.defaultNotificationHour,
-                        defaultMinute = uiState.defaultNotificationMinute,
-                        onDismiss = { onEvent(PersonDetailUiEvent.OnDismissReminderSheet) },
-                        onSave = { dueDate, note, hasExplicitTime, explicitTime ->
-                            haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-                            if (editing != null) {
-                                onEvent(
-                                    PersonDetailUiEvent.OnUpdateReminder(
-                                        followUpId = editing.id,
-                                        dueDate = dueDate,
-                                        note = note,
-                                        hasExplicitTime = hasExplicitTime,
-                                        explicitTime = explicitTime
+                // Create / Edit Reminder In-Hierarchy Overlay (ADR-0037, RAM-60, RAM-61)
+                val latestOnEvent = rememberUpdatedState(onEvent)
+                val latestHaptics = rememberUpdatedState(haptics)
+                val latestMaybePromptNotificationPermission = rememberUpdatedState(::maybePromptNotificationPermission)
+                val isReminderSheetOpen = uiState.isCreateReminderSheetOpen || uiState.editingReminder != null
+                val reminderOverlayPayload = remember(
+                    isReminderSheetOpen,
+                    contactName,
+                    uiState.editingReminder,
+                    uiState.defaultNotificationHour,
+                    uiState.defaultNotificationMinute
+                ) {
+                    if (!isReminderSheetOpen) {
+                        null
+                    } else {
+                        val editing = uiState.editingReminder
+                        ProfileReminderOverlayPayload(
+                            contactName = contactName,
+                            editingReminder = editing,
+                            defaultHour = uiState.defaultNotificationHour,
+                            defaultMinute = uiState.defaultNotificationMinute,
+                            onDismiss = {
+                                latestOnEvent.value(PersonDetailUiEvent.OnDismissReminderSheet)
+                            },
+                            onSave = { dueDate, note, hasExplicitTime, explicitTime ->
+                                latestHaptics.value.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                                if (editing != null) {
+                                    latestOnEvent.value(
+                                        PersonDetailUiEvent.OnUpdateReminder(
+                                            followUpId = editing.id,
+                                            dueDate = dueDate,
+                                            note = note,
+                                            hasExplicitTime = hasExplicitTime,
+                                            explicitTime = explicitTime
+                                        )
                                     )
-                                )
-                            } else {
-                                onEvent(
-                                    PersonDetailUiEvent.OnCreateReminder(
-                                        dueDate = dueDate,
-                                        note = note,
-                                        hasExplicitTime = hasExplicitTime,
-                                        explicitTime = explicitTime
+                                } else {
+                                    latestOnEvent.value(
+                                        PersonDetailUiEvent.OnCreateReminder(
+                                            dueDate = dueDate,
+                                            note = note,
+                                            hasExplicitTime = hasExplicitTime,
+                                            explicitTime = explicitTime
+                                        )
                                     )
-                                )
-                                maybePromptNotificationPermission()
+                                    latestMaybePromptNotificationPermission.value()
+                                }
+                            },
+                            onDelete = { followUpId ->
+                                latestHaptics.value.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
+                                latestOnEvent.value(PersonDetailUiEvent.OnDeleteReminder(followUpId))
                             }
-                        },
-                        onDelete = { followUpId ->
-                            haptics.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
-                            onEvent(PersonDetailUiEvent.OnDeleteReminder(followUpId))
+                        )
+                    }
+                }
+
+                if (onReminderOverlayChanged != null) {
+                    val latestOverlayCallback = rememberUpdatedState(onReminderOverlayChanged)
+                    LaunchedEffect(reminderOverlayPayload) {
+                        latestOverlayCallback.value(reminderOverlayPayload)
+                    }
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            latestOverlayCallback.value(null)
                         }
-                    )
+                    }
+                } else {
+                    ProfileReminderSheetOverlay(payload = reminderOverlayPayload)
                 }
 
                 // In-App Notification Permission Explainer (Prime Directive 3, ADR-0037)
