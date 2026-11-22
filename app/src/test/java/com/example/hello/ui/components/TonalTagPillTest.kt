@@ -19,6 +19,16 @@ class TonalTagPillTest {
         assertEquals(8.dp, TagPillDefaults.SelectedSquircleRadius)
         assertEquals(CircleShape, TagPillDefaults.UnselectedShape)
         assertEquals(RoundedCornerShape(8.dp), TagPillDefaults.SelectedShape)
+        assertEquals(8.dp, TagPillDefaults.PillSpacing)
+    }
+
+    @Test
+    fun `cornerRadiusPx morphs from stadium pill at unselected to squircle at selected and clamps overshoot`() {
+        assertEquals(28f, TagPillDefaults.cornerRadiusPx(heightPx = 56f, squircleRadiusPx = 16f, selectionProgress = 0f), 0.001f)
+        assertEquals(22f, TagPillDefaults.cornerRadiusPx(heightPx = 56f, squircleRadiusPx = 16f, selectionProgress = 0.5f), 0.001f)
+        assertEquals(16f, TagPillDefaults.cornerRadiusPx(heightPx = 56f, squircleRadiusPx = 16f, selectionProgress = 1f), 0.001f)
+        assertEquals(28f, TagPillDefaults.cornerRadiusPx(heightPx = 56f, squircleRadiusPx = 16f, selectionProgress = -0.25f), 0.001f)
+        assertEquals(16f, TagPillDefaults.cornerRadiusPx(heightPx = 56f, squircleRadiusPx = 16f, selectionProgress = 1.25f), 0.001f)
     }
 
     @Test

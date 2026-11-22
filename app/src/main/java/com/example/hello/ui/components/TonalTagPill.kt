@@ -50,9 +50,20 @@ object TagPillDefaults {
     val Height: Dp = 28.dp
     val HorizontalPadding: Dp = 12.dp
     val VerticalPadding: Dp = 6.dp
+    val PillSpacing: Dp = 8.dp
     val SelectedSquircleRadius: Dp = 8.dp
     val SelectedShape: Shape = RoundedCornerShape(SelectedSquircleRadius)
     val UnselectedShape: Shape = CircleShape
+
+    fun cornerRadiusPx(
+        heightPx: Float,
+        squircleRadiusPx: Float,
+        selectionProgress: Float
+    ): Float {
+        val progress = selectionProgress.coerceIn(0f, 1f)
+        val stadiumRadius = heightPx / 2f
+        return stadiumRadius + (squircleRadiusPx - stadiumRadius) * progress
+    }
 }
 
 /**
@@ -260,9 +271,11 @@ fun TonalFilterPill(
                 scaleY = pressScale
             }
             .drawBehind {
-                val stadiumRadius = size.height / 2f
-                val squircleRadius = TagPillDefaults.SelectedSquircleRadius.toPx()
-                val cornerRadius = stadiumRadius + (squircleRadius - stadiumRadius) * selectionProgress
+                val cornerRadius = TagPillDefaults.cornerRadiusPx(
+                    heightPx = size.height,
+                    squircleRadiusPx = TagPillDefaults.SelectedSquircleRadius.toPx(),
+                    selectionProgress = selectionProgress
+                )
                 val bgColor = lerp(unselectedContainerColor, selectedContainerColor, selectionProgress)
                 drawRoundRect(
                     color = bgColor,

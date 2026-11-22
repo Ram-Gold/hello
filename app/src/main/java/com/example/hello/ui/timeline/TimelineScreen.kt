@@ -15,7 +15,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.SelectableAvatarBadge
+import com.example.hello.ui.components.TagPillDefaults
+import com.example.hello.ui.components.TonalFilterPill
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
@@ -459,37 +460,22 @@ private fun TimelineHeader(
             }
         }
 
-        // Ultra-minimal Temporal Filter Strip: All | Future | Past
+        // Borderless Pill-to-Squircle Temporal Filter Strip: All | Future | Past (ADR-0038)
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(TagPillDefaults.PillSpacing),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TimelineFilter.entries.forEach { filter ->
                 val isSelected = selectedFilter == filter
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onSelectFilter(filter) }
-                ) {
-                    Text(
-                        text = filter.label,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        ),
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+                TonalFilterPill(
+                    label = filter.label,
+                    isSelected = isSelected,
+                    unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = { onSelectFilter(filter) }
+                )
             }
         }
     }
