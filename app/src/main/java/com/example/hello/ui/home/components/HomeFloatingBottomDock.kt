@@ -1,6 +1,5 @@
 package com.example.hello.ui.home.components
 
-import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -49,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,16 +71,11 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -95,7 +88,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
@@ -105,11 +97,9 @@ import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.theme.MotionTokens
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -407,119 +397,129 @@ fun HomeFloatingBottomDock(
             }
 
             // Bottom Unit: Invariant total footprint (dockWidth + 14dp + 60dp) x 60dp
-            // Whole-navbar unclipped blur + 100% solid opaque right-to-left '+' pill sweep (ADR-0034)
-            val resolvedNavSurfaceColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+            // Dual-capsule in-place morph: continuous left capsule contracts 1:1 with interior blur
+            // cross-morph while the solid opaque '+' -> '+ Catching up?' right pill sweeps left (ADR-0034, RAM-63)
+            val resolvedNavSurfaceColor = DockMotionConfig.resolveDockSurfaceColor(MaterialTheme.colorScheme)
             val primaryPillColor = MaterialTheme.colorScheme.primary
-            val blurMarginDp = DockMotionConfig.PROFILE_MORPH_BLUR_MARGIN_DP.dp
-            val navGraphicsLayer = rememberGraphicsLayer()
-            var blurredNavBitmap by remember(isDark) {
-                mutableStateOf<ImageBitmap?>(null)
-            }
-            var navLayerSize by remember { mutableStateOf(IntSize.Zero) }
-
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                LaunchedEffect(isProfileEncounterMode, selectedTab, peopleTabLabel, isDark, navLayerSize) {
-                    if (navLayerSize.width > 0 && navLayerSize.height > 0) {
-                        if (!isProfileEncounterMode) {
-                            kotlinx.coroutines.delay(420)
-                        }
-                        runCatching {
-                            val snapshot = navGraphicsLayer.toImageBitmap()
-                            blurredNavBitmap = withContext(Dispatchers.Default) {
-                                createSoftBlurredBitmap(snapshot)
-                            }
-                        }
-                    }
-                }
+            val reminderSurfaceColor by animateColorAsState(
+                targetValue = if (isShowingSavedConfirmation && isProfileEncounterMode) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    resolvedNavSurfaceColor
+                },
+                animationSpec = tween(
+                    durationMillis = if (isReducedMotion) 120 else if (isShowingSavedConfirmation) 200 else 220,
+                    easing = MotionTokens.StrongEaseOut
+                ),
+                label = "reminderPillSurfaceColor"
+            )
+            val reminderContentColor by animateColorAsState(
+                targetValue = if (isShowingSavedConfirmation && isProfileEncounterMode) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                animationSpec = tween(
+                    durationMillis = if (isReducedMotion) 120 else if (isShowingSavedConfirmation) 200 else 220,
+                    easing = MotionTokens.StrongEaseOut
+                ),
+                label = "reminderPillContentColor"
+            )
+            val reminderAccessibilityDescription = when {
+                isShowingSavedConfirmation -> "Reminder saved"
+                pendingReminderCount == 1 -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}, 1 active reminder. Set reminder"
+                pendingReminderCount > 1 -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}, $pendingReminderCount active reminders. Set reminder"
+                else -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}. Set reminder"
             }
 
             Layout(
                 content = {
-                    // Child 0: Resting shadow under 3-tab navbar (dissolves early with StrongEaseOut so no crisp shadow frame lingers)
+                    // Child 0: Single Continuous Left Capsule (3-Tab Navigation Pill <-> Profile Reminder Pill)
+                    // Stays 100% solid & sharp while contracting 1:1 with the right pill (locked 14dp gap)
                     Box(
                         modifier = Modifier
-                            .width(dimensions.dockWidthDp.dp)
-                            .height(DockMotionConfig.DOCK_HEIGHT_DP.dp)
                             .graphicsLayer {
-                                val morphState = DockMotionConfig.calculateProfileMorphState(
-                                    progress = profileMorphProgressProvider(),
-                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
-                                    isReversing = isProfileMorphReversing()
-                                )
-                                alpha = morphState.navShadowAlpha
+                                val pressScale = if (isProfileEncounterMode || profileMorphProgressProvider() >= 0.5f) {
+                                    reminderPressScale
+                                } else {
+                                    1f
+                                }
+                                scaleX = pressScale
+                                scaleY = pressScale
                                 shadowElevation = DockMotionConfig.DOCK_SHADOW_ELEVATION_DP.dp.toPx()
                                 ambientShadowColor = warmShadowAmbient
                                 spotShadowColor = warmShadowSpot
                                 shape = RoundedCornerShape(30.dp)
                                 clip = true
                             }
-                            .background(resolvedNavSurfaceColor)
-                    )
-
-                    // Child 1: Whole 3-Tab Navbar Pill (surface + icons blurred together inside unclipped +18dp margin)
-                    Box(
-                        modifier = Modifier
-                            .width(dimensions.dockWidthDp.dp + blurMarginDp * 2)
-                            .height(DockMotionConfig.DOCK_HEIGHT_DP.dp + blurMarginDp * 2)
-                            .graphicsLayer {
-                                val morphState = DockMotionConfig.calculateProfileMorphState(
-                                    progress = profileMorphProgressProvider(),
-                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
-                                    isReversing = isProfileMorphReversing()
-                                )
-                                alpha = morphState.navPillAlpha
-                                clip = false
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val blurPx = morphState.navPillBlurDp.dp.toPx()
-                                    renderEffect = if (blurPx > 0.25f) {
-                                        BlurEffect(blurPx, blurPx, TileMode.Decal)
-                                    } else {
-                                        null
-                                    }
-                                }
-                            }
-                            .drawWithContent {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    drawContent()
-                                } else {
-                                    val newSize = IntSize(size.width.roundToInt(), size.height.roundToInt())
-                                    if (newSize != navLayerSize && newSize.width > 0 && newSize.height > 0) {
-                                        navLayerSize = newSize
-                                    }
+                            .background(reminderSurfaceColor)
+                            .then(dockBorderModifier),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        // Layer A: Outgoing/Returning 3-Tab Navigation Interior (blurs, slides, and feathers directionally)
+                        Box(
+                            modifier = Modifier
+                                .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                                .width(dimensions.dockWidthDp.dp)
+                                .fillMaxHeight()
+                                .graphicsLayer {
                                     val morphState = DockMotionConfig.calculateProfileMorphState(
                                         progress = profileMorphProgressProvider(),
                                         dockWidthDp = dimensions.dockWidthDp.toFloat(),
                                         isReversing = isProfileMorphReversing()
                                     )
-                                    val blurFraction = (morphState.navPillBlurDp / DockMotionConfig.PROFILE_MORPH_MAX_BLUR_DP.toFloat())
-                                        .coerceIn(0f, 1f)
-                                    val cachedBlur = blurredNavBitmap
-                                    if (blurFraction <= 0.005f || cachedBlur == null) {
-                                        navGraphicsLayer.alpha = 1f
-                                        navGraphicsLayer.record {
-                                            this@drawWithContent.drawContent()
-                                        }
-                                        drawLayer(navGraphicsLayer)
+                                    alpha = morphState.navPillAlpha
+                                    translationX = if (isReducedMotion) 0f else morphState.navPillSlideOffsetDp.dp.toPx()
+                                    compositingStrategy = if (morphState.navPillAlpha in 0.001f..0.999f) {
+                                        CompositingStrategy.Offscreen
                                     } else {
-                                        // Crossfade crisp recorded padded navbar into unclipped blurred bitmap (melts right edge & icons together)
-                                        navGraphicsLayer.alpha = (1f - blurFraction).coerceIn(0f, 1f)
-                                        drawLayer(navGraphicsLayer)
-                                        drawImage(
-                                            image = cachedBlur,
-                                            dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                                            alpha = blurFraction
+                                        CompositingStrategy.Auto
+                                    }
+                                    clip = false
+                                    if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        val blurPx = morphState.navPillBlurDp.dp.toPx()
+                                        renderEffect = if (blurPx > 0.25f) {
+                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                }
+                                .drawWithContent {
+                                    drawContent()
+                                    val morphState = DockMotionConfig.calculateProfileMorphState(
+                                        progress = profileMorphProgressProvider(),
+                                        dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                        isReversing = isProfileMorphReversing()
+                                    )
+                                    if (morphState.navPillAlpha in 0.001f..0.999f && size.width > 1f) {
+                                        val featherPx = DockMotionConfig.PROFILE_MORPH_LABEL_FEATHER_DP.dp.toPx()
+                                            .coerceAtMost(size.width * 0.45f)
+                                        val colorStops = if (isProfileMorphReversing()) {
+                                            val fadeEnd = (featherPx / size.width).coerceIn(0f, 1f)
+                                            arrayOf(
+                                                0.0f to Color.Transparent,
+                                                fadeEnd to Color.Black,
+                                                1.0f to Color.Black
+                                            )
+                                        } else {
+                                            val fadeStart = ((size.width - featherPx) / size.width).coerceIn(0f, 1f)
+                                            arrayOf(
+                                                0.0f to Color.Black,
+                                                fadeStart to Color.Black,
+                                                1.0f to Color.Transparent
+                                            )
+                                        }
+                                        drawRect(
+                                            brush = Brush.horizontalGradient(
+                                                colorStops = colorStops,
+                                                startX = 0f,
+                                                endX = size.width
+                                            ),
+                                            blendMode = BlendMode.DstIn
                                         )
                                     }
                                 }
-                            }
-                            .padding(blurMarginDp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(30.dp))
-                                .background(resolvedNavSurfaceColor)
-                                .then(dockBorderModifier)
                         ) {
                             DockTabsLayer(
                                 selectedTab = selectedTab,
@@ -533,9 +533,113 @@ fun HomeFloatingBottomDock(
                                 isInteractive = !isProfileEncounterMode
                             )
                         }
+
+                        // Layer B: Incoming Profile Reminder Interior (center-aligned inside contracting capsule, blurs into focus)
+                        val reminderClickModifier = if (isProfileEncounterMode) {
+                            Modifier
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = reminderAccessibilityDescription
+                                }
+                                .clickable(
+                                    interactionSource = reminderInteractionSource,
+                                    indication = LocalIndication.current,
+                                    onClick = {
+                                        haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                                        if (isShowingSavedConfirmation || savedTransition.value > 0.01f) {
+                                            savedConfirmJob?.cancel()
+                                            savedConfirmJob = null
+                                            isShowingSavedConfirmation = false
+                                            reminderScope.launch {
+                                                savedTransition.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = tween(
+                                                        durationMillis = 120,
+                                                        easing = MotionTokens.StrongEaseOut
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        if (!isReducedMotion) {
+                                            isBellSwingActive = true
+                                            bellAnimJob?.cancel()
+                                            bellAnimJob = reminderScope.launch {
+                                                bellRotation.animateTo(
+                                                    targetValue = DockMotionConfig.PROFILE_REMINDER_RELEASE_BELL_SWING_DEG,
+                                                    animationSpec = tween(
+                                                        durationMillis = 90,
+                                                        easing = MotionTokens.StrongEaseOut
+                                                    )
+                                                )
+                                                bellRotation.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = 0.55f,
+                                                        stiffness = 480f
+                                                    )
+                                                )
+                                                isBellSwingActive = false
+                                            }
+                                        }
+                                        onProfileReminderClick()
+                                    }
+                                )
+                        } else {
+                            Modifier
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(reminderClickModifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier.graphicsLayer {
+                                    val morphState = DockMotionConfig.calculateProfileMorphState(
+                                        progress = profileMorphProgressProvider(),
+                                        dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                        isReversing = isProfileMorphReversing()
+                                    )
+                                    val contentScale = if (isReducedMotion) 1f else morphState.reminderPillScale
+                                    alpha = morphState.reminderPillAlpha
+                                    translationX = if (isReducedMotion) 0f else morphState.reminderPillSlideOffsetDp.dp.toPx()
+                                    scaleX = contentScale
+                                    scaleY = contentScale
+                                    clip = false
+                                    if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        val blurPx = morphState.reminderPillBlurDp.dp.toPx()
+                                        renderEffect = if (blurPx > 0.25f) {
+                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ProfileReminderPillContent(
+                                    hasActiveReminders = pendingReminderCount > 0,
+                                    savedTransitionProgress = savedTransition.value,
+                                    bellRotationDeg = bellRotation.value,
+                                    contentColor = reminderContentColor,
+                                    surfaceCutoutColor = reminderSurfaceColor,
+                                    activeDotColor = MaterialTheme.colorScheme.primary,
+                                    isReducedMotion = isReducedMotion,
+                                    labelStateProvider = {
+                                        val s = DockMotionConfig.calculateProfileMorphState(
+                                            progress = profileMorphProgressProvider(),
+                                            dockWidthDp = dimensions.dockWidthDp.toFloat(),
+                                            isReversing = isProfileMorphReversing()
+                                        )
+                                        Triple(s.reminderLabelRevealWeight, s.reminderLabelAlpha, s.reminderLabelSlideOffsetDp)
+                                    }
+                                )
+                            }
+                        }
                     }
 
-                    // Child 2: 100% Solid Opaque Right-Anchored '+' Pill (sweeps right-to-left at locked 60dp height)
+                    // Child 1: 100% Solid Opaque Right-Anchored '+' Pill (sweeps right-to-left at locked 60dp height, unchanged)
                     Box(
                         modifier = Modifier
                             .graphicsLayer {
@@ -586,143 +690,6 @@ fun HomeFloatingBottomDock(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     }
-
-                    // Child 3: Left-Anchored Profile Reminder Pill ("Remind") at locked 60dp height
-                    val reminderSurfaceColor by animateColorAsState(
-                        targetValue = if (isShowingSavedConfirmation) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            resolvedNavSurfaceColor
-                        },
-                        animationSpec = tween(
-                            durationMillis = if (isReducedMotion) 120 else if (isShowingSavedConfirmation) 200 else 220,
-                            easing = MotionTokens.StrongEaseOut
-                        ),
-                        label = "reminderPillSurfaceColor"
-                    )
-                    val reminderContentColor by animateColorAsState(
-                        targetValue = if (isShowingSavedConfirmation) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                        animationSpec = tween(
-                            durationMillis = if (isReducedMotion) 120 else if (isShowingSavedConfirmation) 200 else 220,
-                            easing = MotionTokens.StrongEaseOut
-                        ),
-                        label = "reminderPillContentColor"
-                    )
-                    val reminderAccessibilityDescription = when {
-                        isShowingSavedConfirmation -> "Reminder saved"
-                        pendingReminderCount == 1 -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}, 1 active reminder. Set reminder"
-                        pendingReminderCount > 1 -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}, $pendingReminderCount active reminders. Set reminder"
-                        else -> "${DockMotionConfig.PROFILE_REMINDER_PILL_LABEL}. Set reminder"
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                val morphState = DockMotionConfig.calculateProfileMorphState(
-                                    progress = profileMorphProgressProvider(),
-                                    dockWidthDp = dimensions.dockWidthDp.toFloat(),
-                                    isReversing = isProfileMorphReversing()
-                                )
-                                val morphScale = if (isReducedMotion) 1f else morphState.reminderPillScale
-                                val combinedScale = morphScale * reminderPressScale
-                                alpha = morphState.reminderPillAlpha
-                                translationX = morphState.reminderPillSlideOffsetDp.dp.toPx()
-                                scaleX = combinedScale
-                                scaleY = combinedScale
-                                clip = false
-                                if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val blurPx = morphState.reminderPillBlurDp.dp.toPx()
-                                    renderEffect = if (blurPx > 0.25f) {
-                                        BlurEffect(blurPx, blurPx, TileMode.Decal)
-                                    } else {
-                                        null
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    val morphState = DockMotionConfig.calculateProfileMorphState(
-                                        progress = profileMorphProgressProvider(),
-                                        dockWidthDp = dimensions.dockWidthDp.toFloat(),
-                                        isReversing = isProfileMorphReversing()
-                                    )
-                                    shadowElevation = (DockMotionConfig.DOCK_SHADOW_ELEVATION_DP * morphState.reminderPillAlpha).dp.toPx()
-                                    ambientShadowColor = warmShadowAmbient
-                                    spotShadowColor = warmShadowSpot
-                                    shape = RoundedCornerShape(30.dp)
-                                    clip = true
-                                }
-                                .background(reminderSurfaceColor)
-                                .then(dockBorderModifier)
-                                .semantics {
-                                    role = Role.Button
-                                    contentDescription = reminderAccessibilityDescription
-                                }
-                                .clickable(
-                                    enabled = isProfileEncounterMode || profileMorphProgressProvider() >= 0.5f,
-                                    interactionSource = reminderInteractionSource,
-                                    indication = LocalIndication.current,
-                                    onClick = {
-                                        haptics.perform(SemanticHapticType.MODE_TOGGLE)
-                                        if (isShowingSavedConfirmation || savedTransition.value > 0.01f) {
-                                            savedConfirmJob?.cancel()
-                                            savedConfirmJob = null
-                                            isShowingSavedConfirmation = false
-                                            reminderScope.launch {
-                                                savedTransition.animateTo(
-                                                    targetValue = 0f,
-                                                    animationSpec = tween(
-                                                        durationMillis = 120,
-                                                        easing = MotionTokens.StrongEaseOut
-                                                    )
-                                                )
-                                            }
-                                        }
-                                        if (!isReducedMotion) {
-                                            isBellSwingActive = true
-                                            bellAnimJob?.cancel()
-                                            bellAnimJob = reminderScope.launch {
-                                                bellRotation.animateTo(
-                                                    targetValue = DockMotionConfig.PROFILE_REMINDER_RELEASE_BELL_SWING_DEG,
-                                                    animationSpec = tween(
-                                                        durationMillis = 90,
-                                                        easing = MotionTokens.StrongEaseOut
-                                                    )
-                                                )
-                                                bellRotation.animateTo(
-                                                    targetValue = 0f,
-                                                    animationSpec = spring(
-                                                        dampingRatio = 0.55f,
-                                                        stiffness = 480f
-                                                    )
-                                                )
-                                                isBellSwingActive = false
-                                            }
-                                        }
-                                        onProfileReminderClick()
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ProfileReminderPillContent(
-                                hasActiveReminders = pendingReminderCount > 0,
-                                savedTransitionProgress = savedTransition.value,
-                                bellRotationDeg = bellRotation.value,
-                                contentColor = reminderContentColor,
-                                surfaceCutoutColor = reminderSurfaceColor,
-                                activeDotColor = MaterialTheme.colorScheme.primary,
-                                isReducedMotion = isReducedMotion
-                            )
-                        }
-                    }
                 },
                 modifier = Modifier
                     .width(totalFootprintWidthDp.dp)
@@ -733,39 +700,22 @@ fun HomeFloatingBottomDock(
                     dockWidthDp = dimensions.dockWidthDp.toFloat(),
                     isReversing = isProfileMorphReversing()
                 )
-                val dockWidthPx = dimensions.dockWidthDp.dp.roundToPx().coerceAtMost(constraints.maxWidth)
-                val blurMarginPx = blurMarginDp.roundToPx()
-                val navShadowPlaceable = measurables[0].measure(
-                    Constraints.fixed(width = dockWidthPx, height = constraints.maxHeight)
-                )
-                val navDockPlaceable = measurables[1].measure(
-                    Constraints.fixed(
-                        width = dockWidthPx + (blurMarginPx * 2),
-                        height = constraints.maxHeight + (blurMarginPx * 2)
-                    )
-                )
+                val gapPx = DockMotionConfig.DOCK_FAB_GAP_DP.dp.roundToPx()
                 val pillWidthPx = morphState.pillWidthDp.dp.roundToPx().coerceIn(1, constraints.maxWidth)
                 val pillHeightPx = morphState.pillHeightDp.dp.roundToPx().coerceIn(1, constraints.maxHeight)
-                val actionPillPlaceable = measurables[2].measure(
+                val pillLeftPx = (constraints.maxWidth - pillWidthPx).coerceAtLeast(0)
+                val leftCapsuleWidthPx = (pillLeftPx - gapPx).coerceIn(1, constraints.maxWidth)
+
+                val leftCapsulePlaceable = measurables[0].measure(
+                    Constraints.fixed(width = leftCapsuleWidthPx, height = pillHeightPx)
+                )
+                val actionPillPlaceable = measurables[1].measure(
                     Constraints.fixed(width = pillWidthPx, height = pillHeightPx)
                 )
-                val reminderWidthPx = morphState.reminderPillWidthDp.dp.roundToPx().coerceIn(1, constraints.maxWidth)
-                val reminderPillPlaceable = measurables[3].measure(
-                    Constraints.fixed(width = reminderWidthPx, height = pillHeightPx)
-                )
-                val pillLeftPx = (constraints.maxWidth - pillWidthPx).coerceAtLeast(0)
                 val pillTopPx = ((constraints.maxHeight - pillHeightPx) / 2f).roundToInt()
 
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    if (morphState.navShadowAlpha > 0.001f) {
-                        navShadowPlaceable.placeRelative(0, 0)
-                    }
-                    if (morphState.navPillAlpha > 0.001f) {
-                        navDockPlaceable.placeRelative(-blurMarginPx, -blurMarginPx)
-                    }
-                    if (morphState.reminderPillAlpha > 0.001f) {
-                        reminderPillPlaceable.placeRelative(0, pillTopPx)
-                    }
+                    leftCapsulePlaceable.placeRelative(0, pillTopPx)
                     actionPillPlaceable.placeRelative(pillLeftPx, pillTopPx)
                 }
             }
@@ -805,76 +755,86 @@ private fun MorphActionPillContent(
                 }
         )
 
-        Layout(
-            content = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.graphicsLayer {
-                        val state = DockMotionConfig.calculateProfileMorphState(
-                            progress = profileMorphProgressProvider(),
-                            dockWidthDp = dockWidthDp,
-                            isReversing = isProfileMorphReversing()
-                        )
-                        alpha = state.labelAlpha
-                        translationX = state.labelSlideOffsetDp.dp.toPx()
-                    }
-                ) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = DockMotionConfig.PROFILE_ENCOUNTER_PILL_LABEL,
-                        maxLines = 1,
-                        softWrap = false,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = contentColor
-                    )
+        FeatheredRevealLabel(
+            text = DockMotionConfig.PROFILE_ENCOUNTER_PILL_LABEL,
+            spacerWidthDp = 8f,
+            contentColor = contentColor,
+            stateProvider = {
+                val state = DockMotionConfig.calculateProfileMorphState(
+                    progress = profileMorphProgressProvider(),
+                    dockWidthDp = dockWidthDp,
+                    isReversing = isProfileMorphReversing()
+                )
+                Triple(state.labelRevealWeight, state.labelAlpha, state.labelSlideOffsetDp)
+            }
+        )
+    }
+}
+
+@Composable
+private fun FeatheredRevealLabel(
+    text: String,
+    spacerWidthDp: Float,
+    contentColor: Color,
+    stateProvider: () -> Triple<Float, Float, Float>
+) {
+    Layout(
+        content = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.graphicsLayer {
+                    val (_, labelAlpha, slideOffsetDp) = stateProvider()
+                    alpha = labelAlpha
+                    translationX = slideOffsetDp.dp.toPx()
                 }
-            },
-            modifier = Modifier
-                .graphicsLayer {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                    clip = true
-                }
-                .drawWithContent {
-                    drawContent()
-                    val state = DockMotionConfig.calculateProfileMorphState(
-                        progress = profileMorphProgressProvider(),
-                        dockWidthDp = dockWidthDp,
-                        isReversing = isProfileMorphReversing()
-                    )
-                    if (state.labelRevealWeight in 0.001f..0.999f && size.width > 1f) {
-                        val featherPx = DockMotionConfig.PROFILE_MORPH_LABEL_FEATHER_DP.dp.toPx()
-                            .coerceAtMost(size.width * 0.6f)
-                        val fadeStart = ((size.width - featherPx) / size.width).coerceIn(0f, 1f)
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Black,
-                                    fadeStart to Color.Black,
-                                    1.0f to Color.Transparent
-                                ),
-                                startX = 0f,
-                                endX = size.width
+            ) {
+                Spacer(modifier = Modifier.width(spacerWidthDp.dp))
+                Text(
+                    text = text,
+                    maxLines = 1,
+                    softWrap = false,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = contentColor
+                )
+            }
+        },
+        modifier = Modifier
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+                clip = true
+            }
+            .drawWithContent {
+                drawContent()
+                val revealWeight = stateProvider().first
+                if (revealWeight in 0.001f..0.999f && size.width > 1f) {
+                    val featherPx = DockMotionConfig.PROFILE_MORPH_LABEL_FEATHER_DP.dp.toPx()
+                        .coerceAtMost(size.width * 0.6f)
+                    val fadeStart = ((size.width - featherPx) / size.width).coerceIn(0f, 1f)
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black,
+                                fadeStart to Color.Black,
+                                1.0f to Color.Transparent
                             ),
-                            blendMode = BlendMode.DstIn
-                        )
-                    }
+                            startX = 0f,
+                            endX = size.width
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
                 }
-        ) { measurables, constraints ->
-            val placeable = measurables[0].measure(
-                constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
-            )
-            val state = DockMotionConfig.calculateProfileMorphState(
-                progress = profileMorphProgressProvider(),
-                dockWidthDp = dockWidthDp,
-                isReversing = isProfileMorphReversing()
-            )
-            val revealedWidth = (placeable.width * state.labelRevealWeight).roundToInt()
-            layout(revealedWidth, placeable.height) {
-                if (revealedWidth > 0) {
-                    placeable.place(0, 0)
-                }
+            }
+    ) { measurables, constraints ->
+        val placeable = measurables[0].measure(
+            constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
+        )
+        val revealWeight = stateProvider().first
+        val revealedWidth = (placeable.width * revealWeight).roundToInt()
+        layout(revealedWidth, placeable.height) {
+            if (revealedWidth > 0) {
+                placeable.place(0, 0)
             }
         }
     }
@@ -888,7 +848,8 @@ private fun ProfileReminderPillContent(
     contentColor: Color,
     surfaceCutoutColor: Color,
     activeDotColor: Color,
-    isReducedMotion: Boolean
+    isReducedMotion: Boolean,
+    labelStateProvider: () -> Triple<Float, Float, Float> = { Triple(1f, 1f, 0f) }
 ) {
     val activeProgress by animateFloatAsState(
         targetValue = if (hasActiveReminders) 1f else 0f,
@@ -1008,15 +969,11 @@ private fun ProfileReminderPillContent(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
+                FeatheredRevealLabel(
                     text = DockMotionConfig.PROFILE_REMINDER_PILL_LABEL,
-                    maxLines = 1,
-                    softWrap = false,
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = contentColor
+                    spacerWidthDp = 6f,
+                    contentColor = contentColor,
+                    stateProvider = labelStateProvider
                 )
             }
         }
@@ -1400,7 +1357,7 @@ private fun SpeedDialChip(
             .wrapContentWidth(Alignment.End)
             .height(DockMotionConfig.SPEED_DIAL_CHIP_HEIGHT_DP.dp),
         shape = RoundedCornerShape(DockMotionConfig.SPEED_DIAL_CHIP_CORNER_RADIUS_DP.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = DockMotionConfig.resolveDockSurfaceColor(MaterialTheme.colorScheme),
         tonalElevation = 0.dp
     ) {
         Row(
@@ -1428,32 +1385,6 @@ private fun SpeedDialChip(
             )
         }
     }
-}
-
-/**
- * Generates a softly blurred [ImageBitmap] using a progressive bilinear downsample/upsample pyramid.
- * Runs across all Android versions (API 24+) without deprecated RenderScript dependencies.
- */
-private fun createSoftBlurredBitmap(source: ImageBitmap): ImageBitmap {
-    val srcAndroid = source.asAndroidBitmap()
-    val softwareSrc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-        srcAndroid.config == Bitmap.Config.HARDWARE
-    ) {
-        srcAndroid.copy(Bitmap.Config.ARGB_8888, false)
-    } else {
-        srcAndroid
-    }
-    val origW = softwareSrc.width.coerceAtLeast(1)
-    val origH = softwareSrc.height.coerceAtLeast(1)
-    val pass1 = Bitmap.createScaledBitmap(softwareSrc, (origW / 3).coerceAtLeast(2), (origH / 3).coerceAtLeast(2), true)
-    val pass2 = Bitmap.createScaledBitmap(pass1, (origW / 6).coerceAtLeast(2), (origH / 6).coerceAtLeast(2), true)
-    val pass3 = Bitmap.createScaledBitmap(pass2, (origW / 3).coerceAtLeast(2), (origH / 3).coerceAtLeast(2), true)
-    val finalBmp = Bitmap.createScaledBitmap(pass3, origW, origH, true)
-    if (softwareSrc !== srcAndroid) softwareSrc.recycle()
-    if (pass1 !== softwareSrc) pass1.recycle()
-    if (pass2 !== pass1) pass2.recycle()
-    if (pass3 !== pass2) pass3.recycle()
-    return finalBmp.asImageBitmap()
 }
 
 @Preview(name = "Speed Dial Chip Preview", showBackground = true)

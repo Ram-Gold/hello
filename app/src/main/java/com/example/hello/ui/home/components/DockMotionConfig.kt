@@ -7,8 +7,11 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.example.hello.domain.model.HomeNavTab
 import com.example.hello.ui.theme.MotionTokens
 
@@ -40,7 +43,8 @@ object DockMotionConfig {
     const val PROFILE_REMINDER_SAVED_LABEL = "Saved"
     const val PROFILE_REMINDER_PILL_WIDTH_DP = 114f
     const val PROFILE_REMINDER_PILL_INITIAL_SCALE = 0.94f
-    const val PROFILE_REMINDER_PILL_MAX_BLUR_DP = 4f
+    const val PROFILE_LEFT_MORPH_CONTENT_BLUR_DP = 8f
+    const val PROFILE_REMINDER_PILL_MAX_BLUR_DP = PROFILE_LEFT_MORPH_CONTENT_BLUR_DP
     const val PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP = 2f
     const val PROFILE_REMINDER_PRESS_SCALE = 0.96f
     const val PROFILE_REMINDER_PRESS_BELL_TILT_DEG = -8f
@@ -56,6 +60,7 @@ object DockMotionConfig {
     const val SPEED_DIAL_FAB_GAP_DP = 12
     const val SPEED_DIAL_STACK_GAP_DP = 10
     const val DOCK_CONTAINER_WIDTH_DP = 220
+    const val DOCK_SURFACE_TONAL_ELEVATION_DP = 3
     const val DOCK_SHADOW_ELEVATION_DP = 12
     const val DOCK_PRESSED_SHADOW_ELEVATION_DP = 16
     const val PILL_VERTICAL_PADDING_DP = 4
@@ -82,6 +87,14 @@ object DockMotionConfig {
     // Backward-compatible aliases
     const val TEXT_ENTER_OFFSET_FRACTION = ICON_ENTER_OFFSET_FRACTION
     const val TEXT_EXIT_OFFSET_FRACTION = 0.5f
+
+    /**
+     * Resolves the shared elevated surface color for the floating navbar dock and its
+     * speed-dial action chips ("Met Again" and "Add Person") so their backgrounds match
+     * identically across light and dark themes.
+     */
+    fun resolveDockSurfaceColor(colorScheme: ColorScheme): Color =
+        colorScheme.surfaceColorAtElevation(DOCK_SURFACE_TONAL_ELEVATION_DP.dp)
 
     /**
      * Resolves the directional multiplier for tab icon translation during transitions.
@@ -467,16 +480,19 @@ object DockMotionConfig {
         dockWidthDp + DOCK_FAB_GAP_DP + DOCK_FAB_SIZE_DP
 
     /**
-     * Computes deterministic frame geometry for the whole-navbar unclipped blur + solid opaque
-     * right-to-left pill sweep between the root Floating Bottom Dock (`progress = 0f`) and the
-     * Contact Profile Encounter Pill (`"+ Catching up?"`, `progress = 1f`) per ADR-0034 & `/animate`:
+     * Computes deterministic frame geometry for the dual-capsule Floating Bottom Dock to Split Profile
+     * Action Bar morph (`progress = 0f` root dock -> `progress = 1f` `[Remind] + [+ Catching up?]`)
+     * per ADR-0034 & RAM-63:
      *
-     * - **Locked 60dp Height**: Neither surface slides downward or shrinks vertically.
-     * - **Entering / Exiting (`MotionTokens.StrongEaseOut`)**: Whole-navbar blur, fade, shadow,
-     *   and `"+ Catching up?"` label reveal use strong ease-out in the active direction of travel
-     *   (`isReversing = false` on push, `isReversing = true` on pop) for immediate responsiveness.
-     * - **On-Screen Morph (`MotionTokens.StrongEaseInOut`)**: Solid right-to-left pill sweep,
-     *   corner rounding (`20dp -> 30dp`), and `+` icon scale refinement use symmetric ease-in-out.
+     * - **Locked 60dp Height & 14dp Gap**: Both capsules stay vertically stationary at `60.dp`. The
+     *   continuous left capsule contracts 1:1 with the right pill (`leftCapsuleWidthDp = pillLeftDp - 14dp`)
+     *   while keeping its outer shell and shadow 100% solid and sharp.
+     * - **Interior Blur Cross-Morph (`MotionTokens.StrongEaseOut`)**: Inside the contracting left capsule,
+     *   3-tab navigation content blurs out (`0dp -> 8dp`) while `Remind` content blurs into focus
+     *   (`8dp -> 0dp`, `scale 0.94 -> 1.0`) with subtle midpoint overlap.
+     * - **Unchanged Right Capsule (`MotionTokens.StrongEaseInOut` + `StrongEaseOut`)**: The `+` FAB to
+     *   `"+ Catching up?"` right-to-left sweep, corner rounding (`20dp -> 30dp`), icon refinement, and
+     *   label glide-in remain unchanged.
      */
     fun calculateProfileMorphState(
         progress: Float,
@@ -497,11 +513,6 @@ object DockMotionConfig {
             ((value - start) / (end - start)).coerceIn(0f, 1f)
 
         return if (!isReversing) {
-            val navBlurT = easeOut.transform(phase(p, 0.00f, 0.45f))
-            val navPillBlurDp = PROFILE_MORPH_MAX_BLUR_DP * navBlurT
-            val navPillAlpha = (1f - easeOut.transform(phase(p, 0.15f, 0.55f))).coerceIn(0f, 1f)
-            val navShadowAlpha = (1f - easeOut.transform(phase(p, 0.00f, 0.26f))).coerceIn(0f, 1f)
-
             val roundT = easeInOut.transform(phase(p, 0.00f, 0.34f))
             val pillCornerRadiusDp = startCornerRadius + (pillRadius - startCornerRadius) * roundT
 
@@ -510,6 +521,14 @@ object DockMotionConfig {
                 .coerceIn(targetPillLeft, startPillLeft)
             val pillWidthDp = totalWidth - pillLeftDp
             val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
+            val leftCapsuleWidthDp = (pillLeftDp - DOCK_FAB_GAP_DP)
+                .coerceIn(PROFILE_REMINDER_PILL_WIDTH_DP, dockWidthDp)
+
+            val navExitT = easeOut.transform(phase(p, 0.00f, 0.52f))
+            val navPillBlurDp = PROFILE_LEFT_MORPH_CONTENT_BLUR_DP * navExitT
+            val navPillAlpha = (1f - navExitT).coerceIn(0f, 1f)
+            val navPillSlideOffsetDp = -PROFILE_MORPH_LABEL_SLIDE_DP * navExitT
+            val navShadowAlpha = 1f
 
             val iconScaleT = easeInOut.transform(phase(p, 0.12f, 0.48f))
             val plusIconSizeDp = PROFILE_MORPH_FAB_ICON_SIZE_DP +
@@ -519,17 +538,22 @@ object DockMotionConfig {
             val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP *
                 (1f - easeOut.transform(phase(p, 0.45f, 0.98f)))
 
-            val reminderAlpha = easeOut.transform(phase(p, 0.42f, 0.90f))
-            val reminderScaleT = easeOut.transform(phase(p, 0.42f, 0.96f))
+            val reminderEnterT = easeOut.transform(phase(p, 0.20f, 0.84f))
+            val reminderAlpha = reminderEnterT
+            val reminderScaleT = easeOut.transform(phase(p, 0.20f, 0.88f))
             val reminderScale = PROFILE_REMINDER_PILL_INITIAL_SCALE +
                 (1f - PROFILE_REMINDER_PILL_INITIAL_SCALE) * reminderScaleT
-            val reminderBlurDp = PROFILE_REMINDER_PILL_MAX_BLUR_DP *
-                (1f - easeOut.transform(phase(p, 0.42f, 0.88f)))
+            val reminderPillSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * (1f - reminderEnterT)
+            val reminderLabelRevealWeight = easeOut.transform(phase(p, 0.40f, 0.94f))
+            val reminderLabelAlpha = easeOut.transform(phase(p, 0.45f, 0.90f))
+            val reminderLabelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP *
+                (1f - easeOut.transform(phase(p, 0.40f, 0.96f)))
 
             ProfileMorphState(
                 navPillAlpha = navPillAlpha,
                 navShadowAlpha = navShadowAlpha,
                 navPillBlurDp = navPillBlurDp,
+                navPillSlideOffsetDp = navPillSlideOffsetDp,
                 pillLeftDp = pillLeftDp,
                 pillWidthDp = pillWidthDp,
                 pillHeightDp = dockHeight,
@@ -541,9 +565,13 @@ object DockMotionConfig {
                 labelSlideOffsetDp = labelSlideOffsetDp,
                 reminderPillWidthDp = PROFILE_REMINDER_PILL_WIDTH_DP,
                 reminderPillAlpha = reminderAlpha,
-                reminderPillSlideOffsetDp = 0f,
+                reminderPillSlideOffsetDp = reminderPillSlideOffsetDp,
                 reminderPillScale = reminderScale,
-                reminderPillBlurDp = reminderBlurDp
+                reminderPillBlurDp = 0f,
+                reminderLabelRevealWeight = reminderLabelRevealWeight,
+                reminderLabelAlpha = reminderLabelAlpha,
+                reminderLabelSlideOffsetDp = reminderLabelSlideOffsetDp,
+                leftCapsuleWidthDp = leftCapsuleWidthDp
             )
         } else {
             val r = (1f - p).coerceIn(0f, 1f)
@@ -552,17 +580,23 @@ object DockMotionConfig {
             val labelAlpha = (1f - easeOut.transform(phase(r, 0.00f, 0.34f))).coerceIn(0f, 1f)
             val labelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * labelExitT
 
-            val reminderExitAlphaT = easeOut.transform(phase(r, 0.00f, 0.30f))
-            val reminderAlpha = (1f - reminderExitAlphaT).coerceIn(0f, 1f)
-            val reminderScaleExitT = easeOut.transform(phase(r, 0.00f, 0.34f))
+            val reminderExitT = easeOut.transform(phase(r, 0.00f, 0.36f))
+            val reminderAlpha = (1f - reminderExitT).coerceIn(0f, 1f)
+            val reminderScaleExitT = easeOut.transform(phase(r, 0.00f, 0.38f))
             val reminderScale = 1f - (1f - PROFILE_REMINDER_PILL_INITIAL_SCALE) * reminderScaleExitT
-            val reminderBlurDp = PROFILE_REMINDER_PILL_MAX_BLUR_DP * reminderExitAlphaT
+            val reminderBlurDp = PROFILE_LEFT_MORPH_CONTENT_BLUR_DP * reminderExitT
+            val reminderPillSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * reminderExitT
+            val reminderLabelRevealWeight = (1f - reminderExitT).coerceIn(0f, 1f)
+            val reminderLabelAlpha = (1f - easeOut.transform(phase(r, 0.00f, 0.32f))).coerceIn(0f, 1f)
+            val reminderLabelSlideOffsetDp = PROFILE_MORPH_LABEL_SLIDE_DP * reminderExitT
 
             val sweepBackT = easeInOut.transform(phase(r, 0.12f, 0.94f))
             val pillLeftDp = (targetPillLeft + (startPillLeft - targetPillLeft) * sweepBackT)
                 .coerceIn(targetPillLeft, startPillLeft)
             val pillWidthDp = totalWidth - pillLeftDp
             val pillCenterXDp = pillLeftDp + (pillWidthDp / 2f)
+            val leftCapsuleWidthDp = (pillLeftDp - DOCK_FAB_GAP_DP)
+                .coerceIn(PROFILE_REMINDER_PILL_WIDTH_DP, dockWidthDp)
 
             val roundBackT = easeInOut.transform(phase(r, 0.60f, 1.00f))
             val pillCornerRadiusDp = pillRadius + (startCornerRadius - pillRadius) * roundBackT
@@ -571,15 +605,18 @@ object DockMotionConfig {
             val plusIconSizeDp = PROFILE_MORPH_PILL_ICON_SIZE_DP +
                 (PROFILE_MORPH_FAB_ICON_SIZE_DP - PROFILE_MORPH_PILL_ICON_SIZE_DP) * iconBackT
 
-            val navPillAlpha = easeOut.transform(phase(r, 0.38f, 0.82f))
-            val navPillBlurDp = PROFILE_MORPH_MAX_BLUR_DP *
-                (1f - easeOut.transform(phase(r, 0.42f, 1.00f)))
-            val navShadowAlpha = easeOut.transform(phase(r, 0.72f, 1.00f))
+            val navEnterT = easeOut.transform(phase(r, 0.28f, 0.82f))
+            val navPillAlpha = navEnterT
+            val navPillBlurDp = PROFILE_LEFT_MORPH_CONTENT_BLUR_DP *
+                (1f - easeOut.transform(phase(r, 0.28f, 0.85f)))
+            val navPillSlideOffsetDp = -PROFILE_MORPH_LABEL_SLIDE_DP * (1f - navEnterT)
+            val navShadowAlpha = 1f
 
             ProfileMorphState(
                 navPillAlpha = navPillAlpha,
                 navShadowAlpha = navShadowAlpha,
                 navPillBlurDp = navPillBlurDp,
+                navPillSlideOffsetDp = navPillSlideOffsetDp,
                 pillLeftDp = pillLeftDp,
                 pillWidthDp = pillWidthDp,
                 pillHeightDp = dockHeight,
@@ -591,22 +628,27 @@ object DockMotionConfig {
                 labelSlideOffsetDp = labelSlideOffsetDp,
                 reminderPillWidthDp = PROFILE_REMINDER_PILL_WIDTH_DP,
                 reminderPillAlpha = reminderAlpha,
-                reminderPillSlideOffsetDp = 0f,
+                reminderPillSlideOffsetDp = reminderPillSlideOffsetDp,
                 reminderPillScale = reminderScale,
-                reminderPillBlurDp = reminderBlurDp
+                reminderPillBlurDp = reminderBlurDp,
+                reminderLabelRevealWeight = reminderLabelRevealWeight,
+                reminderLabelAlpha = reminderLabelAlpha,
+                reminderLabelSlideOffsetDp = reminderLabelSlideOffsetDp,
+                leftCapsuleWidthDp = leftCapsuleWidthDp
             )
         }
     }
 }
 
 /**
- * Snapshot of all continuous geometry and visual properties for the whole-navbar soft blur
- * and solid right-to-left Floating Bottom Dock to Split Profile Action Bar morph (ADR-0034, RAM-60).
+ * Snapshot of all continuous geometry and visual properties for the dual-capsule Floating Bottom Dock
+ * to Split Profile Action Bar morph (ADR-0034, RAM-60, RAM-63).
  */
 data class ProfileMorphState(
     val navPillAlpha: Float,
     val navShadowAlpha: Float,
     val navPillBlurDp: Float,
+    val navPillSlideOffsetDp: Float = 0f,
     val pillLeftDp: Float,
     val pillWidthDp: Float,
     val pillHeightDp: Float,
@@ -620,7 +662,11 @@ data class ProfileMorphState(
     val reminderPillAlpha: Float = 0f,
     val reminderPillSlideOffsetDp: Float = 0f,
     val reminderPillScale: Float = 1f,
-    val reminderPillBlurDp: Float = 0f
+    val reminderPillBlurDp: Float = 0f,
+    val reminderLabelRevealWeight: Float = 1f,
+    val reminderLabelAlpha: Float = 1f,
+    val reminderLabelSlideOffsetDp: Float = 0f,
+    val leftCapsuleWidthDp: Float = DockMotionConfig.PROFILE_REMINDER_PILL_WIDTH_DP
 )
 
 /**
