@@ -8,17 +8,20 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +52,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +68,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +77,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -201,9 +213,15 @@ object HelloToastMotionDefaults {
     const val ENTER_DURATION_MS = 220
     const val EXIT_DURATION_MS = 150
     const val EXIT_FADE_DURATION_MS = 130
+    const val SWIPE_EXIT_DURATION_MS = 140
     const val REDUCED_MOTION_FADE_MS = 150
     const val ACTION_PRESS_DURATION_MS = 160
     const val SCALE_SUBTLE = 0.97f
+    const val SWIPE_MIN_SCALE = 0.96f
+    const val EXIT_SCALE = 0.95f
+    const val SWIPE_DISMISS_WIDTH_FRACTION = 0.35f
+    val SWIPE_MIN_DISTANCE_DP: Dp = 72.dp
+    val SWIPE_MIN_VELOCITY_DP_PER_SEC: Dp = 800.dp
     val BOTTOM_ORIGIN = TransformOrigin(0.5f, 1f)
 
     fun enterTransition(isReducedMotion: Boolean = false): EnterTransition {
@@ -228,20 +246,61 @@ object HelloToastMotionDefaults {
         if (isReducedMotion) {
             return fadeOut(animationSpec = tween(durationMillis = REDUCED_MOTION_FADE_MS, easing = EASE_OUT))
         }
-        val slideSpec = tween<IntOffset>(durationMillis = EXIT_DURATION_MS, easing = EASE_OUT)
         val scaleSpec = tween<Float>(durationMillis = EXIT_DURATION_MS, easing = EASE_OUT)
         val fadeSpec = tween<Float>(durationMillis = EXIT_FADE_DURATION_MS, easing = EASE_OUT)
-        return slideOutVertically(
-            animationSpec = slideSpec,
-            targetOffsetY = { it / 4 }
-        ) + fadeOut(
+        return fadeOut(
             animationSpec = fadeSpec
         ) + scaleOut(
             animationSpec = scaleSpec,
-            targetScale = SCALE_SUBTLE,
-            transformOrigin = BOTTOM_ORIGIN
+            targetScale = EXIT_SCALE,
+            transformOrigin = TransformOrigin.Center
         )
     }
+}
+
+enum class ToastSwipeDirection {
+    LEFT,
+    RIGHT
+}
+
+/**
+ * Resolves whether a completed horizontal drag/flick on a Toast Pill commits a dismissal.
+ * Dismisses when drag distance passes max(35% of pill width, [minDistancePx]) OR when release
+ * velocity meets [minVelocityPxPerSec] in the same direction as the drag.
+ */
+fun resolveToastSwipeDismissDirection(
+    offsetPx: Float,
+    velocityPxPerSec: Float,
+    pillWidthPx: Float,
+    minDistancePx: Float,
+    minVelocityPxPerSec: Float
+): ToastSwipeDirection? {
+    val distanceThreshold = maxOf(pillWidthPx * HelloToastMotionDefaults.SWIPE_DISMISS_WIDTH_FRACTION, minDistancePx)
+    if (offsetPx >= distanceThreshold || (offsetPx > 0f && velocityPxPerSec >= minVelocityPxPerSec)) {
+        return ToastSwipeDirection.RIGHT
+    }
+    if (offsetPx <= -distanceThreshold || (offsetPx < 0f && velocityPxPerSec <= -minVelocityPxPerSec)) {
+        return ToastSwipeDirection.LEFT
+    }
+    return null
+}
+
+/**
+ * Computes progressive Toast Pill opacity (1f -> 0f) as it is dragged horizontally across its width.
+ */
+fun calculateToastSwipeAlpha(offsetPx: Float, pillWidthPx: Float): Float {
+    if (pillWidthPx <= 0f) return 1f
+    val fraction = (kotlin.math.abs(offsetPx) / pillWidthPx).coerceIn(0f, 1f)
+    return (1f - fraction).coerceIn(0f, 1f)
+}
+
+/**
+ * Computes subtle Sonner-style Toast Pill scale recession (1f -> 0.96f) during horizontal swipe.
+ */
+fun calculateToastSwipeScale(offsetPx: Float, pillWidthPx: Float): Float {
+    if (pillWidthPx <= 0f) return 1f
+    val fraction = (kotlin.math.abs(offsetPx) / pillWidthPx).coerceIn(0f, 1f)
+    return 1f - (1f - HelloToastMotionDefaults.SWIPE_MIN_SCALE) * fraction
 }
 
 /**
@@ -329,14 +388,130 @@ fun HelloToastHost(
                 val actionLabel = snackbarData.visuals.actionLabel
                 val durationMs = (snackbarData.visuals as? HelloToastVisuals)?.durationMs
                     ?: resolveToastDurationMs(message, actionLabel)
-                HelloToastPill(
-                    message = message,
-                    actionLabel = actionLabel,
-                    durationMs = durationMs,
-                    onAction = { snackbarData.performAction() }
-                )
+                SwipeToDismissToastContainer(
+                    dismissKey = snackbarData,
+                    isReducedMotion = isReducedMotion,
+                    onDismiss = { snackbarData.dismiss() }
+                ) { isDismissing ->
+                    HelloToastPill(
+                        message = message,
+                        actionLabel = actionLabel,
+                        durationMs = durationMs,
+                        onAction = { if (!isDismissing) snackbarData.performAction() }
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun SwipeToDismissToastContainer(
+    dismissKey: Any,
+    isReducedMotion: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable (isDismissing: Boolean) -> Unit
+) {
+    val density = LocalDensity.current
+    val haptics = LocalHelloHaptics.current
+    val scope = rememberCoroutineScope()
+    val offsetX = remember(dismissKey) { Animatable(0f) }
+    var accumulatedDragPx by remember(dismissKey) { mutableFloatStateOf(0f) }
+    var pillWidthPx by remember(dismissKey) { mutableFloatStateOf(0f) }
+    var isDismissing by remember(dismissKey) { mutableStateOf(false) }
+
+    val minDistancePx = with(density) { HelloToastMotionDefaults.SWIPE_MIN_DISTANCE_DP.toPx() }
+    val minVelocityPxPerSec = with(density) { HelloToastMotionDefaults.SWIPE_MIN_VELOCITY_DP_PER_SEC.toPx() }
+
+    val draggableState = rememberDraggableState { delta ->
+        if (!isDismissing) {
+            accumulatedDragPx += delta
+            val nextOffset = accumulatedDragPx
+            scope.launch {
+                offsetX.snapTo(nextOffset)
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .onSizeChanged { size ->
+                if (size.width > 0) {
+                    pillWidthPx = size.width.toFloat()
+                }
+            }
+            .draggable(
+                state = draggableState,
+                orientation = Orientation.Horizontal,
+                enabled = !isDismissing,
+                onDragStarted = {
+                    accumulatedDragPx = offsetX.value
+                },
+                onDragStopped = { velocity ->
+                    if (isDismissing) return@draggable
+                    val effectiveWidth = pillWidthPx.coerceAtLeast(minDistancePx * 2f)
+                    val direction = resolveToastSwipeDismissDirection(
+                        offsetPx = accumulatedDragPx,
+                        velocityPxPerSec = velocity,
+                        pillWidthPx = effectiveWidth,
+                        minDistancePx = minDistancePx,
+                        minVelocityPxPerSec = minVelocityPxPerSec
+                    )
+                    if (direction != null) {
+                        isDismissing = true
+                        haptics.perform(SemanticHapticType.THRESHOLD_ACTIVATION)
+                        val targetX = if (direction == ToastSwipeDirection.RIGHT) {
+                            effectiveWidth * 1.05f
+                        } else {
+                            -effectiveWidth * 1.05f
+                        }
+                        scope.launch {
+                            offsetX.animateTo(
+                                targetValue = targetX,
+                                initialVelocity = if (isReducedMotion) 0f else velocity,
+                                animationSpec = tween(
+                                    durationMillis = if (isReducedMotion) {
+                                        HelloToastMotionDefaults.REDUCED_MOTION_FADE_MS
+                                    } else {
+                                        HelloToastMotionDefaults.SWIPE_EXIT_DURATION_MS
+                                    },
+                                    easing = HelloToastMotionDefaults.EASE_OUT
+                                )
+                            )
+                            onDismiss()
+                        }
+                    } else {
+                        accumulatedDragPx = 0f
+                        scope.launch {
+                            offsetX.animateTo(
+                                targetValue = 0f,
+                                animationSpec = if (isReducedMotion) {
+                                    tween(
+                                        durationMillis = HelloToastMotionDefaults.REDUCED_MOTION_FADE_MS,
+                                        easing = HelloToastMotionDefaults.EASE_OUT
+                                    )
+                                } else {
+                                    spring(
+                                        dampingRatio = 0.85f,
+                                        stiffness = 500f
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            )
+            .graphicsLayer {
+                val currentOffset = offsetX.value
+                val effectiveWidth = pillWidthPx.coerceAtLeast(1f)
+                translationX = if (isReducedMotion) 0f else currentOffset
+                alpha = calculateToastSwipeAlpha(currentOffset, effectiveWidth)
+                val scale = if (isReducedMotion) 1f else calculateToastSwipeScale(currentOffset, effectiveWidth)
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        content(isDismissing)
     }
 }
 

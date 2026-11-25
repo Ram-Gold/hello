@@ -370,9 +370,9 @@ class HelloToastHostTest {
         assertTrue(enter.toString().contains("Slide("))
         assertTrue(enter.toString().contains("Fade("))
         assertTrue(enter.toString().contains("Scale(scale=0.97"))
-        assertTrue(exit.toString().contains("Slide("))
+        assertFalse(exit.toString().contains("Slide("))
         assertTrue(exit.toString().contains("Fade("))
-        assertTrue(exit.toString().contains("Scale(scale=0.97"))
+        assertTrue(exit.toString().contains("Scale(scale=0.95"))
 
         val reducedEnter = HelloToastMotionDefaults.enterTransition(isReducedMotion = true)
         val reducedExit = HelloToastMotionDefaults.exitTransition(isReducedMotion = true)
@@ -382,6 +382,42 @@ class HelloToastHostTest {
         assertTrue(reducedExit.toString().contains("Fade("))
         assertFalse(reducedExit.toString().contains("Slide("))
         assertFalse(reducedExit.toString().contains("Scale("))
+    }
+
+    @Test
+    fun toastSwipePhysics_resolvesDirectionByDistanceOrVelocity_andComputesFadeAndScale() {
+        val pillWidth = 300f
+        val minDist = 72f
+        val minVel = 800f
+
+        // Sub-threshold drag with low velocity snaps back (null)
+        assertNull(resolveToastSwipeDismissDirection(40f, 100f, pillWidth, minDist, minVel))
+        assertNull(resolveToastSwipeDismissDirection(-40f, -100f, pillWidth, minDist, minVel))
+
+        // Past 35% width (105f) dismisses right or left even with zero velocity
+        assertEquals(ToastSwipeDirection.RIGHT, resolveToastSwipeDismissDirection(110f, 0f, pillWidth, minDist, minVel))
+        assertEquals(ToastSwipeDirection.LEFT, resolveToastSwipeDismissDirection(-110f, 0f, pillWidth, minDist, minVel))
+
+        // Fast flick past velocity threshold dismisses in flick direction even at short drag
+        assertEquals(ToastSwipeDirection.RIGHT, resolveToastSwipeDismissDirection(24f, 950f, pillWidth, minDist, minVel))
+        assertEquals(ToastSwipeDirection.LEFT, resolveToastSwipeDismissDirection(-24f, -950f, pillWidth, minDist, minVel))
+
+        // Opposing velocity against a tiny drag does not accidentally dismiss
+        assertNull(resolveToastSwipeDismissDirection(20f, -900f, pillWidth, minDist, minVel))
+
+        // Opacity fade: 1.0 at rest, smoothly fades toward 0.0 as pill travels across its width
+        assertEquals(1.0f, calculateToastSwipeAlpha(0f, pillWidth), 0.001f)
+        val midAlpha = calculateToastSwipeAlpha(150f, pillWidth)
+        assertTrue("Expected mid-drag alpha in (0.3..0.7), got $midAlpha", midAlpha in 0.3f..0.7f)
+        assertEquals(0.0f, calculateToastSwipeAlpha(300f, pillWidth), 0.001f)
+        assertEquals(0.0f, calculateToastSwipeAlpha(-450f, pillWidth), 0.001f)
+
+        // Subtle scale recession: 1.0 at rest, gently recedes to 0.96 at full travel
+        assertEquals(1.0f, calculateToastSwipeScale(0f, pillWidth), 0.001f)
+        val midScale = calculateToastSwipeScale(-150f, pillWidth)
+        assertTrue("Expected mid-drag scale in (0.965..0.995), got $midScale", midScale in 0.965f..0.995f)
+        assertEquals(0.96f, calculateToastSwipeScale(300f, pillWidth), 0.001f)
+        assertEquals(0.96f, calculateToastSwipeScale(-500f, pillWidth), 0.001f)
     }
 }
 
