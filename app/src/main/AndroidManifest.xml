@@ -56,7 +56,7 @@
             android:launchMode="singleInstance"
             android:taskAffinity=""
             android:theme="@style/Theme.Hello.QuickCapture"
-            android:windowSoftInputMode="stateAlwaysVisible|adjustNothing" />
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
 
         <!-- Notification & Alarm BroadcastReceivers for FollowUps -->
         <receiver

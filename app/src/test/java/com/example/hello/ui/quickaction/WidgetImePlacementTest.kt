@@ -11,10 +11,10 @@ import org.junit.Test
 class WidgetImePlacementTest {
 
     @Test
-    fun resolveInitialBottomPaddingPx_usesLearnedHeightWhenValid_elseFallsBackTo35Percent() {
-        // First launch (saved == 0) -> 35% of 2400px = 840px
+    fun resolveInitialBottomPaddingPx_usesLearnedHeightWhenValid_elseFallsBackTo40Percent() {
+        // First launch (saved == 0) -> 40% of 2400px = 960px
         assertEquals(
-            840,
+            960,
             WidgetImePlacement.resolveInitialBottomPaddingPx(
                 savedImeHeightPx = 0,
                 screenHeightPx = 2400,
@@ -32,9 +32,9 @@ class WidgetImePlacementTest {
             )
         )
 
-        // Implausibly small saved height (<= navBarBottomPx) -> falls back to 35%
+        // Implausibly small saved height (<= navBarBottomPx) -> falls back to 40%
         assertEquals(
-            840,
+            960,
             WidgetImePlacement.resolveInitialBottomPaddingPx(
                 savedImeHeightPx = 80,
                 screenHeightPx = 2400,
@@ -49,6 +49,28 @@ class WidgetImePlacementTest {
             navBarBottomPx = 120
         )
         assertTrue("Saved height must be clamped below 65% of screen height", clamped <= (2400 * 0.65f).toInt())
+    }
+
+    @Test
+    fun resolveTargetBottomPaddingPx_locksImmediatelyToImeAnimationTargetSoCardIsNeverBehindKeyboard() {
+        // Keyboard taller than initial guess -> immediately snaps to exact target height
+        assertEquals(
+            1040,
+            WidgetImePlacement.resolveTargetBottomPaddingPx(
+                currentBottomPx = 960,
+                imeAnimationTargetBottomPx = 1040,
+                navBarBottomPx = 120
+            )
+        )
+        // Before IME target is available (<= navBarBottomPx) -> keeps pre-positioned height
+        assertEquals(
+            960,
+            WidgetImePlacement.resolveTargetBottomPaddingPx(
+                currentBottomPx = 960,
+                imeAnimationTargetBottomPx = 0,
+                navBarBottomPx = 120
+            )
+        )
     }
 
     @Test

@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
  * so the keyboard opens without per-frame Compose relayout contention.
  */
 object WidgetImePlacement {
-    const val DEFAULT_IME_HEIGHT_FRACTION: Float = 0.35f
+    const val DEFAULT_IME_HEIGHT_FRACTION: Float = 0.40f
     const val MAX_IME_HEIGHT_FRACTION: Float = 0.65f
     const val SETTLED_CORRECTION_THRESHOLD_DP: Int = 4
 
@@ -26,6 +26,19 @@ object WidgetImePlacement {
             savedImeHeightPx.coerceIn(safeNav, maxAllowed)
         } else {
             fallback.coerceIn(safeNav, maxAllowed)
+        }
+    }
+
+    fun resolveTargetBottomPaddingPx(
+        currentBottomPx: Int,
+        imeAnimationTargetBottomPx: Int,
+        navBarBottomPx: Int
+    ): Int {
+        val safeNav = navBarBottomPx.coerceAtLeast(0)
+        return if (imeAnimationTargetBottomPx > safeNav) {
+            imeAnimationTargetBottomPx
+        } else {
+            currentBottomPx.coerceAtLeast(safeNav)
         }
     }
 

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,10 +12,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
@@ -33,8 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,9 +59,11 @@ import com.example.hello.ui.theme.HelloTheme
 
 /**
  * Dedicated ultra-fast (<50ms cold start) Quick Add activity launched directly from home screen / Glance widget.
- * Uses pre-positioned IME placement (ADR-0040) with stateAlwaysVisible|adjustNothing on API 30+
- * so the keyboard rises without per-frame Compose relayout contention.
+ * Uses pre-positioned IME placement + WindowInsets.imeAnimationTarget (ADR-0040) with
+ * enableEdgeToEdge() + stateAlwaysVisible|adjustResize so the card sits immediately at the keyboard's
+ * final resting height with zero per-frame relayout contention.
  */
+@OptIn(ExperimentalLayoutApi::class)
 class QuickCaptureActivity : ComponentActivity() {
 
     companion object {
@@ -87,13 +89,6 @@ class QuickCaptureActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            @Suppress("DEPRECATION")
-            window.setSoftInputMode(
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-            )
-        }
         enableEdgeToEdge()
 
         val app = HelloApplication.from(applicationContext)
@@ -139,6 +134,7 @@ class QuickCaptureActivity : ComponentActivity() {
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val screenHeightPx = resources.displayMetrics.heightPixels
             val navBarBottomPx = WindowInsets.navigationBars.getBottom(density)
+            val imeTargetInsets = WindowInsets.imeAnimationTarget
             val imeInsets = WindowInsets.ime
             val thresholdPx = with(density) { WidgetImePlacement.SETTLED_CORRECTION_THRESHOLD_DP.dp.roundToPx() }
 
@@ -166,27 +162,37 @@ class QuickCaptureActivity : ComponentActivity() {
                 }
             }
 
-            // Observe IME bottom off the composition phase (zero per-frame root recomposition):
-            // 1. Dismiss immediately if the keyboard closes after having opened (no exceptions).
-            // 2. Apply at most one post-settle correction (>4dp) and persist the learned height.
+            // Observe WindowInsets.imeAnimationTarget off the composition phase (zero per-frame relayout):
+            // 1. Locks immediately to the keyboard's final resting height on frame 0 of the IME open
+            //    (never behind the keyboard, never chasing intermediate animation frames).
+            // 2. Dismisses immediately when the keyboard closes after having opened (no exceptions).
             LaunchedEffect(isLandscape, navBarBottomPx) {
                 var hasSeenImeVisible = false
-                var hasAppliedSettledCorrection = false
-                snapshotFlow { imeInsets.getBottom(density) }
-                    .collectLatest { imeBottomPx ->
-                        val isVisibleNow = imeBottomPx > navBarBottomPx
-                        if (isVisibleNow) {
+                val useAnimationTarget = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                snapshotFlow {
+                    if (useAnimationTarget) {
+                        imeTargetInsets.getBottom(density)
+                    } else {
+                        imeInsets.getBottom(density)
+                    }
+                }
+                    .distinctUntilChanged()
+                    .collect { targetBottom ->
+                        if (targetBottom > navBarBottomPx) {
                             hasSeenImeVisible = true
-                            if (!hasAppliedSettledCorrection) {
-                                delay(80L)
-                                hasAppliedSettledCorrection = true
-                                if (WidgetImePlacement.shouldApplySettledCorrection(restingBottomPaddingPx, imeBottomPx, thresholdPx)) {
-                                    restingBottomPaddingPx = imeBottomPx
-                                }
-                                if (WidgetImePlacement.shouldApplySettledCorrection(getCachedImePx(isLandscape), imeBottomPx, thresholdPx)) {
-                                    setCachedImePx(isLandscape, imeBottomPx)
-                                    preferencesRepository.setWidgetImeHeightPx(isLandscape = isLandscape, heightPx = imeBottomPx)
-                                }
+                            val nextBottom = WidgetImePlacement.resolveTargetBottomPaddingPx(
+                                currentBottomPx = restingBottomPaddingPx,
+                                imeAnimationTargetBottomPx = targetBottom,
+                                navBarBottomPx = navBarBottomPx
+                            )
+                            if (nextBottom > restingBottomPaddingPx ||
+                                WidgetImePlacement.shouldApplySettledCorrection(restingBottomPaddingPx, nextBottom, thresholdPx)
+                            ) {
+                                restingBottomPaddingPx = nextBottom
+                            }
+                            if (WidgetImePlacement.shouldApplySettledCorrection(getCachedImePx(isLandscape), nextBottom, thresholdPx)) {
+                                setCachedImePx(isLandscape, nextBottom)
+                                preferencesRepository.setWidgetImeHeightPx(isLandscape = isLandscape, heightPx = nextBottom)
                             }
                         } else if (WidgetImePlacement.shouldDismissOnImeChange(hasSeenImeVisible, isImeVisibleNow = false)) {
                             finishWithoutExitFlash()
