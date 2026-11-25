@@ -65,6 +65,37 @@ enum class WeekStartDay(
     }
 }
 
+enum class CheckInDigestFrequency(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val intervalDays: Long
+) {
+    OFF(
+        id = "off",
+        title = "Off",
+        subtitle = "Keep reconnect suggestions quiet and in-app only",
+        intervalDays = 0L
+    ),
+    WEEKLY(
+        id = "weekly",
+        title = "Weekly",
+        subtitle = "One gentle notification per week suggesting 2–3 quiet contacts",
+        intervalDays = 7L
+    ),
+    BIWEEKLY(
+        id = "biweekly",
+        title = "Every 2 weeks",
+        subtitle = "One gentle notification every two weeks suggesting 2–3 quiet contacts",
+        intervalDays = 14L
+    );
+
+    companion object {
+        fun fromId(id: String?): CheckInDigestFrequency =
+            entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: OFF
+    }
+}
+
 data class UserPreferences(
     val userName: String = "Alex",
     val hasCompletedOnboarding: Boolean = false,
@@ -76,8 +107,10 @@ data class UserPreferences(
     val reduceAnimations: Boolean = false,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
-    val defaultIncludeLocation: Boolean = true,
-    val activeFlowPresetId: String = "preset_default"
+    val checkInDigestFrequency: CheckInDigestFrequency = CheckInDigestFrequency.OFF,
+    val activeFlowPresetId: String = "preset_default",
+    val widgetImeHeightPortraitPx: Int = 0,
+    val widgetImeHeightLandscapePx: Int = 0
 )
 
 interface UserPreferencesRepository {
@@ -91,8 +124,9 @@ interface UserPreferencesRepository {
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setReduceAnimations(enabled: Boolean)
     suspend fun setNotificationTime(hour: Int, minute: Int)
-    suspend fun setDefaultIncludeLocation(enabled: Boolean)
+    suspend fun setCheckInDigestFrequency(frequency: CheckInDigestFrequency)
     suspend fun setActiveFlowPresetId(presetId: String)
+    suspend fun setWidgetImeHeightPx(isLandscape: Boolean, heightPx: Int) {}
 }
 
 class DataStoreUserPreferencesRepository(
@@ -121,8 +155,10 @@ class DataStoreUserPreferencesRepository(
             val reduceAnimations = preferences[KEY_REDUCE_ANIMATIONS] ?: false
             val notifHour = preferences[KEY_NOTIFICATION_HOUR] ?: 9
             val notifMinute = preferences[KEY_NOTIFICATION_MINUTE] ?: 0
-            val includeLocation = preferences[KEY_DEFAULT_INCLUDE_LOCATION] ?: true
+            val checkInDigestFrequency = CheckInDigestFrequency.fromId(preferences[KEY_CHECK_IN_DIGEST_FREQUENCY])
             val activeFlowPresetId = preferences[KEY_ACTIVE_FLOW_PRESET_ID] ?: "preset_default"
+            val widgetImeHeightPortraitPx = preferences[KEY_WIDGET_IME_HEIGHT_PORTRAIT_PX] ?: 0
+            val widgetImeHeightLandscapePx = preferences[KEY_WIDGET_IME_HEIGHT_LANDSCAPE_PX] ?: 0
 
             UserPreferences(
                 userName = userName,
@@ -135,8 +171,10 @@ class DataStoreUserPreferencesRepository(
                 reduceAnimations = reduceAnimations,
                 notificationHour = notifHour,
                 notificationMinute = notifMinute,
-                defaultIncludeLocation = includeLocation,
-                activeFlowPresetId = activeFlowPresetId
+                checkInDigestFrequency = checkInDigestFrequency,
+                activeFlowPresetId = activeFlowPresetId,
+                widgetImeHeightPortraitPx = widgetImeHeightPortraitPx,
+                widgetImeHeightLandscapePx = widgetImeHeightLandscapePx
             )
         }
 
@@ -195,15 +233,23 @@ class DataStoreUserPreferencesRepository(
         }
     }
 
-    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {
+    override suspend fun setCheckInDigestFrequency(frequency: CheckInDigestFrequency) {
         dataStore.edit { preferences ->
-            preferences[KEY_DEFAULT_INCLUDE_LOCATION] = enabled
+            preferences[KEY_CHECK_IN_DIGEST_FREQUENCY] = frequency.id
         }
     }
 
     override suspend fun setActiveFlowPresetId(presetId: String) {
         dataStore.edit { preferences ->
             preferences[KEY_ACTIVE_FLOW_PRESET_ID] = presetId
+        }
+    }
+
+    override suspend fun setWidgetImeHeightPx(isLandscape: Boolean, heightPx: Int) {
+        val safeHeight = heightPx.coerceAtLeast(0)
+        dataStore.edit { preferences ->
+            val key = if (isLandscape) KEY_WIDGET_IME_HEIGHT_LANDSCAPE_PX else KEY_WIDGET_IME_HEIGHT_PORTRAIT_PX
+            preferences[key] = safeHeight
         }
     }
 
@@ -218,7 +264,9 @@ class DataStoreUserPreferencesRepository(
         val KEY_REDUCE_ANIMATIONS = booleanPreferencesKey("reduce_animations")
         val KEY_NOTIFICATION_HOUR = intPreferencesKey("notification_hour")
         val KEY_NOTIFICATION_MINUTE = intPreferencesKey("notification_minute")
-        val KEY_DEFAULT_INCLUDE_LOCATION = booleanPreferencesKey("default_include_location")
+        val KEY_CHECK_IN_DIGEST_FREQUENCY = stringPreferencesKey("check_in_digest_frequency")
         val KEY_ACTIVE_FLOW_PRESET_ID = stringPreferencesKey("active_flow_preset_id")
+        val KEY_WIDGET_IME_HEIGHT_PORTRAIT_PX = intPreferencesKey("widget_ime_height_portrait_px")
+        val KEY_WIDGET_IME_HEIGHT_LANDSCAPE_PX = intPreferencesKey("widget_ime_height_landscape_px")
     }
 }

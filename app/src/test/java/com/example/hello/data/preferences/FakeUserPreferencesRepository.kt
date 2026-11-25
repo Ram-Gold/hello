@@ -49,11 +49,22 @@ class FakeUserPreferencesRepository(
         _prefs.update { it.copy(notificationHour = hour, notificationMinute = minute) }
     }
 
-    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {
-        _prefs.update { it.copy(defaultIncludeLocation = enabled) }
+    override suspend fun setCheckInDigestFrequency(frequency: CheckInDigestFrequency) {
+        _prefs.update { it.copy(checkInDigestFrequency = frequency) }
     }
 
     override suspend fun setActiveFlowPresetId(presetId: String) {
         _prefs.update { it.copy(activeFlowPresetId = presetId) }
+    }
+
+    override suspend fun setWidgetImeHeightPx(isLandscape: Boolean, heightPx: Int) {
+        val safeHeight = heightPx.coerceAtLeast(0)
+        _prefs.update {
+            if (isLandscape) {
+                it.copy(widgetImeHeightLandscapePx = safeHeight)
+            } else {
+                it.copy(widgetImeHeightPortraitPx = safeHeight)
+            }
+        }
     }
 }
