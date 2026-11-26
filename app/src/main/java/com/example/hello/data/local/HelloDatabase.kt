@@ -22,6 +22,8 @@ import com.example.hello.data.local.entity.ContactEntity
 import com.example.hello.data.local.entity.ContactFtsEntity
 import com.example.hello.data.local.entity.EncounterEntity
 import com.example.hello.data.local.entity.FollowUpEntity
+import com.example.hello.data.local.entity.PersonEncounterCrossRef
+import com.example.hello.data.local.entity.PersonFollowUpCrossRef
 import com.example.hello.data.local.entity.PlaceEntity
 import com.example.hello.data.local.entity.SyncMetadataEntity
 import com.example.hello.data.local.entity.TagEntity
@@ -36,13 +38,15 @@ import com.example.hello.data.local.entity.TagEntity
         ContactEntity::class,
         ContactFtsEntity::class,
         EncounterEntity::class,
+        PersonEncounterCrossRef::class,
         PlaceEntity::class,
         TagEntity::class,
         FollowUpEntity::class,
+        PersonFollowUpCrossRef::class,
         CaptureFlowPresetEntity::class,
         CaptureFlowComponentEntity::class
     ],
-    version = 8,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -124,6 +128,73 @@ abstract class HelloDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `person_encounters` (
+                        `encounterId` TEXT NOT NULL,
+                        `contactId` TEXT NOT NULL,
+                        PRIMARY KEY(`encounterId`, `contactId`)
+                    )
+                    """.trimIndent()
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_person_encounters_contactId` ON `person_encounters` (`contactId`)"
+                )
+                connection.execSQL(
+                    "INSERT OR IGNORE INTO `person_encounters` (`encounterId`, `contactId`) SELECT `id`, `contactId` FROM `encounters`"
+                )
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `person_follow_ups` (
+                        `followUpId` TEXT NOT NULL,
+                        `contactId` TEXT NOT NULL,
+                        PRIMARY KEY(`followUpId`, `contactId`)
+                    )
+                    """.trimIndent()
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_person_follow_ups_contactId` ON `person_follow_ups` (`contactId`)"
+                )
+                connection.execSQL(
+                    "INSERT OR IGNORE INTO `person_follow_ups` (`followUpId`, `contactId`) SELECT `id`, `contactId` FROM `follow_ups`"
+                )
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_contacts_isArchived` ON `contacts` (`isArchived`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_contacts_name` ON `contacts` (`name`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_contacts_lastMetAt` ON `contacts` (`lastMetAt`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_encounters_contactId` ON `encounters` (`contactId`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_encounters_placeId` ON `encounters` (`placeId`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_encounters_occurredAt` ON `encounters` (`occurredAt`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_follow_ups_contactId` ON `follow_ups` (`contactId`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_follow_ups_doneAt` ON `follow_ups` (`doneAt`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_follow_ups_dueAt` ON `follow_ups` (`dueAt`)"
+                )
+            }
+        }
+
         @Volatile
         private var instance: HelloDatabase? = null
 
@@ -139,7 +210,7 @@ abstract class HelloDatabase : RoomDatabase() {
                 HelloDatabase::class.java,
                 DATABASE_NAME
             )
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
             .fallbackToDestructiveMigration(true)
             .setDriver(BundledSQLiteDriver())
             .build()

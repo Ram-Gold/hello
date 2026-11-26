@@ -157,7 +157,7 @@ enum class ToastProgressTone {
 fun resolveProgressTone(semanticType: ToastSemanticType): ToastProgressTone = when (semanticType) {
     ToastSemanticType.DELETE, ToastSemanticType.ALERT -> ToastProgressTone.ERROR
     ToastSemanticType.ARCHIVE -> ToastProgressTone.SECONDARY
-    ToastSemanticType.FAVORITE, ToastSemanticType.SUCCESS -> ToastProgressTone.PRIMARY
+    ToastSemanticType.FAVORITE, ToastSemanticType.SAVED, ToastSemanticType.SUCCESS -> ToastProgressTone.PRIMARY
 }
 
 /**
@@ -178,13 +178,14 @@ fun resolveProgressColor(semanticType: ToastSemanticType): Color =
     resolveProgressColor(semanticType, MaterialTheme.colorScheme)
 
 /**
- * Semantic type classification for Toast Pill leading status icons (ADR-0027).
+ * Semantic type classification for Toast Pill leading status icons (ADR-0027, ADR-0041).
  */
 enum class ToastSemanticType {
     ARCHIVE,
     DELETE,
     FAVORITE,
     ALERT,
+    SAVED,
     SUCCESS
 }
 
@@ -194,7 +195,16 @@ fun resolveToastSemanticType(message: String): ToastSemanticType = when {
     message.contains("delete", ignoreCase = true) || message.contains("remove", ignoreCase = true) -> ToastSemanticType.DELETE
     message.contains("error", ignoreCase = true) ||
         message.contains("fail", ignoreCase = true) ||
-        message.contains("no ", ignoreCase = true) -> ToastSemanticType.ALERT
+        message.contains("no ", ignoreCase = true) ||
+        message.contains("unable", ignoreCase = true) ||
+        message.contains("could not", ignoreCase = true) ||
+        message.contains("please enter", ignoreCase = true) ||
+        message.contains("unavailable", ignoreCase = true) ||
+        message.contains("denied", ignoreCase = true) -> ToastSemanticType.ALERT
+    message.contains("saved", ignoreCase = true) ||
+        message.contains("logged encounter", ignoreCase = true) ||
+        (message.contains("added ", ignoreCase = true) && message.contains("to contacts", ignoreCase = true)) ||
+        message.contains("contact updated", ignoreCase = true) -> ToastSemanticType.SAVED
     else -> ToastSemanticType.SUCCESS
 }
 
@@ -311,7 +321,8 @@ class HelloToastVisuals(
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,
     val durationMs: Long = resolveToastDurationMs(message, actionLabel),
-    override val duration: SnackbarDuration = SnackbarDuration.Indefinite
+    override val duration: SnackbarDuration = SnackbarDuration.Indefinite,
+    val semanticTypeOverride: ToastSemanticType? = null
 ) : SnackbarVisuals
 
 /**
@@ -323,14 +334,16 @@ class HelloToastVisuals(
 suspend fun SnackbarHostState.showHelloToast(
     message: String,
     actionLabel: String? = null,
-    durationMs: Long = resolveToastDurationMs(message, actionLabel)
+    durationMs: Long = resolveToastDurationMs(message, actionLabel),
+    semanticType: ToastSemanticType? = null
 ): SnackbarResult {
     currentSnackbarData?.dismiss()
     val visuals = HelloToastVisuals(
         message = message,
         actionLabel = actionLabel,
         durationMs = durationMs,
-        duration = SnackbarDuration.Indefinite
+        duration = SnackbarDuration.Indefinite,
+        semanticTypeOverride = semanticType
     )
     val result = withTimeoutOrNull(durationMs) {
         showSnackbar(visuals)
@@ -386,7 +399,8 @@ fun HelloToastHost(
             if (snackbarData != null) {
                 val message = snackbarData.visuals.message
                 val actionLabel = snackbarData.visuals.actionLabel
-                val durationMs = (snackbarData.visuals as? HelloToastVisuals)?.durationMs
+                val helloVisuals = snackbarData.visuals as? HelloToastVisuals
+                val durationMs = helloVisuals?.durationMs
                     ?: resolveToastDurationMs(message, actionLabel)
                 SwipeToDismissToastContainer(
                     dismissKey = snackbarData,
@@ -397,6 +411,7 @@ fun HelloToastHost(
                         message = message,
                         actionLabel = actionLabel,
                         durationMs = durationMs,
+                        semanticTypeOverride = helloVisuals?.semanticTypeOverride,
                         onAction = { if (!isDismissing) snackbarData.performAction() }
                     )
                 }
@@ -558,18 +573,18 @@ fun HelloToastPill(
     actionLabel: String? = null,
     durationMs: Long = resolveToastDurationMs(message, actionLabel),
     progressOverride: Float? = null,
+    semanticTypeOverride: ToastSemanticType? = null,
     onAction: () -> Unit = {}
 ) {
-    val semanticType = resolveToastSemanticType(message)
+    val semanticType = semanticTypeOverride ?: resolveToastSemanticType(message)
     val leadingIcon = when (semanticType) {
         ToastSemanticType.ARCHIVE -> Icons.Rounded.Archive
         ToastSemanticType.DELETE -> Icons.Rounded.Delete
         ToastSemanticType.FAVORITE -> Icons.Rounded.Star
         ToastSemanticType.ALERT -> Icons.Rounded.Info
-        ToastSemanticType.SUCCESS -> Icons.Rounded.CheckCircle
+        ToastSemanticType.SAVED, ToastSemanticType.SUCCESS -> Icons.Rounded.CheckCircle
     }
-    val iconTint = resolveProgressColor(semanticType)
-    val progressColor = iconTint
+    val progressColor = resolveProgressColor(semanticType)
     val showCountdown = shouldShowToastCountdown(message, actionLabel, durationMs)
 
     val progressAnimatable = remember(message) { Animatable(1.0f) }
@@ -632,12 +647,26 @@ fun HelloToastPill(
                     Modifier.padding(horizontal = 16.dp, vertical = 11.dp)
                 }
             ) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(18.dp)
-                )
+                if (semanticType == ToastSemanticType.SAVED) {
+                    AnimatedHelloMark(
+                        mode = HelloMarkAnimationMode.SAVED,
+                        width = 22.dp,
+                        color = toastTextColor,
+                        contentDescription = null,
+                        playKey = message
+                    )
+                } else {
+                    val resolvedIconTint = when (semanticType) {
+                        ToastSemanticType.DELETE, ToastSemanticType.ALERT -> progressColor
+                        ToastSemanticType.ARCHIVE, ToastSemanticType.FAVORITE, ToastSemanticType.SUCCESS, ToastSemanticType.SAVED -> toastTextColor
+                    }
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        tint = resolvedIconTint,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
                 Text(
                     text = message,

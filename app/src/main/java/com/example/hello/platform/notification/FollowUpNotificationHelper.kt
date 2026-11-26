@@ -17,6 +17,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.hello.MainActivity
 import com.example.hello.R
+import com.example.hello.data.local.HelloDatabase
+import com.example.hello.data.local.entity.ContactEntity
+import com.example.hello.data.local.entity.FollowUpEntity
 
 /**
  * Helper responsible for creating the FollowUp notification channel and posting NotificationCompat instances
@@ -101,6 +104,18 @@ object FollowUpNotificationHelper {
             }
         } else {
             createAppNotificationSettingsIntent(context)
+        }
+    }
+
+    suspend fun resolveActiveContactsForFollowUp(
+        db: HelloDatabase,
+        followUp: FollowUpEntity
+    ): List<ContactEntity> {
+        val participantIds = db.followUpDao().getParticipantIdsForFollowUp(followUp.id)
+            .ifEmpty { listOf(followUp.contactId) }
+            .distinct()
+        return participantIds.mapNotNull { pid ->
+            db.contactDao().getContactById(pid)?.takeIf { !it.isArchived }
         }
     }
 

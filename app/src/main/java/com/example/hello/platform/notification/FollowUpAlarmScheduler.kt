@@ -11,6 +11,7 @@ import android.util.Log
 import com.example.hello.data.local.HelloDatabase
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.domain.model.FollowUp
+import com.example.hello.domain.model.formatParticipantNames
 import java.time.Instant
 
 /**
@@ -102,7 +103,7 @@ class FollowUpAlarmScheduler(private val context: Context) {
         if (followUp.isDone) return
         scheduleAlarm(
             followUpId = followUp.id,
-            contactId = followUp.contactId,
+            contactId = followUp.resolvedParticipantIds().firstOrNull() ?: followUp.contactId,
             contactName = contactName,
             note = followUp.note,
             dueAt = followUp.dueAt
@@ -157,12 +158,34 @@ class FollowUpAlarmScheduler(private val context: Context) {
             val db = HelloDatabase.getInstance(appContext)
             val scheduler = FollowUpAlarmScheduler(appContext)
             val pending = db.followUpDao().getPendingFollowUps()
+            if (pending.isEmpty()) return
+
+            val participantsByFollowUp = db.followUpDao()
+                .getAllPersonFollowUps()
+                .groupBy({ it.followUpId }, { it.contactId })
+            val activeContactsById = db.contactDao()
+                .getAllContacts()
+                .asSequence()
+                .filterNot { it.isArchived }
+                .associateBy { it.id }
+
+            val nowMillis = System.currentTimeMillis()
             for (entity in pending) {
-                val contact = db.contactDao().getContactById(entity.contactId)
-                if (contact == null || contact.isArchived) {
+                val participantIds = participantsByFollowUp[entity.id]
+                    .orEmpty()
+                    .ifEmpty { listOf(entity.contactId) }
+                    .distinct()
+                val activeContacts = participantIds.mapNotNull { activeContactsById[it] }
+                if (activeContacts.isEmpty()) {
                     scheduler.cancelAlarm(entity.id)
+                } else if (entity.dueAt.toEpochMilli() <= nowMillis) {
+                    continue
                 } else {
-                    scheduler.scheduleFollowUp(entity.toDomain(), contact.name)
+                    val activeParticipantIds = activeContacts.map { it.id }
+                    scheduler.scheduleFollowUp(
+                        entity.toDomain(activeParticipantIds),
+                        formatParticipantNames(activeContacts.map { it.name })
+                    )
                 }
             }
         }

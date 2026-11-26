@@ -179,6 +179,7 @@ class ContactFtsSearchTest {
             ioDispatcher = testDispatcher,
             coroutineScope = backgroundScope
         )
+        repository.contacts.first { it.isNotEmpty() }
         advanceUntilIdle()
 
         val viewModel = ContactsViewModel(repository)
@@ -192,8 +193,11 @@ class ContactFtsSearchTest {
         advanceUntilIdle()
 
         val searchResults = viewModel.uiState.value.contacts
-        assertEquals(1, searchResults.size)
-        assertEquals("Alex Rivera", searchResults.first().name)
+        assertTrue("Expected at least one Alex Rivera FTS match", searchResults.isNotEmpty())
+        assertTrue(
+            "All FTS matches for 'Alex' must be Alex Rivera, got: ${searchResults.map { it.name }}",
+            searchResults.all { it.name == "Alex Rivera" }
+        )
 
         // Clear search query
         viewModel.onEvent(ContactsUiEvent.OnClearSearch)

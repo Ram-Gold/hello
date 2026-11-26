@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.hello.data.local.HelloDatabase
+import com.example.hello.domain.model.formatParticipantNames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,14 +31,14 @@ class FollowUpAlarmReceiver : BroadcastReceiver() {
                 val followUp = db.followUpDao().getFollowUpById(followUpId) ?: return@launch
                 if (followUp.doneAt != null) return@launch
 
-                val contact = db.contactDao().getContactById(followUp.contactId) ?: return@launch
-                if (contact.isArchived) return@launch
+                val activeContacts = FollowUpNotificationHelper.resolveActiveContactsForFollowUp(db, followUp)
+                if (activeContacts.isEmpty()) return@launch
 
                 FollowUpNotificationHelper.showFollowUpNotification(
                     context = appContext,
                     followUpId = followUp.id,
-                    contactId = contact.id,
-                    contactName = contact.name,
+                    contactId = activeContacts.first().id,
+                    contactName = formatParticipantNames(activeContacts.map { it.name }),
                     note = followUp.note
                 )
             } catch (_: Exception) {

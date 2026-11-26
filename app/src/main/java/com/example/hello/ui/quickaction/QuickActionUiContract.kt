@@ -7,11 +7,29 @@ import com.example.hello.domain.model.FlowPreset
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 enum class QuickActionMode {
     CHOICE,
     FLOW_A_ADD_CONTACT,
     FLOW_B_LOG_ENCOUNTER
+}
+
+enum class QuickCaptureDetailKey(val label: String) {
+    LOCATION("Location"),
+    TIME("Time"),
+    TAGS("Tags"),
+    REMINDER("Reminder"),
+    OCCUPATION("Occupation"),
+    CONTACT_INFO("Phone & Email"),
+    BIRTHDAY("Birthday"),
+    CUSTOM("Custom");
+
+    companion object {
+        val DEFAULT_ADD_CONTACT = listOf(LOCATION, TAGS, REMINDER, OCCUPATION)
+        val DEFAULT_MET_AGAIN = listOf(LOCATION, TIME, TAGS, REMINDER)
+    }
 }
 
 enum class FlowAStep(val stepNumber: Int, val totalSteps: Int = 6, val title: String) {
@@ -57,16 +75,33 @@ data class QuickActionUiState(
     val customPropertyKey: String = "",
     val customPropertyValue: String = "",
     val nameError: Boolean = false,
+    val phoneError: String? = null,
     // Flow B: Log Encounter State
     val searchQuery: String = "",
     val selectedContact: ContactSummary? = null,
+    val selectedContacts: List<ContactSummary> = emptyList(),
+    val isFlowBMultiSelectMode: Boolean = false,
+    val isFlowBParticipantPickerOpen: Boolean = false,
     val encounterDate: LocalDate = LocalDate.now(),
+    val encounterTime: LocalTime = LocalTime.now().truncatedTo(ChronoUnit.MINUTES),
+    val isEncounterTimeCustomized: Boolean = false,
     val encounterPlaceId: String? = null,
     val encounterCustomPlaceName: String = "",
     val encounterNoteFlowB: String = "",
-    // Foreground Location Explainer
+    // Single-surface Quick Capture Composer State (ADR-0040)
+    val availableFlowPresets: List<FlowPreset> = emptyList(),
+    val pinnedDetailKeys: List<QuickCaptureDetailKey> = QuickCaptureDetailKey.DEFAULT_ADD_CONTACT,
+    val activeDetailTray: QuickCaptureDetailKey? = null,
+    val isNoteExpanded: Boolean = false,
+    val isPlusPopoverOpen: Boolean = false,
+    val isCustomizeQuickAddOpen: Boolean = false,
+    // Foreground Location Explainer & Captured GPS Fix
     val showLocationExplainer: Boolean = false,
     val isLocationGranted: Boolean = false,
+    val isLocatingGps: Boolean = false,
+    val capturedLatitude: Double? = null,
+    val capturedLongitude: Double? = null,
+    val capturedLocationLabel: String? = null,
     // Feedback message
     val userMessage: String? = null
 ) {
@@ -113,11 +148,31 @@ sealed interface QuickActionUiEvent {
     // Flow B Events
     data class OnSearchQueryChange(val query: String) : QuickActionUiEvent
     data class OnSelectExistingContact(val contact: ContactSummary) : QuickActionUiEvent
+    data class OnLongPressContactFlowB(val contact: ContactSummary) : QuickActionUiEvent
+    data class OnToggleContactFlowB(val contact: ContactSummary) : QuickActionUiEvent
+    data object OnConfirmMultiSelectContactsFlowB : QuickActionUiEvent
+    data class OnRemoveSelectedContactFlowB(val contactId: String) : QuickActionUiEvent
+    data class OnCommitFlowBParticipant(val contact: ContactSummary, val expandNoteAfter: Boolean = false) : QuickActionUiEvent
+    data object OnFlowBEnterPressed : QuickActionUiEvent
+    data class OnConvertQueryToAddContact(val name: String) : QuickActionUiEvent
+    data class OnSetFlowBParticipants(val contacts: List<ContactSummary>) : QuickActionUiEvent
+    data class OnToggleFlowBParticipantPicker(val open: Boolean) : QuickActionUiEvent
     data object OnClearSelectedContact : QuickActionUiEvent
     data class OnEncounterDateChange(val date: LocalDate) : QuickActionUiEvent
+    data class OnEncounterTimeChange(val time: LocalTime) : QuickActionUiEvent
     data class OnEncounterPlaceChange(val placeId: String?, val customName: String = "") : QuickActionUiEvent
     data class OnEncounterNoteChange(val note: String) : QuickActionUiEvent
     data object OnSaveFlowBEncounter : QuickActionUiEvent
+
+    // Single-surface Quick Capture Composer Events (ADR-0040)
+    data class OnToggleDetailTray(val key: QuickCaptureDetailKey?) : QuickActionUiEvent
+    data class OnSetNoteExpanded(val expanded: Boolean) : QuickActionUiEvent
+    data class OnTogglePlusPopover(val open: Boolean) : QuickActionUiEvent
+    data class OnToggleCustomizeQuickAdd(val open: Boolean) : QuickActionUiEvent
+    data class OnTogglePinDetailKey(val key: QuickCaptureDetailKey) : QuickActionUiEvent
+    data class OnSelectFlowPreset(val presetId: String) : QuickActionUiEvent
+    data class OnClearDetailKey(val key: QuickCaptureDetailKey) : QuickActionUiEvent
+    data object OnSwitchComposerMode : QuickActionUiEvent
 
     // Foreground Location Explainer Events
     data object OnRequestLocation : QuickActionUiEvent

@@ -13,6 +13,7 @@ import java.util.UUID
 data class FollowUp(
     val id: String = UUID.randomUUID().toString(),
     val contactId: String,
+    val participantIds: List<String> = emptyList(),
     val dueAt: Instant,
     val note: String = "",
     val doneAt: Instant? = null,
@@ -20,6 +21,9 @@ data class FollowUp(
 ) {
     val isDone: Boolean
         get() = doneAt != null
+
+    fun resolvedParticipantIds(): List<String> =
+        participantIds.ifEmpty { listOf(contactId) }.distinct()
 
     companion object {
         fun computeDueAt(

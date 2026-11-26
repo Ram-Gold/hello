@@ -4,6 +4,7 @@ import androidx.room.Transactor
 import androidx.room.useWriterConnection
 import com.example.hello.data.local.HelloDatabase
 import com.example.hello.data.local.entity.EncounterWithDetails
+import com.example.hello.data.local.entity.PersonEncounterCrossRef
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.domain.model.Encounter
@@ -52,17 +53,25 @@ class RoomEncounterRepository(
         val now = encounter.occurredAt
         database.useWriterConnection { transactor ->
             transactor.withTransaction(Transactor.SQLiteTransactionType.IMMEDIATE) {
-                // 1. Save encounter
+                // 1. Save encounter and many-to-many participant cross-refs
                 database.encounterDao().insertEncounter(encounter.toEntity())
+                val participantIds = encounter.resolvedParticipantIds()
+                database.encounterDao().deletePersonEncountersForEncounter(encounter.id)
+                database.encounterDao().insertPersonEncounters(
+                    participantIds.map { pid -> PersonEncounterCrossRef(encounterId = encounter.id, contactId = pid) }
+                )
 
-                // 2. Update contact recency and counter
-                val contact = database.contactDao().getContactById(encounter.contactId)
-                if (contact != null) {
-                    val updatedContact = contact.copy(
-                        lastMetAt = now,
-                        meetCount = contact.meetCount + 1
-                    )
-                    database.contactDao().updateContact(updatedContact)
+                // 2. Update contact recency and counter for all participants
+                participantIds.forEach { pid ->
+                    val contact = database.contactDao().getContactById(pid)
+                    if (contact != null) {
+                        val updatedLastMet = maxOf(contact.lastMetAt ?: now, now)
+                        val updatedContact = contact.copy(
+                            lastMetAt = updatedLastMet,
+                            meetCount = contact.meetCount + 1
+                        )
+                        database.contactDao().updateContact(updatedContact)
+                    }
                 }
 
                 // 3. Update or insert place

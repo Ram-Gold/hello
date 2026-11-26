@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.hello.data.local.entity.FollowUpEntity
+import com.example.hello.data.local.entity.PersonFollowUpCrossRef
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -14,6 +15,9 @@ interface FollowUpDao {
 
     @Query("SELECT * FROM follow_ups WHERE doneAt IS NULL ORDER BY dueAt ASC")
     fun getPendingFollowUpsFlow(): Flow<List<FollowUpEntity>>
+
+    @Query("SELECT * FROM follow_ups ORDER BY dueAt ASC")
+    fun getAllFollowUpsFlow(): Flow<List<FollowUpEntity>>
 
     @Query("SELECT * FROM follow_ups WHERE doneAt IS NULL ORDER BY dueAt ASC")
     suspend fun getPendingFollowUps(): List<FollowUpEntity>
@@ -24,8 +28,35 @@ interface FollowUpDao {
     @Query("SELECT * FROM follow_ups WHERE id = :id LIMIT 1")
     suspend fun getFollowUpById(id: String): FollowUpEntity?
 
-    @Query("SELECT * FROM follow_ups WHERE contactId = :contactId ORDER BY dueAt ASC")
+    @Query(
+        """
+        SELECT * FROM follow_ups WHERE contactId = :contactId
+        UNION
+        SELECT f.* FROM follow_ups f
+        INNER JOIN person_follow_ups pf ON f.id = pf.followUpId
+        WHERE pf.contactId = :contactId
+        ORDER BY dueAt ASC
+        """
+    )
     fun getFollowUpsForContactFlow(contactId: String): Flow<List<FollowUpEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPersonFollowUps(refs: List<PersonFollowUpCrossRef>)
+
+    @Query("SELECT * FROM person_follow_ups")
+    fun getAllPersonFollowUpsFlow(): Flow<List<PersonFollowUpCrossRef>>
+
+    @Query("SELECT * FROM person_follow_ups")
+    suspend fun getAllPersonFollowUps(): List<PersonFollowUpCrossRef>
+
+    @Query("SELECT contactId FROM person_follow_ups WHERE followUpId = :followUpId")
+    suspend fun getParticipantIdsForFollowUp(followUpId: String): List<String>
+
+    @Query("DELETE FROM person_follow_ups WHERE followUpId = :followUpId")
+    suspend fun deletePersonFollowUpsForFollowUp(followUpId: String)
+
+    @Query("DELETE FROM person_follow_ups WHERE contactId = :contactId")
+    suspend fun deletePersonFollowUpsForContact(contactId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFollowUp(followUp: FollowUpEntity)

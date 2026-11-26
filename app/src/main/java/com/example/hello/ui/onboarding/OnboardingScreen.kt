@@ -1,7 +1,11 @@
 package com.example.hello.ui.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
@@ -39,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.Shield
@@ -62,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -70,13 +76,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.data.preferences.WeekStartDay
 import com.example.hello.domain.model.RelationshipTerminology
 import com.example.hello.domain.model.Tag
 import com.example.hello.domain.model.TagColorPalette
 import com.example.hello.domain.model.extractAlphanumericInitials
-import com.example.hello.ui.components.HelloMark
+import com.example.hello.ui.components.AnimatedHelloHorizontalLogo
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.TonalTagPill
 import com.example.hello.ui.home.components.DoodleAvatar
@@ -101,9 +108,30 @@ fun OnboardingScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val isReducedMotion = LocalReducedMotion.current
     val scope = rememberCoroutineScope()
     val stepTransitionState = remember { SeekableTransitionState(uiState.currentStep) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        onEvent(OnboardingUiEvent.OnLocationPermissionResult(granted))
+    }
+
+    LaunchedEffect(context) {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarseGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        onEvent(OnboardingUiEvent.OnSyncLocationPermission(fineGranted || coarseGranted))
+    }
 
     LaunchedEffect(uiState.currentStep, isReducedMotion) {
         if (stepTransitionState.currentState != uiState.currentStep) {
@@ -196,6 +224,19 @@ fun OnboardingScreen(
                         4 -> OnboardingTerminologyStep(
                             selected = uiState.selectedTerminology,
                             onSelect = { onEvent(OnboardingUiEvent.OnSelectTerminology(it)) },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        5 -> OnboardingLocationStep(
+                            isLocationGranted = uiState.isLocationPermissionGranted,
+                            hasRequestedPermission = uiState.hasRequestedLocationPermission,
+                            onRequestLocationPermission = {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
                         else -> OnboardingFirstConnectionStep(
@@ -424,16 +465,15 @@ private fun OnboardingWelcomeStep(modifier: Modifier = Modifier) {
 
         Box(
             modifier = Modifier
-                .size(88.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
-            HelloMark(width = 64.dp)
+            AnimatedHelloHorizontalLogo(width = 200.dp)
         }
 
         StepHeader(
-            eyebrow = "STEP 1 OF 6",
+            eyebrow = "STEP 1 OF $ONBOARDING_TOTAL_STEPS",
             title = "Welcome to Hello",
             subtitle = "A quiet, local-first home for the people you meet.",
             centered = true
@@ -533,7 +573,7 @@ private fun OnboardingProfileStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         StepHeader(
-            eyebrow = "STEP 2 OF 6",
+            eyebrow = "STEP 2 OF $ONBOARDING_TOTAL_STEPS",
             title = "What should we call you?",
             subtitle = "Used only for your home greeting on this device. Leave blank to skip."
         )
@@ -601,7 +641,7 @@ private fun OnboardingAppearanceStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         StepHeader(
-            eyebrow = "STEP 3 OF 6",
+            eyebrow = "STEP 3 OF $ONBOARDING_TOTAL_STEPS",
             title = "Choose your look",
             subtitle = "Switch light, dark, or match your device. Preview updates immediately."
         )
@@ -809,7 +849,7 @@ private fun OnboardingWeekStartStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         StepHeader(
-            eyebrow = "STEP 4 OF 6",
+            eyebrow = "STEP 4 OF $ONBOARDING_TOTAL_STEPS",
             title = "When does your week start?",
             subtitle = "Sets how calendars and weekly timelines align across Hello."
         )
@@ -955,7 +995,7 @@ private fun OnboardingTerminologyStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         StepHeader(
-            eyebrow = "STEP 5 OF 6",
+            eyebrow = "STEP 5 OF $ONBOARDING_TOTAL_STEPS",
             title = "What do you call your directory?",
             subtitle = "Choose the label for your main tab. You can change this anytime in Settings."
         )
@@ -1155,6 +1195,118 @@ private fun OnboardingSelectableOptionCard(
     }
 }
 
+@Composable
+private fun OnboardingLocationStep(
+    isLocationGranted: Boolean,
+    hasRequestedPermission: Boolean,
+    onRequestLocationPermission: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = modifier.verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        StepHeader(
+            eyebrow = "STEP 6 OF $ONBOARDING_TOTAL_STEPS",
+            title = "Remember where you meet",
+            subtitle = "Allow foreground location to suggest nearby places when you log an encounter."
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            EditorialValueCard(
+                icon = Icons.Rounded.LocationOn,
+                title = "Foreground-Only Capture",
+                description = "Location is only read in the foreground at the instant you tap Current GPS. Never tracked in the background."
+            )
+            EditorialValueCard(
+                icon = Icons.Rounded.Lock,
+                title = "100% On-Device & Optional",
+                description = "Your coordinates never leave your device, and you can skip or change permission anytime without affecting capture."
+            )
+        }
+
+        if (isLocationGranted) {
+            Surface(
+                shape = EditorialCardShape,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, EditorialCardShape)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Location access enabled",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Nearby places are ready whenever you tap Current GPS.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onRequestLocationPermission,
+                    shape = EditorialButtonShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                ) {
+                    Text(
+                        text = "Allow Location",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                }
+
+                if (hasRequestedPermission) {
+                    Text(
+                        text = "Permission not granted. You can enable location anytime in Android Settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OnboardingFirstConnectionStep(
@@ -1177,7 +1329,7 @@ private fun OnboardingFirstConnectionStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         StepHeader(
-            eyebrow = "STEP 6 OF 6",
+            eyebrow = "STEP 7 OF $ONBOARDING_TOTAL_STEPS",
             title = "Add your first connection",
             subtitle = "Start with someone you met recently, or skip and add later."
         )
@@ -1352,13 +1504,25 @@ fun OnboardingWeekStartLightPreview() {
     }
 }
 
+@Preview(name = "Onboarding Location Light", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun OnboardingLocationLightPreview() {
+    HelloTheme(darkTheme = false) {
+        OnboardingScreen(
+            uiState = OnboardingUiState(currentStep = 5),
+            onEvent = {},
+            onFinish = {}
+        )
+    }
+}
+
 @Preview(name = "Onboarding First Connection Light", showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 fun OnboardingFirstConnectionLightPreview() {
     HelloTheme(darkTheme = false) {
         OnboardingScreen(
             uiState = OnboardingUiState(
-                currentStep = 5,
+                currentStep = ONBOARDING_LAST_STEP,
                 firstConnectionName = "Maya Lin",
                 firstConnectionNote = "Met at Kissa Coffee",
                 firstConnectionTagNames = setOf("friends", "coffee")

@@ -1,11 +1,19 @@
 package com.example.hello.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.hello.domain.model.FollowUp
 import java.time.Instant
 
-@Entity(tableName = "follow_ups")
+@Entity(
+    tableName = "follow_ups",
+    indices = [
+        Index(value = ["contactId"]),
+        Index(value = ["doneAt"]),
+        Index(value = ["dueAt"])
+    ]
+)
 data class FollowUpEntity(
     @PrimaryKey
     val id: String,
@@ -25,9 +33,10 @@ fun FollowUp.toEntity(): FollowUpEntity = FollowUpEntity(
     hasExplicitTime = hasExplicitTime
 )
 
-fun FollowUpEntity.toDomain(): FollowUp = FollowUp(
+fun FollowUpEntity.toDomain(participantIds: List<String> = emptyList()): FollowUp = FollowUp(
     id = id,
     contactId = contactId,
+    participantIds = participantIds.distinct(),
     dueAt = dueAt,
     note = note,
     doneAt = doneAt,

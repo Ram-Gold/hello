@@ -5,6 +5,12 @@ import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
+private val BIRTHDAY_INPUT_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM-dd-yyyy")
+private val BIRTHDAY_HUMAN_FULL_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+private val BIRTHDAY_HUMAN_MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM d")
+private val BIRTHDAY_SHORT_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM")
+private val BIRTHDAY_SHORT_MONTH_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
+
 /**
  * Robust date formatting and parsing utility for contact birthdays.
  * Supports Month-Day-Year (MM-DD-YYYY) and Month-Day (MM-DD), with slash or hyphen separators,
@@ -17,7 +23,7 @@ object BirthdayInputUtils {
      */
     fun formatToMonthDayYear(date: LocalDate?): String {
         if (date == null) return ""
-        return date.format(DateTimeFormatter.ofPattern("MM-dd-yyyy"))
+        return date.format(BIRTHDAY_INPUT_FORMATTER)
     }
 
     /**
@@ -26,9 +32,9 @@ object BirthdayInputUtils {
     fun formatHumanReadable(date: LocalDate?): String {
         if (date == null) return ""
         return if (date.year > 1900) {
-            date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+            date.format(BIRTHDAY_HUMAN_FULL_FORMATTER)
         } else {
-            date.format(DateTimeFormatter.ofPattern("MMMM d"))
+            date.format(BIRTHDAY_HUMAN_MONTH_DAY_FORMATTER)
         }
     }
 
@@ -145,7 +151,7 @@ object BirthdayInputUtils {
             10 -> "Oct."
             11 -> "Nov."
             12 -> "Dec."
-            else -> date.format(DateTimeFormatter.ofPattern("MMM"))
+            else -> date.format(BIRTHDAY_SHORT_MONTH_FORMATTER)
         }
         return "$monthLabel ${date.dayOfMonth}"
     }
@@ -179,7 +185,7 @@ object BirthdayInputUtils {
     fun formatDisplayBirthday(bday: LocalDate?, today: LocalDate = LocalDate.now()): String {
         if (bday == null) return ""
         val nextBday = nextAnnualBirthday(bday, today)
-        val monthDayStr = nextBday.format(DateTimeFormatter.ofPattern("MMM d"))
+        val monthDayStr = nextBday.format(BIRTHDAY_SHORT_MONTH_DAY_FORMATTER)
 
         // If birth year is not the placeholder 0, or if we know turning age
         val age = (today.year - bday.year).takeIf { it in 1..130 && bday.year > 1900 }

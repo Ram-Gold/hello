@@ -42,13 +42,18 @@ fun DoodleAvatar(
     photoUri: String? = null
 ) {
     val context = LocalContext.current
-    var loadedBitmap by remember(photoUri) {
-        mutableStateOf(AvatarBitmapCache.get(photoUri))
+    val targetMaxDimension = if (size <= 64.dp) {
+        AvatarBitmapCache.THUMBNAIL_MAX_DIMENSION
+    } else {
+        AvatarBitmapCache.FULL_MAX_DIMENSION
+    }
+    var loadedBitmap by remember(photoUri, targetMaxDimension) {
+        mutableStateOf(AvatarBitmapCache.get(photoUri, targetMaxDimension))
     }
 
-    LaunchedEffect(photoUri) {
+    LaunchedEffect(photoUri, targetMaxDimension) {
         if (!photoUri.isNullOrBlank() && loadedBitmap == null) {
-            loadedBitmap = AvatarBitmapCache.loadOrDecode(context, photoUri)
+            loadedBitmap = AvatarBitmapCache.loadOrDecode(context, photoUri, targetMaxDimension)
         } else if (photoUri.isNullOrBlank()) {
             loadedBitmap = null
         }

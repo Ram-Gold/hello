@@ -89,10 +89,11 @@ import com.example.hello.domain.mock.MockDataProvider
 import com.example.hello.domain.model.ContactSummary
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.detail.components.DetailCollapsingHeader
-import com.example.hello.ui.detail.components.LivingTimeline
 import com.example.hello.ui.detail.components.ProfileReminderOverlayPayload
 import com.example.hello.ui.detail.components.ProfileReminderSheetOverlay
 import com.example.hello.ui.detail.components.PropertiesPanel
+import com.example.hello.ui.detail.components.buildLivingTimelinePastEntries
+import com.example.hello.ui.detail.components.livingTimelineItems
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
 import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
@@ -100,6 +101,8 @@ import com.example.hello.ui.navigation.predictiveSelectionTrayExit
 import com.example.hello.ui.theme.HelloTheme
 import com.example.hello.ui.timeline.components.TimelineSelectionActionTray
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -314,54 +317,74 @@ fun PersonDetailScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                val today = remember { LocalDate.now() }
+                val zoneId = remember { ZoneId.systemDefault() }
+                val now = remember(uiState.reminders) { Instant.now() }
+                val contactNamesById = remember(uiState.allContacts, uiState.contactId, contactName) {
+                    uiState.allContacts.associate { it.id to it.name } + (uiState.contactId to contactName)
+                }
+                val pastEntries = remember(uiState.encounters, uiState.completedReminders) {
+                    buildLivingTimelinePastEntries(
+                        encounters = uiState.encounters,
+                        completedReminders = uiState.completedReminders
+                    )
+                }
+
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    item(key = "header") {
+                    item(key = "header", contentType = "detail_header") {
                         DetailCollapsingHeader(
                             contact = uiState.contact,
                             summary = uiState.contactSummary
                         )
                     }
 
-                    item(key = "properties") {
+                    item(key = "properties", contentType = "detail_properties") {
                         PropertiesPanel(
                             contact = uiState.contact,
                             allTags = uiState.tagsList
                         )
                     }
 
-                    item(key = "timeline") {
-                        LivingTimeline(
-                            encounters = uiState.encounters,
-                            placesMap = uiState.placesMap,
-                            onLogEncounterClick = onLogEncounterClick,
-                            birthday = uiState.contact?.birthday,
-                            selectedEncounterIds = uiState.selectedEncounterIds,
-                            isSelectionMode = uiState.isSelectionMode,
-                            onEncounterClick = { onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(it)) },
-                            onEncounterLongClick = {
-                                haptics.perform(SemanticHapticType.EDIT_ENTRY)
-                                onEvent(PersonDetailUiEvent.OnEncounterLongClick(it))
-                            },
-                            contactName = contactName,
-                            reminders = uiState.reminders,
-                            onReminderClick = { followUp ->
-                                onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(followUp))
-                            },
-                            onMarkReminderDone = { id ->
-                                haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-                                onEvent(PersonDetailUiEvent.OnMarkReminderDone(id))
-                            },
-                            onSnoozeReminder = { id ->
-                                haptics.perform(SemanticHapticType.MODE_TOGGLE)
-                                onEvent(PersonDetailUiEvent.OnSnoozeReminder(id))
-                            }
-                        )
-                    }
+                    livingTimelineItems(
+                        encountersCount = uiState.encounters.size,
+                        pastEntries = pastEntries,
+                        placesMap = uiState.placesMap,
+                        today = today,
+                        now = now,
+                        zoneId = zoneId,
+                        onLogEncounterClick = onLogEncounterClick,
+                        birthday = uiState.contact?.birthday,
+                        selectedEncounterIds = uiState.selectedEncounterIds,
+                        isSelectionMode = uiState.isSelectionMode,
+                        onEncounterClick = { onEvent(PersonDetailUiEvent.OnToggleSelectEncounter(it)) },
+                        onEncounterLongClick = {
+                            haptics.perform(SemanticHapticType.EDIT_ENTRY)
+                            onEvent(PersonDetailUiEvent.OnEncounterLongClick(it))
+                        },
+                        currentContactId = uiState.contactId,
+                        contactNamesById = contactNamesById,
+                        reminders = uiState.reminders,
+                        onReminderClick = { followUp ->
+                            onEvent(PersonDetailUiEvent.OnOpenEditReminderSheet(followUp))
+                        },
+                        onMarkReminderDone = { id ->
+                            haptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
+                            onEvent(PersonDetailUiEvent.OnMarkReminderDone(id))
+                        },
+                        onReopenReminder = { id ->
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onEvent(PersonDetailUiEvent.OnReopenReminder(id))
+                        },
+                        onSnoozeReminder = { id ->
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            onEvent(PersonDetailUiEvent.OnSnoozeReminder(id))
+                        }
+                    )
 
-                    item(key = "bottom_spacer") {
+                    item(key = "bottom_spacer", contentType = "detail_bottom_spacer") {
                         Spacer(modifier = Modifier.height(120.dp))
                     }
                 }
@@ -385,6 +408,9 @@ fun PersonDetailScreen(
                 // Batch Deletion Confirmation Dialog
                 if (uiState.isDeleteConfirmationVisible) {
                     val count = uiState.selectedEncounterIds.size
+                    val hasSharedEncounter = uiState.encounters.any {
+                        it.id in uiState.selectedEncounterIds && it.resolvedParticipantIds().size > 1
+                    }
                     AlertDialog(
                         onDismissRequest = { onEvent(PersonDetailUiEvent.OnDismissDeleteDialog) },
                         title = {
@@ -396,7 +422,11 @@ fun PersonDetailScreen(
                         },
                         text = {
                             Text(
-                                text = "These records will be permanently removed from this contact's history.",
+                                text = if (hasSharedEncounter) {
+                                    "These records will be permanently removed. Shared encounters will also be removed from other participants' timelines."
+                                } else {
+                                    "These records will be permanently removed from this contact's history."
+                                },
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -436,6 +466,8 @@ fun PersonDetailScreen(
                 val reminderOverlayPayload = remember(
                     isReminderSheetOpen,
                     contactName,
+                    uiState.contactSummary,
+                    uiState.allContacts,
                     uiState.editingReminder,
                     uiState.defaultNotificationHour,
                     uiState.defaultNotificationMinute
@@ -452,7 +484,7 @@ fun PersonDetailScreen(
                             onDismiss = {
                                 latestOnEvent.value(PersonDetailUiEvent.OnDismissReminderSheet)
                             },
-                            onSave = { dueDate, note, hasExplicitTime, explicitTime ->
+                            onSave = { dueDate, note, hasExplicitTime, explicitTime, participantIds ->
                                 latestHaptics.value.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
                                 if (editing != null) {
                                     latestOnEvent.value(
@@ -461,7 +493,8 @@ fun PersonDetailScreen(
                                             dueDate = dueDate,
                                             note = note,
                                             hasExplicitTime = hasExplicitTime,
-                                            explicitTime = explicitTime
+                                            explicitTime = explicitTime,
+                                            participantIds = participantIds
                                         )
                                     )
                                 } else {
@@ -470,7 +503,8 @@ fun PersonDetailScreen(
                                             dueDate = dueDate,
                                             note = note,
                                             hasExplicitTime = hasExplicitTime,
-                                            explicitTime = explicitTime
+                                            explicitTime = explicitTime,
+                                            participantIds = participantIds
                                         )
                                     )
                                     latestMaybePromptNotificationPermission.value()
@@ -479,7 +513,9 @@ fun PersonDetailScreen(
                             onDelete = { followUpId ->
                                 latestHaptics.value.perform(SemanticHapticType.DESTRUCTIVE_ACTION)
                                 latestOnEvent.value(PersonDetailUiEvent.OnDeleteReminder(followUpId))
-                            }
+                            },
+                            primaryContact = uiState.contactSummary,
+                            availableContacts = uiState.allContacts
                         )
                     }
                 }

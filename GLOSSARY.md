@@ -29,7 +29,7 @@ A borderless Material 3 Expressive visual component displaying a Tag's name usin
 _Avoid_: Hashtag chip, Outlined tag, Bordered badge, Category box
 
 **Encounter**:
-A recorded interaction or meeting between the user and a Contact, preserving context, notes, and recency.
+A recorded interaction or meeting between the user and one or more Contacts, preserving context, notes, and recency.
 _Avoid_: Interaction, Touchpoint, Meeting, Event
 
 **Place**:
@@ -37,12 +37,16 @@ A named physical venue or location where Encounters take place.
 _Avoid_: Venue, Location, Spot
 
 **FollowUp**:
-An actionable stay-in-touch reminder tied to a Contact, with a scheduled due time and completion state; presented to users in the interface as a "Reminder".
+An actionable stay-in-touch reminder tied to one or more Contacts, with a scheduled due time and completion state; presented to users in the interface as a "Reminder".
 _Avoid_: Task, To-do, Ping
 
 **Serendipity Prompt**:
 A quiet, in-app-only weighted-random reconnect suggestion surfaced in the Home carousel (`"Say hi"` badge, capped at 2 cards per day, zero OS push notifications) drawn deterministically each day from active Contacts not met in 14+ days (higher weight for longer gaps, clamped at 365 days). Tapping `"Skip"` rolls the next eligible Contact for today, and tapping `"View"` opens the Contact Profile Screen without auto-logging synthetic encounters.
 _Avoid_: Cadence, Manual Frequency, Overdue SLA, Ping Schedule, Subconscious Check-In
+
+**Check-in Digest**:
+An opt-in, periodic local notification (Weekly or Biweekly, default Off) that batches 2–3 quiet Contacts selected via Serendipity Prompt weighting into a single low-pressure nudge at the user's preferred delivery hour.
+_Avoid_: Cadence Alert, Overdue Digest, Push Nag, Ping Schedule
 
 **Export Bundle**:
 A user-generated, portable archive containing complete representations of relationship data in JSON, individual Markdown notes, and CSV formats.
@@ -51,15 +55,15 @@ _Avoid_: Backup dump, Database export, System dump
 ## Capture & Flows
 
 **Capture Flow**:
-The step-by-step sequence of inputs presented during contact creation to record relationship data with minimal cognitive load.
+The single-surface floating Quick Capture composer presented above the keyboard for adding a Contact or logging an Encounter ("Met Again") with minimal cognitive load, combining an auto-focused primary input, expandable Notes line, floating detail popovers hovering above the composer card (never expanding inside the composer container), a `+` overflow popover, and a pinned right-thumb Save button (ADR-0040).
 _Avoid_: Wizard, Form, Onboarding, Input Funnel
 
 **Flow Preset**:
-A named, user-customizable template defining an ordered sequence of Capture Components tailored to a specific social context (e.g., Conference, Casual Party, Campus).
+A named, user-customizable Quick Add button preset (such as Default, Conference, Casual Party, or Campus) defining which Capture Components are pinned as detail buttons in the Quick Capture action bar and in what order, editable via `+ → Customize Quick Add` or Settings (ADR-0040).
 _Avoid_: Template, Profile, Form Schema
 
 **Capture Component**:
-A modular, self-contained input unit (such as Name, Role, Place, Birthday, or Custom Property) that can be added, reordered, or skipped within a Capture Flow.
+A modular, self-contained detail unit (such as Location, Tags, Reminder, Time, Occupation, Phone & Email, Birthday, or Custom Property) surfaced as a detail button or inside the `+` overflow popover within the Capture Flow.
 _Avoid_: Field, Form Item, Input Widget
 
 ## Presentation & Navigation
@@ -73,11 +77,11 @@ The right-anchored bottom-docked primary action button (`+ Catching up?`) on the
 _Avoid_: Log Meet button, Profile FAB, Inline Log Met button, Catch-up bar
 
 **Profile Reminder Pill**:
-The left-anchored bottom-docked companion action button (`Remind`) on the Contact Profile Screen that sits at thumb level beside the Profile Encounter Pill (`+ Catching up?`) to open the bottom-sheet Reminder flow for the viewed Contact.
-_Avoid_: Inline reminder form, Top-bar bell button, Ping button
+The left-anchored bottom-docked companion action button (`Remind`) on the Contact Profile Screen that morphs in place from the Floating Bottom Dock's navigation pill beside the Profile Encounter Pill (`+ Catching up?`) to open the bottom-sheet Reminder flow for the viewed Contact.
+_Avoid_: Inline reminder form, Top-bar bell button, Ping button, Navigation button
 
 **Toast Pill**:
-A crisp, floating tactile notification card (`RoundedCornerShape(8.dp)` with 1dp border) rendered as an inverted high-contrast surface (`#121212` in light mode, `#FFFFFF` in dark mode) to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs semantic leading icons (Archive, Delete, Star, CheckCircle, Info) and a bottom countdown line with concise message copy and a right-anchored action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`).
+A crisp, floating tactile notification card (`RoundedCornerShape(8.dp)` with 1dp border) rendered as an inverted high-contrast surface (`#121212` in light mode, `#FFFFFF` in dark mode) to deliver lightweight, transient user feedback (such as confirmations, destructive alerts, and undo prompts). It pairs semantic leading icons (Archive, Delete, Star, CheckCircle, Info, and the animated Hello Mark Motion icon for Contact, Encounter, and Reminder saves) and a bottom countdown line with concise message copy and a right-anchored action button (such as Undo), positioned with dynamic adaptive clearance above the Floating Bottom Dock on docked root tabs (`dockHeight + 16.dp`) and above system navigation bars on undocked sub-screens (`navigationBars + 16.dp`).
 _Avoid_: Toast, Snackbar, Banner, Flash message, Notification bar
 
 **Undo Action**:
@@ -85,8 +89,12 @@ A transient 5-second recovery mechanism surfaced on a Toast Pill following a des
 _Avoid_: Revert Button, Restore Dialog, Rollback Trigger
 
 **Timeline Tab**:
-The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous vertical spine anchored by a Today divider, combining a Future Horizon (set-in-stone upcoming Birthdays within 1 calendar month and scheduled FollowUps with a dashed spine) and a Past Log (all recorded Encounters across Contacts, distinguishing First Met from Met Again with a bold continuous spine and vertically centered hollow node dots).
+The primary navigation tab within the Floating Bottom Dock that presents the app-wide Living Timeline—a continuous descending chronological spine anchored at Today and synchronized two-way with the Timeline Calendar Header, uniting future scheduled FollowUps and Contact Birthdays with past recorded Encounters (distinguishing First Met from Met Again).
 _Avoid_: Activity Feed, History Screen, Global Log, Audit Trail
+
+**Timeline Calendar Header**:
+The interactive temporal navigation header at the top of the Timeline Tab pairing a tappable short abbreviated date heading (`Thu, Nov 25`, never truncating), a Today return action when away from today, and a swipeable 7-day week strip with entry indicators (no `<` / `>` day-step arrow clutter) that stays synchronized two-way with the Living Timeline.
+_Avoid_: Agenda bar, Date navbar, Week picker, Filter bar
 
 **Timeline Node**:
 A chronological waypoint along the Living Timeline representing an Encounter, Birthday Milestone, or scheduled touchpoint. Past and milestone nodes feature a 12dp hollow circular dot (2dp border, contrasting surface fill) vertically centered alongside the card, connected by a 2dp high-contrast spine with atmospheric alpha gradient fades at entry and exit horizons.
@@ -151,3 +159,7 @@ _Avoid_: Raw vibrations, Buzzers, Game haptics, Hardware buzz
 **Contact Departure Motion**:
 The choreographed two-phase exit animation system driving physical spatial tucks upon archiving, physical dissolution upon deleting, and horizontal glide upon restoring, followed by spring-loaded placement reflow of neighboring Contact Cards and group headers to close the gap without jarring list jump-cuts.
 _Avoid_: Sudden vanish, Instant card delete, Jump-cut removal
+
+**Hello Mark Motion**:
+The signature handwriting animation system for the Hello name-tag mark and wordmark, evoking jotting someone's name down across three moments: cold app launch, welcome brand presentation (Onboarding and About Hello), and save confirmation inside Toast Pill.
+_Avoid_: Splash spinner, Brand loader, Decorative logo bounce, Note-saved badge

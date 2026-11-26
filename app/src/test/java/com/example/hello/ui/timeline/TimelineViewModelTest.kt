@@ -27,14 +27,15 @@ import java.time.temporal.ChronoUnit
 class TimelineViewModelTest {
 
     @Test
-    fun initialState_populatesFutureAndPastNodesWithDefaultAllFilter() {
+    fun initialState_populatesFutureAndPastNodesAnchoredAtToday() {
         val viewModel = TimelineViewModel()
         val state = viewModel.uiState.value
 
-        assertEquals(TimelineFilter.ALL, state.selectedFilter)
+        assertEquals(state.today, state.selectedDate)
         assertTrue("Future nodes must not be empty", state.futureNodes.isNotEmpty())
         assertTrue("Past nodes must not be empty", state.pastNodes.isNotEmpty())
         assertTrue(state.todayLabel.startsWith("TODAY"))
+        assertTrue(state.activeEntryDates.isNotEmpty())
         assertNull(state.userMessage)
     }
 
@@ -155,28 +156,21 @@ class TimelineViewModelTest {
     }
 
     @Test
-    fun buildTimelineNodes_onlyIncludesBirthdaysWithinOneMonthHorizon() {
+    fun buildTimelineNodes_includesBirthdaysWithinOneYearAndBeyondWhenNavigated() {
         val today = LocalDate.of(2026, 11, 5)
         val now = today.atStartOfDay(ZoneOffset.UTC).toInstant()
 
         val upcomingExactBoundary = Contact(
             id = "c-one-month",
             name = "Maya Lin",
-            birthday = LocalDate.of(1998, 12, 5), // Exact +1 calendar month -> included
-            firstMetAt = now.minus(30, ChronoUnit.DAYS),
-            lastMetAt = now.minus(10, ChronoUnit.DAYS)
-        )
-        val justBeyondBoundary = Contact(
-            id = "c-beyond-month",
-            name = "Sam Rivera",
-            birthday = LocalDate.of(1998, 12, 6), // 1 day past 1 month -> excluded
+            birthday = LocalDate.of(1998, 12, 5),
             firstMetAt = now.minus(30, ChronoUnit.DAYS),
             lastMetAt = now.minus(10, ChronoUnit.DAYS)
         )
         val summerFriend = Contact(
             id = "c-summer",
             name = "Leo Chen",
-            birthday = LocalDate.of(1998, 7, 20), // ~257 days away -> excluded
+            birthday = LocalDate.of(1998, 7, 20), // Next annual occurrence is 2027-07-20 (within 12 months)
             firstMetAt = now.minus(30, ChronoUnit.DAYS),
             lastMetAt = now.minus(10, ChronoUnit.DAYS)
         )
@@ -184,7 +178,6 @@ class TimelineViewModelTest {
         val (futureNodes, _) = TimelineViewModel.buildTimelineNodes(
             contactsMap = mapOf(
                 upcomingExactBoundary.id to upcomingExactBoundary,
-                justBeyondBoundary.id to justBeyondBoundary,
                 summerFriend.id to summerFriend
             ),
             encounters = emptyList(),
@@ -194,11 +187,13 @@ class TimelineViewModelTest {
             zoneId = ZoneOffset.UTC
         )
 
-        assertEquals(1, futureNodes.size)
-        val bdayNode = futureNodes.first() as FutureTimelineNode.BirthdayNode
-        assertEquals("c-one-month", bdayNode.contactId)
-        assertEquals(30L, bdayNode.daysUntil)
-        assertEquals("In 30 days", bdayNode.dateLabel)
+        assertEquals(2, futureNodes.size)
+        val decNode = futureNodes.first { it.contactId == "c-one-month" } as FutureTimelineNode.BirthdayNode
+        assertEquals(30L, decNode.daysUntil)
+        assertEquals("In 30 days", decNode.dateLabel)
+
+        val julyNode = futureNodes.first { it.contactId == "c-summer" } as FutureTimelineNode.BirthdayNode
+        assertEquals(LocalDate.of(2027, 7, 20), julyNode.targetDate)
     }
 
     @Test
@@ -231,14 +226,43 @@ class TimelineViewModelTest {
     }
 
     @Test
-    fun onSelectFilter_and_inlineFollowUpActions_updateTimelineState() {
+    fun calendarHeaderEvents_stepDayWeekJumpTodayAndSyncScrollRequests() {
         val viewModel = TimelineViewModel()
+        val initialToday = viewModel.uiState.value.today
+        assertEquals(initialToday, viewModel.uiState.value.selectedDate)
+        assertEquals(0L, viewModel.uiState.value.scrollRequestId)
 
-        viewModel.onEvent(TimelineUiEvent.OnSelectFilter(TimelineFilter.FUTURE))
-        assertEquals(TimelineFilter.FUTURE, viewModel.uiState.value.selectedFilter)
+        // Step forward 1 day -> increments scrollRequestId
+        viewModel.onEvent(TimelineUiEvent.OnStepDay(1L))
+        assertEquals(initialToday.plusDays(1), viewModel.uiState.value.selectedDate)
+        assertEquals(1L, viewModel.uiState.value.scrollRequestId)
 
-        viewModel.onEvent(TimelineUiEvent.OnSelectFilter(TimelineFilter.PAST))
-        assertEquals(TimelineFilter.PAST, viewModel.uiState.value.selectedFilter)
+        // Step backward 1 week -> keeps weekday, increments scrollRequestId
+        viewModel.onEvent(TimelineUiEvent.OnStepWeek(-1L))
+        assertEquals(initialToday.plusDays(1).minusWeeks(1), viewModel.uiState.value.selectedDate)
+        assertEquals(2L, viewModel.uiState.value.scrollRequestId)
+
+        // Passive scroll sync updates selectedDate without incrementing scrollRequestId
+        val scrolledDate = initialToday.minusDays(3)
+        viewModel.onEvent(TimelineUiEvent.OnSelectDate(scrolledDate, fromScroll = true))
+        assertEquals(scrolledDate, viewModel.uiState.value.selectedDate)
+        assertEquals(2L, viewModel.uiState.value.scrollRequestId)
+
+        // Jump to Today resets selectedDate and triggers scroll
+        viewModel.onEvent(TimelineUiEvent.OnJumpToToday)
+        assertEquals(initialToday, viewModel.uiState.value.selectedDate)
+        assertEquals(3L, viewModel.uiState.value.scrollRequestId)
+
+        // Date picker open / dismiss
+        viewModel.onEvent(TimelineUiEvent.OnOpenDatePicker)
+        assertTrue(viewModel.uiState.value.isDatePickerOpen)
+        viewModel.onEvent(TimelineUiEvent.OnDismissDatePicker)
+        assertFalse(viewModel.uiState.value.isDatePickerOpen)
+    }
+
+    @Test
+    fun inlineFollowUpActions_updateTimelineState() {
+        val viewModel = TimelineViewModel()
 
         val followUpNode = viewModel.uiState.value.futureNodes
             .filterIsInstance<FutureTimelineNode.FollowUpNode>()
@@ -416,7 +440,7 @@ class TimelineViewModelTest {
     @Test
     fun onConfirmDeleteSelected_deletesEncountersAndFollowUps_reconcilesStateAndClearsSelection() {
         val viewModel = TimelineViewModel()
-        val encounterNode = viewModel.uiState.value.pastNodes.first()
+        val encounterNode = viewModel.uiState.value.pastNodes.first { !it.isCompletedReminder }
         val followUpNode = viewModel.uiState.value.futureNodes
             .filterIsInstance<FutureTimelineNode.FollowUpNode>()
             .first()
@@ -442,5 +466,132 @@ class TimelineViewModelTest {
         // Nodes must be gone from the state
         assertFalse(state.pastNodes.any { it.id == encounterNode.id })
         assertFalse(state.futureNodes.any { it.id == followUpNode.id })
+    }
+
+    @Test
+    fun buildTimelineNodes_consolidatesMultiContactEncountersAndFollowUpsWithParticipants() {
+        val today = LocalDate.of(2026, 11, 23)
+        val alice = Contact(id = "c-a", name = "Alice")
+        val bob = Contact(id = "c-b", name = "Bob")
+        val carol = Contact(id = "c-c", name = "Carol")
+        val contactsMap = mapOf(alice.id to alice, bob.id to bob, carol.id to carol)
+
+        val sharedEnc = Encounter(
+            id = "enc-shared",
+            contactId = alice.id,
+            participantIds = listOf(alice.id, bob.id, carol.id),
+            occurredAt = today.atStartOfDay(ZoneOffset.UTC).toInstant(),
+            notes = "Team lunch"
+        )
+        val sharedFollowUp = FollowUp(
+            id = "fu-shared",
+            contactId = alice.id,
+            participantIds = listOf(alice.id, bob.id),
+            dueAt = today.plusDays(2).atStartOfDay(ZoneOffset.UTC).toInstant(),
+            note = "Send photos"
+        )
+
+        val (future, past) = TimelineViewModel.buildTimelineNodes(
+            contactsMap = contactsMap,
+            encounters = listOf(sharedEnc),
+            placesMap = emptyMap(),
+            followUps = listOf(sharedFollowUp),
+            today = today,
+            zoneId = ZoneOffset.UTC
+        )
+
+        assertEquals(1, past.size)
+        assertEquals("Alice, Bob & Carol", past.first().contactName)
+        assertEquals(3, past.first().participants.size)
+
+        val followUpNodes = future.filterIsInstance<FutureTimelineNode.FollowUpNode>()
+        assertEquals(1, followUpNodes.size)
+        assertEquals("Alice & Bob", followUpNodes.first().contactName)
+        assertEquals(2, followUpNodes.first().participants.size)
+    }
+
+    @Test
+    fun buildTimelineNodes_projectsCompletedRemindersByDoneAtAndHidesArchivedContacts() {
+        val today = LocalDate.of(2026, 11, 24)
+        val zone = ZoneOffset.UTC
+        val active = Contact(id = "c-active", name = "Alice", firstMetAt = Instant.parse("2026-11-01T10:00:00Z"))
+        val archived = Contact(id = "c-archived", name = "Bob", isArchived = true, firstMetAt = Instant.parse("2026-11-01T10:00:00Z"))
+        val contactsMap = mapOf(active.id to active, archived.id to archived)
+
+        val earlierEncounter = Encounter(
+            id = "enc-earlier",
+            contactId = active.id,
+            occurredAt = today.atTime(9, 0).toInstant(zone),
+            notes = "Morning coffee"
+        )
+        val laterEncounter = Encounter(
+            id = "enc-later",
+            contactId = active.id,
+            occurredAt = today.atTime(15, 0).toInstant(zone),
+            notes = "Afternoon walk"
+        )
+        val completedActive = FollowUp(
+            id = "fu-done-active",
+            contactId = active.id,
+            dueAt = today.plusDays(5).atStartOfDay(zone).toInstant(),
+            note = "Send architecture doc",
+            doneAt = today.atTime(12, 0).toInstant(zone)
+        )
+        val completedArchived = FollowUp(
+            id = "fu-done-archived",
+            contactId = archived.id,
+            dueAt = today.minusDays(2).atStartOfDay(zone).toInstant(),
+            note = "Archived task",
+            doneAt = today.atTime(13, 0).toInstant(zone)
+        )
+
+        val (future, past) = TimelineViewModel.buildTimelineNodes(
+            contactsMap = contactsMap,
+            encounters = listOf(earlierEncounter, laterEncounter),
+            placesMap = emptyMap(),
+            followUps = listOf(completedActive, completedArchived),
+            today = today,
+            zoneId = zone
+        )
+
+        assertTrue("Completed reminders should not remain in futureNodes", future.isEmpty())
+        assertEquals(
+            "Completed reminder for active contact should interleave chronologically by doneAt; archived should be hidden",
+            listOf("enc-later", "completed-followup-fu-done-active", "enc-earlier"),
+            past.map { it.id }
+        )
+        val completedNode = past[1]
+        assertTrue(completedNode.isCompletedReminder)
+        assertEquals(PastEncounterBadge.COMPLETED_REMINDER, completedNode.badge)
+        assertEquals("fu-done-active", completedNode.followUpId)
+        assertEquals(completedActive.doneAt, completedNode.occurredAt)
+    }
+
+    @Test
+    fun onMarkFollowUpDone_immediatelyShowsCompletedReminderInTimelineAndSupportsDelete() {
+        val viewModel = TimelineViewModel()
+        val targetFollowUp = viewModel.uiState.value.futureNodes
+            .filterIsInstance<FutureTimelineNode.FollowUpNode>()
+            .first()
+
+        viewModel.onEvent(TimelineUiEvent.OnMarkFollowUpDone(targetFollowUp.followUpId))
+
+        val afterDone = viewModel.uiState.value
+        assertTrue(
+            "Completed reminder must be removed from futureNodes immediately",
+            afterDone.futureNodes.filterIsInstance<FutureTimelineNode.FollowUpNode>()
+                .none { it.followUpId == targetFollowUp.followUpId }
+        )
+        val completedNode = afterDone.pastNodes.firstOrNull { it.followUpId == targetFollowUp.followUpId }
+        assertNotNull("Completed reminder must appear in pastNodes immediately", completedNode)
+        assertEquals(PastEncounterBadge.COMPLETED_REMINDER, completedNode?.badge)
+        assertTrue("Today must be marked active after completion", afterDone.today in afterDone.activeEntryDates)
+        assertEquals("Reminder completed", afterDone.userMessage)
+
+        // Multi-select delete removes completed reminder node
+        viewModel.onEvent(TimelineUiEvent.OnNodeLongClick(completedNode!!.id))
+        assertTrue(completedNode.id in viewModel.uiState.value.selectedNodeIds)
+        viewModel.onEvent(TimelineUiEvent.OnConfirmDeleteSelected)
+        assertTrue(viewModel.uiState.value.pastNodes.none { it.id == completedNode.id })
     }
 }

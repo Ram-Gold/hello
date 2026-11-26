@@ -1,0 +1,12 @@
+# ADR-0041: Hello Mark Motion and Brand Writing Animations
+
+**Status:** Accepted  
+**Amends:** [ADR-0005](0005-presentation-terminology-settings-navigation-and-onboarding-gating.md), [ADR-0007](0007-modular-multi-screen-settings-and-motion-reduction.md), [ADR-0027](0027-toast-pill-semantic-icons-and-in-memory-undo-pipeline.md)
+
+Hello's signature brand animation system (**Hello Mark Motion**, based on the *"Writing it down"* preview) renders the name-tag mark and `"hello"` wordmark via Jetpack Compose Canvas `PathMeasure` stroke drawing across three intentional moments:
+
+1. **App Launch (`0.65 s`, mark-only)**: Rendered as a lightweight, tap-skippable Compose overlay on `MainActivity` cold launch rather than an Android 12+ native `AnimatedVectorDrawable` splash icon. This guarantees consistent playback down to `minSdk = 24`, honors Hello's in-app `LocalReducedMotion` preference (skipping the overlay entirely when reduced motion is enabled), allows immediate tap-to-skip so it never blocks user input, and avoids a double-logo flash by replacing the static stacked `windowSplashScreenAnimatedIcon` in `Theme.Hello.Splash` with a clean solid-color handoff. The launch overlay is skipped on first-run onboarding, notification deep-links, configuration changes, and never runs on `QuickCaptureActivity` (preserving the `<50ms` widget capture invariant).
+2. **Welcome (`1.9 s`, horizontal mark + `"hello"` wordmark)**: Rendered framelessly on `OnboardingWelcomeStep` (replacing the boxed 64dp static mark) and `SettingsAboutScreen` (replacing the static `HelloHorizontalLogo`, with tap-to-replay), animating the five hand-drawn `"hello"` letter paths already bundled in `ic_hello_horizontal.xml`. Under `LocalReducedMotion`, all strokes resolve via a gentle `120 ms` opacity fade. Koboyo empty-state illustrations remain unchanged.
+3. **Save Confirmation (`0.4 s`, squiggle re-write)**: Rendered as a dedicated `ToastSemanticType.SAVED` leading icon (`22.dp` small-cut mark geometry tinted in `toastTextColor` for crisp legibility on the inverted **Toast Pill** surface) when saving Contacts, Encounters, and Reminders, while non-save success notices retain `CheckCircle`.
+
+Brand-mark stroke timelines use a calm, zero-bounce `CubicBezierEasing(0.4f, 0f, 0.2f, 1f)` (`FastOutSlowInEasing`) dedicated in `MotionTokens` for pen-on-paper cadence, while standard UI chrome transitions continue using `MotionTokens.StrongEaseOut` and `MotionTokens.StrongEaseInOut`.

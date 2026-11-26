@@ -1,5 +1,6 @@
 package com.example.hello.ui.settings
 
+import com.example.hello.data.preferences.CheckInDigestFrequency
 import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.data.preferences.WeekStartDay
@@ -26,7 +27,7 @@ data class SettingsUiState(
     val reduceAnimations: Boolean = false,
     val notificationHour: Int = 9,
     val notificationMinute: Int = 0,
-    val defaultIncludeLocation: Boolean = true,
+    val checkInDigestFrequency: CheckInDigestFrequency = CheckInDigestFrequency.OFF,
     // Capture Flows Settings (ADR-0012)
     val activeFlowPresetId: String = "preset_default",
     val flowPresets: List<FlowPreset> = emptyList(),
@@ -63,7 +64,7 @@ sealed interface SettingsUiEvent {
     data class OnToggleDynamicColor(val enabled: Boolean) : SettingsUiEvent
     data class OnToggleReduceAnimations(val enabled: Boolean) : SettingsUiEvent
     data class OnSetNotificationTime(val hour: Int, val minute: Int) : SettingsUiEvent
-    data class OnToggleDefaultIncludeLocation(val enabled: Boolean) : SettingsUiEvent
+    data class OnSelectCheckInDigestFrequency(val frequency: CheckInDigestFrequency) : SettingsUiEvent
 
     // Capture Flows Events
     data class OnSelectActiveFlowPreset(val presetId: String) : SettingsUiEvent

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.hello.data.preferences.CheckInDigestFrequency
 import com.example.hello.data.preferences.WeekStartDay
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.platform.notification.FollowUpNotificationHelper
@@ -228,6 +229,26 @@ fun SettingsPreferencesScreen(
             }
 
             item {
+                val digestOptions = CheckInDigestFrequency.entries
+                SettingsSubsection(title = "Check-in Digest") {
+                    digestOptions.forEachIndexed { index, option ->
+                        SelectableSettingItem(
+                            title = option.title,
+                            subtitle = option.subtitle,
+                            selected = uiState.checkInDigestFrequency == option,
+                            onClick = {
+                                onEvent(SettingsUiEvent.OnSelectCheckInDigestFrequency(option))
+                                if (option != CheckInDigestFrequency.OFF && !notificationsDeliverable) {
+                                    showNotificationExplainer = true
+                                }
+                            },
+                            shape = shapeFor(index, digestOptions.size)
+                        )
+                    }
+                }
+            }
+
+            item {
                 val weekStartOptions = WeekStartDay.entries
                 SettingsSubsection(title = "Calendar") {
                     weekStartOptions.forEachIndexed { index, option ->
@@ -239,18 +260,6 @@ fun SettingsPreferencesScreen(
                             shape = shapeFor(index, weekStartOptions.size)
                         )
                     }
-                }
-            }
-
-            item {
-                SettingsSubsection(title = "Encounter Capture") {
-                    SwitchSettingItem(
-                        title = "Default GPS Location",
-                        subtitle = "Pre-populate venue coordinates strictly at the instant of an encounter (foreground only)",
-                        checked = uiState.defaultIncludeLocation,
-                        onCheckedChange = { onEvent(SettingsUiEvent.OnToggleDefaultIncludeLocation(it)) },
-                        shape = shapeFor(0, 1)
-                    )
                 }
             }
         }

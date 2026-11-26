@@ -420,6 +420,10 @@ fun PersonEditScreen(
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                isError = uiState.phoneError != null,
+                supportingText = uiState.phoneError?.let { errorText ->
+                    { Text(text = errorText) }
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier

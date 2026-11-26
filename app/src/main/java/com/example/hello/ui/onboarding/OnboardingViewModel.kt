@@ -89,6 +89,19 @@ class OnboardingViewModel(
                 }
             }
 
+            is OnboardingUiEvent.OnSyncLocationPermission -> {
+                _uiState.update { it.copy(isLocationPermissionGranted = event.granted) }
+            }
+
+            is OnboardingUiEvent.OnLocationPermissionResult -> {
+                _uiState.update {
+                    it.copy(
+                        isLocationPermissionGranted = event.granted,
+                        hasRequestedLocationPermission = true
+                    )
+                }
+            }
+
             is OnboardingUiEvent.OnFirstConnectionNameChange -> {
                 _uiState.update { it.copy(firstConnectionName = event.name) }
             }

@@ -26,12 +26,18 @@ class PersonDetailViewModel(
         val initialSummary = repository.contacts.value.firstOrNull { it.id == contactId }
         val initialPlaces = repository.places.value.associateBy { it.id }
         val initialTags = repository.tags.value
+        val initialAllContacts = repository.contacts.value.filterNot { it.isArchived }
         val initialEncounters = repository.encounters.value
-            .filter { it.contactId == contactId }
+            .filter { contactId in it.resolvedParticipantIds() }
             .sortedByDescending { it.occurredAt }
-        val initialReminders = repository.followUps.value
-            .filter { it.contactId == contactId && !it.isDone }
+        val initialContactFollowUps = repository.followUps.value
+            .filter { contactId in it.resolvedParticipantIds() }
+        val initialReminders = initialContactFollowUps
+            .filter { !it.isDone }
             .sortedBy { it.dueAt }
+        val initialCompletedReminders = initialContactFollowUps
+            .filter { it.isDone }
+            .sortedByDescending { it.doneAt ?: it.dueAt }
         val initialLoading = initialContact == null && initialSummary == null
         val initialFavorite = initialContact?.isFavorite ?: (initialSummary?.isFavorite ?: false)
 
@@ -42,8 +48,10 @@ class PersonDetailViewModel(
                 contactSummary = initialSummary,
                 encounters = initialEncounters,
                 reminders = initialReminders,
+                completedReminders = initialCompletedReminders,
                 placesMap = initialPlaces,
                 tagsList = initialTags,
+                allContacts = initialAllContacts,
                 isLoading = initialLoading,
                 isFavorite = initialFavorite
             )
@@ -55,11 +63,31 @@ class PersonDetailViewModel(
             repository.getEncountersForContact(contactId),
             repository.getFollowUpsForContact(contactId),
             repository.places,
-            repository.tags
-        ) { contact, encounters, reminders, places, tags ->
+            repository.tags,
+            repository.contacts
+        ) { flows ->
+            @Suppress("UNCHECKED_CAST")
+            val contact = flows[0] as com.example.hello.domain.model.Contact?
+            @Suppress("UNCHECKED_CAST")
+            val encounters = flows[1] as List<com.example.hello.domain.model.Encounter>
+            @Suppress("UNCHECKED_CAST")
+            val contactFollowUps = flows[2] as List<com.example.hello.domain.model.FollowUp>
+            @Suppress("UNCHECKED_CAST")
+            val places = flows[3] as List<com.example.hello.domain.model.Place>
+            @Suppress("UNCHECKED_CAST")
+            val tags = flows[4] as List<com.example.hello.domain.model.Tag>
+            @Suppress("UNCHECKED_CAST")
+            val allContacts = flows[5] as List<com.example.hello.domain.model.ContactSummary>
             val placesMap = places.associateBy { it.id }
-            val summary = repository.contacts.value.firstOrNull { it.id == contactId }
+            val activeContacts = allContacts.filterNot { it.isArchived }
+            val summary = allContacts.firstOrNull { it.id == contactId }
             val isFavorite = contact?.isFavorite ?: (summary?.isFavorite ?: false)
+            val pendingReminders = contactFollowUps
+                .filter { !it.isDone }
+                .sortedBy { it.dueAt }
+            val completedReminders = contactFollowUps
+                .filter { it.isDone }
+                .sortedByDescending { it.doneAt ?: it.dueAt }
 
             _uiState.update { current ->
                 val allEncounterIds = encounters.map { it.id }.toSet()
@@ -68,9 +96,11 @@ class PersonDetailViewModel(
                     contact = contact,
                     contactSummary = summary,
                     encounters = encounters,
-                    reminders = reminders,
+                    reminders = pendingReminders,
+                    completedReminders = completedReminders,
                     placesMap = placesMap,
                     tagsList = tags,
+                    allContacts = activeContacts,
                     selectedEncounterIds = prunedSelected,
                     isLoading = false,
                     isFavorite = isFavorite
@@ -203,14 +233,16 @@ class PersonDetailViewModel(
             }
             is PersonDetailUiEvent.OnCreateReminder -> {
                 val state = _uiState.value
+                val resolvedParticipants = event.participantIds.ifEmpty { listOf(contactId) }.distinct()
                 repository.addFollowUp(
-                    contactId = contactId,
+                    contactId = resolvedParticipants.first(),
                     dueDate = event.dueDate,
                     note = event.note,
                     hasExplicitTime = event.hasExplicitTime,
                     explicitTime = event.explicitTime,
                     defaultHour = state.defaultNotificationHour,
-                    defaultMinute = state.defaultNotificationMinute
+                    defaultMinute = state.defaultNotificationMinute,
+                    participantIds = resolvedParticipants
                 )
                 _uiState.update {
                     it.copy(
@@ -224,6 +256,7 @@ class PersonDetailViewModel(
             }
             is PersonDetailUiEvent.OnUpdateReminder -> {
                 val state = _uiState.value
+                val resolvedParticipants = event.participantIds.takeIf { it.isNotEmpty() }
                 repository.updateFollowUp(
                     followUpId = event.followUpId,
                     dueDate = event.dueDate,
@@ -231,7 +264,8 @@ class PersonDetailViewModel(
                     hasExplicitTime = event.hasExplicitTime,
                     explicitTime = event.explicitTime,
                     defaultHour = state.defaultNotificationHour,
-                    defaultMinute = state.defaultNotificationMinute
+                    defaultMinute = state.defaultNotificationMinute,
+                    participantIds = resolvedParticipants
                 )
                 _uiState.update {
                     it.copy(
@@ -249,6 +283,15 @@ class PersonDetailViewModel(
                         editingReminder = if (it.editingReminder?.id == event.followUpId) null else it.editingReminder,
                         userMessage = "Reminder completed",
                         undoKind = PersonDetailUndoKind.REMINDER
+                    )
+                }
+            }
+            is PersonDetailUiEvent.OnReopenReminder -> {
+                repository.reopenFollowUp(event.followUpId)
+                _uiState.update {
+                    it.copy(
+                        userMessage = "Reminder reopened",
+                        undoKind = PersonDetailUndoKind.NONE
                     )
                 }
             }

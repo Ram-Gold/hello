@@ -1,9 +1,15 @@
 package com.example.hello.ui.timeline
 
+import com.example.hello.data.preferences.WeekStartDay
+import com.example.hello.domain.model.Contact
+import com.example.hello.ui.timeline.components.TimelineCalendarStripDefaults
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.MonthDay
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -52,7 +58,7 @@ class TimelineDayGroupingTest {
     }
 
     @Test
-    fun groupFutureNodesByDay_groupsSoonestFirst() {
+    fun groupFutureNodesByDay_groupsMonotonicDescendingFurthestFutureFirst() {
         val nodes = listOf(
             FutureTimelineNode.BirthdayNode(
                 id = "b1",
@@ -92,10 +98,45 @@ class TimelineDayGroupingTest {
 
         val groups = TimelineViewModel.groupFutureNodesByDay(nodes, today)
         assertEquals(2, groups.size)
-        assertEquals("Today, Nov 21", groups[0].headerLabel)
-        assertEquals(listOf("b1", "f1"), groups[0].items.map { it.id })
-        assertEquals("Tomorrow, Nov 22", groups[1].headerLabel)
-        assertEquals(listOf("f2"), groups[1].items.map { it.id })
+        assertEquals("Tomorrow, Nov 22", groups[0].headerLabel)
+        assertEquals(listOf("f2"), groups[0].items.map { it.id })
+        assertEquals("Today, Nov 21", groups[1].headerLabel)
+        assertEquals(listOf("b1", "f1"), groups[1].items.map { it.id })
+    }
+
+    @Test
+    fun calendarStripDefaults_respectMondayAndSundayWeekStart() {
+        // 2026-11-24 is Tuesday
+        val tuesday = LocalDate.of(2026, 11, 24)
+        assertEquals(LocalDate.of(2026, 11, 23), TimelineCalendarStripDefaults.weekStartOf(tuesday, WeekStartDay.MONDAY))
+        assertEquals(LocalDate.of(2026, 11, 22), TimelineCalendarStripDefaults.weekStartOf(tuesday, WeekStartDay.SUNDAY))
+    }
+
+    @Test
+    fun hasTimelineEntryOnDate_matchesActiveDatesAndLeapSafeRecurringBirthdays() {
+        val activeDates = setOf(LocalDate.of(2026, 11, 24))
+        val recurringBirthdays = setOf(MonthDay.of(7, 20), MonthDay.of(2, 29))
+
+        assertTrue(TimelineViewModel.hasTimelineEntryOnDate(LocalDate.of(2026, 11, 24), activeDates, recurringBirthdays))
+        assertTrue(TimelineViewModel.hasTimelineEntryOnDate(LocalDate.of(2028, 7, 20), activeDates, recurringBirthdays))
+        // Non-leap year Feb 28 matches Feb 29 birthday
+        assertTrue(TimelineViewModel.hasTimelineEntryOnDate(LocalDate.of(2026, 2, 28), activeDates, recurringBirthdays))
+        // Leap year Feb 28 does NOT match Feb 29 birthday
+        assertFalse(TimelineViewModel.hasTimelineEntryOnDate(LocalDate.of(2028, 2, 28), activeDates, recurringBirthdays))
+        assertTrue(TimelineViewModel.hasTimelineEntryOnDate(LocalDate.of(2028, 2, 29), activeDates, recurringBirthdays))
+    }
+
+    @Test
+    fun buildPastBirthdaysForWindow_materializesHistoricalBirthdaysInNavigatedMonth() {
+        val alex = Contact(id = "c1", name = "Alex", birthday = LocalDate.of(1995, 5, 14))
+        val result = TimelineViewModel.buildPastBirthdaysForWindow(
+            contactsMap = mapOf("c1" to alex),
+            anchorDate = LocalDate.of(2025, 5, 10),
+            today = today
+        )
+        val may14 = result[LocalDate.of(2025, 5, 14)].orEmpty()
+        assertEquals(1, may14.size)
+        assertEquals(30, may14.first().turningAge)
     }
 
     private fun pastNode(id: String, occurredAt: Instant) = PastTimelineNode(

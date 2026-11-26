@@ -321,4 +321,35 @@ class PersonDetailViewModelTest {
         assertTrue(!viewModel.uiState.value.isCreateReminderSheetOpen)
         assertEquals(1L, viewModel.uiState.value.reminderSavedEventId)
     }
+
+    @Test
+    fun profileReminders_createAndUpdateWithMultipleParticipants() = runTest {
+        val viewModel = PersonDetailViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(
+            PersonDetailUiEvent.OnCreateReminder(
+                dueDate = java.time.LocalDate.now().plusDays(3),
+                note = "Plan meetup",
+                participantIds = listOf("c-1", "c-2")
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val created = viewModel.uiState.value.reminders.first { it.note == "Plan meetup" }
+        assertEquals(listOf("c-1", "c-2"), created.resolvedParticipantIds())
+
+        viewModel.onEvent(
+            PersonDetailUiEvent.OnUpdateReminder(
+                followUpId = created.id,
+                dueDate = java.time.LocalDate.now().plusDays(5),
+                note = "Plan coffee",
+                participantIds = listOf("c-1", "c-2", "c-3")
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val updated = viewModel.uiState.value.reminders.first { it.id == created.id }
+        assertEquals(listOf("c-1", "c-2", "c-3"), updated.resolvedParticipantIds())
+    }
 }

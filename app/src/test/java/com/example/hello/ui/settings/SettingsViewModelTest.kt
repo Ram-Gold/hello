@@ -251,9 +251,17 @@ class SettingsViewModelTest {
         assertEquals(10, viewModel.uiState.value.notificationHour)
         assertEquals(30, viewModel.uiState.value.notificationMinute)
 
-        viewModel.onEvent(SettingsUiEvent.OnToggleDefaultIncludeLocation(false))
+        viewModel.onEvent(
+            SettingsUiEvent.OnSelectCheckInDigestFrequency(
+                com.example.hello.data.preferences.CheckInDigestFrequency.WEEKLY
+            )
+        )
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.defaultIncludeLocation)
+        assertEquals(
+            com.example.hello.data.preferences.CheckInDigestFrequency.WEEKLY,
+            viewModel.uiState.value.checkInDigestFrequency
+        )
+        assertEquals("Weekly check-in digest enabled", viewModel.uiState.value.userMessage)
     }
 
     @Test

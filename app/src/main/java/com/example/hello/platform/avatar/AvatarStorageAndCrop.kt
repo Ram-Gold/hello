@@ -110,38 +110,42 @@ object AvatarCropGeometry {
         )
 
         val outputBitmap = Bitmap.createBitmap(outputSizePx, outputSizePx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(outputBitmap)
+        try {
+            val canvas = Canvas(outputBitmap)
 
-        // Fill base with solid Warm White (#FFFFFF) per ADR-0022
-        canvas.drawColor(android.graphics.Color.WHITE)
+            // Fill base with solid Warm White (#FFFFFF) per ADR-0022
+            canvas.drawColor(android.graphics.Color.WHITE)
 
-        val baseScale = calculateBaseScale(
-            imageWidth = source.width.toFloat(),
-            imageHeight = source.height.toFloat(),
-            viewportSize = safeViewport,
-            fitWholeImage = fitWholeImage
-        )
-        val viewportToOutputRatio = outputSizePx.toFloat() / safeViewport
-        val totalScale = baseScale * coercedZoom * viewportToOutputRatio
-
-        val matrix = Matrix().apply {
-            // 1. Center source bitmap at origin
-            postTranslate(-source.width / 2f, -source.height / 2f)
-            // 2. Apply combined baseScale * zoom * output ratio
-            postScale(totalScale, totalScale)
-            // 3. Translate to center of output canvas + scaled user pan offset
-            postTranslate(
-                outputSizePx / 2f + clampedX * viewportToOutputRatio,
-                outputSizePx / 2f + clampedY * viewportToOutputRatio
+            val baseScale = calculateBaseScale(
+                imageWidth = source.width.toFloat(),
+                imageHeight = source.height.toFloat(),
+                viewportSize = safeViewport,
+                fitWholeImage = fitWholeImage
             )
+            val viewportToOutputRatio = outputSizePx.toFloat() / safeViewport
+            val totalScale = baseScale * coercedZoom * viewportToOutputRatio
+
+            val matrix = Matrix().apply {
+                // 1. Center source bitmap at origin
+                postTranslate(-source.width / 2f, -source.height / 2f)
+                // 2. Apply combined baseScale * zoom * output ratio
+                postScale(totalScale, totalScale)
+                // 3. Translate to center of output canvas + scaled user pan offset
+                postTranslate(
+                    outputSizePx / 2f + clampedX * viewportToOutputRatio,
+                    outputSizePx / 2f + clampedY * viewportToOutputRatio
+                )
+            }
+
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            canvas.drawBitmap(source, matrix, paint)
+
+            val out = ByteArrayOutputStream()
+            outputBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            return out.toByteArray()
+        } finally {
+            outputBitmap.recycle()
         }
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        canvas.drawBitmap(source, matrix, paint)
-
-        val out = ByteArrayOutputStream()
-        outputBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-        return out.toByteArray()
     }
 }
 
@@ -279,38 +283,68 @@ class AvatarStorageManager(val avatarsDir: File) {
  * Zero-dependency in-memory LRU cache for decoded local Contact Avatar [ImageBitmap]s.
  */
 object AvatarBitmapCache {
-    private val cache = object : LruCache<String, ImageBitmap>(64) {}
+    const val THUMBNAIL_MAX_DIMENSION = 192
+    const val FULL_MAX_DIMENSION = 512
 
-    fun get(photoUri: String?): ImageBitmap? {
-        if (photoUri.isNullOrBlank()) return null
-        synchronized(cache) {
-            return cache.get(photoUri)
+    private val maxKb: Int = minOf(
+        (Runtime.getRuntime().maxMemory() / 1024L / 16L).toInt(),
+        16 * 1024
+    ).coerceAtLeast(4 * 1024)
+
+    private val cache = object : LruCache<String, ImageBitmap>(maxKb) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int {
+            return ((value.width * value.height * 4) / 1024).coerceAtLeast(1)
         }
     }
 
-    fun put(photoUri: String, bitmap: ImageBitmap) {
+    private fun cacheKey(photoUri: String, maxDimension: Int): String = "$photoUri@$maxDimension"
+
+    fun get(photoUri: String?, maxDimension: Int = FULL_MAX_DIMENSION): ImageBitmap? {
+        if (photoUri.isNullOrBlank()) return null
+        val key = cacheKey(photoUri, maxDimension)
         synchronized(cache) {
-            cache.put(photoUri, bitmap)
+            return cache.get(key)
+        }
+    }
+
+    fun put(photoUri: String, bitmap: ImageBitmap, maxDimension: Int = FULL_MAX_DIMENSION) {
+        val key = cacheKey(photoUri, maxDimension)
+        synchronized(cache) {
+            cache.put(key, bitmap)
         }
     }
 
     fun evict(photoUri: String?) {
         if (photoUri.isNullOrBlank()) return
+        val prefix = "$photoUri@"
         synchronized(cache) {
             cache.remove(photoUri)
+            cache.snapshot()?.keys
+                ?.filter { it.startsWith(prefix) }
+                ?.forEach { cache.remove(it) }
         }
     }
 
-    suspend fun loadOrDecode(context: Context, photoUri: String?): ImageBitmap? {
+    fun trimMemory() {
+        synchronized(cache) {
+            cache.evictAll()
+        }
+    }
+
+    suspend fun loadOrDecode(
+        context: Context,
+        photoUri: String?,
+        maxDimension: Int = FULL_MAX_DIMENSION
+    ): ImageBitmap? {
         if (photoUri.isNullOrBlank()) return null
-        get(photoUri)?.let { return it }
+        get(photoUri, maxDimension)?.let { return it }
 
         return withContext(Dispatchers.IO) {
-            get(photoUri)?.let { return@withContext it }
-            val decoded = decodeSampledBitmap(context, photoUri, maxDimension = 512)
+            get(photoUri, maxDimension)?.let { return@withContext it }
+            val decoded = decodeSampledBitmap(context, photoUri, maxDimension = maxDimension)
             val imageBitmap = decoded?.asImageBitmap()
             if (imageBitmap != null) {
-                put(photoUri, imageBitmap)
+                put(photoUri, imageBitmap, maxDimension)
             }
             imageBitmap
         }
@@ -374,7 +408,11 @@ object AvatarBitmapCache {
                             8 -> postRotate(270f)
                         }
                     }
-                    Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                    val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                    if (rotated !== rawBitmap) {
+                        rawBitmap.recycle()
+                    }
+                    rotated
                 } else {
                     rawBitmap
                 }

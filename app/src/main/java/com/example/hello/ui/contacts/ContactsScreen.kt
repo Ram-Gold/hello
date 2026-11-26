@@ -6,12 +6,20 @@ import com.example.hello.ui.components.EmptyStateIllustration
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -176,9 +184,16 @@ fun ContactsScreen(
                     top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() / 2
                 )
         ) {
-            // 1. Search Bar & Header / Contextual Selection Header
+            val headerAnimMs = if (isReducedMotion) 0 else 220
+
+            // 1. Fixed-height Top Title Row (People <-> N selected)
             AnimatedContent(
                 targetState = uiState.isSelectionMode,
+                transitionSpec = {
+                    fadeIn(tween(headerAnimMs, easing = FastOutSlowInEasing)) togetherWith
+                        fadeOut(tween(headerAnimMs, easing = FastOutSlowInEasing)) using
+                        SizeTransform(clip = false)
+                },
                 label = "ContactsHeaderTransition"
             ) { isSelectionMode ->
                 if (isSelectionMode) {
@@ -188,35 +203,57 @@ fun ContactsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 } else {
-                    ContactsSearchHeader(
-                        query = uiState.searchQuery,
-                        onQueryChange = { onEvent(ContactsUiEvent.OnSearchQueryChange(it)) },
-                        onClear = { onEvent(ContactsUiEvent.OnClearSearch) },
+                    ContactsTitleHeader(
                         totalCount = uiState.totalCount,
                         terminology = terminology,
-                        onNavigateToHome = onNavigateToHome,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
 
-            // 2. Smart #tag Filter Pills & Sort Toggle
+            // 2. Search Bar & Smart #tag Filter Pills animated as one synchronized unit
             val activeTagFilters = uiState.selectedTags
             val activeTagFilter = activeTagFilters.joinToString(", ").ifBlank { null }
             AnimatedVisibility(
                 visible = !uiState.isSelectionMode,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = expandVertically(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing),
+                    expandFrom = Alignment.Top
+                ) + slideInVertically(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing),
+                    initialOffsetY = { -it / 4 }
+                ) + fadeIn(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing)
+                ),
+                exit = shrinkVertically(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.Top
+                ) + slideOutVertically(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing),
+                    targetOffsetY = { -it / 4 }
+                ) + fadeOut(
+                    animationSpec = tween(headerAnimMs, easing = FastOutSlowInEasing)
+                ),
+                label = "ContactsSearchAndFiltersTransition"
             ) {
-                ContactsFilterBar(
-                    selectedTags = activeTagFilters,
-                    smartFilterTags = uiState.smartFilterTags,
-                    availableTags = uiState.availableTags,
-                    onSelectTag = { onEvent(ContactsUiEvent.OnSelectTag(it)) },
-                    sortMode = uiState.sortMode,
-                    onToggleSort = { onEvent(ContactsUiEvent.OnToggleSortMode(it)) },
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ContactsSearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = { onEvent(ContactsUiEvent.OnSearchQueryChange(it)) },
+                        onClear = { onEvent(ContactsUiEvent.OnClearSearch) },
+                        terminology = terminology,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)
+                    )
+                    ContactsFilterBar(
+                        selectedTags = activeTagFilters,
+                        smartFilterTags = uiState.smartFilterTags,
+                        availableTags = uiState.availableTags,
+                        onSelectTag = { onEvent(ContactsUiEvent.OnSelectTag(it)) },
+                        sortMode = uiState.sortMode,
+                        onToggleSort = { onEvent(ContactsUiEvent.OnToggleSortMode(it)) },
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
             }
 
             // Scroll-Driven Archive Reveal Header (Pull-to-action)
@@ -458,7 +495,7 @@ private fun ContactsSelectionHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -489,94 +526,95 @@ private fun ContactsSelectionHeader(
 }
 
 @Composable
-private fun ContactsSearchHeader(
+private fun ContactsTitleHeader(
+    totalCount: Int,
+    terminology: RelationshipTerminology,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = terminology.pluralTitle,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Text(
+                text = "$totalCount",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactsSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    totalCount: Int,
     terminology: RelationshipTerminology,
-    onNavigateToHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        // Material 3 Expressive Top Bar Row matching Settings PixelStyleTopBar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    // Material 3 Expressive Pill Search Bar (Zero Border, surfaceContainer)
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = {
             Text(
-                text = terminology.pluralTitle,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                text = terminology.searchPlaceholder(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Rounded.Search,
+                contentDescription = "Search",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        },
+        trailingIcon = {
+            AnimatedVisibility(
+                visible = query.isNotEmpty(),
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Text(
-                    text = "$totalCount",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-            }
-        }
-
-        // Material 3 Expressive Pill Search Bar (Zero Border, surfaceContainer)
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = {
-                Text(
-                    text = terminology.searchPlaceholder(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            },
-            trailingIcon = {
-                AnimatedVisibility(
-                    visible = query.isNotEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    IconButton(onClick = onClear) {
-                        Icon(
-                            imageVector = Icons.Rounded.Clear,
-                            contentDescription = "Clear search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Rounded.Clear,
+                        contentDescription = "Clear search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
-            },
-            singleLine = true,
-            shape = CircleShape,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+            }
+        },
+        singleLine = true,
+        shape = CircleShape,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedBorderColor = Color.Transparent,
+            unfocusedBorderColor = Color.Transparent,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+        ),
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 @Composable

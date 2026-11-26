@@ -1,6 +1,11 @@
 package com.example.hello.ui.quickaction
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
@@ -17,21 +22,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.navigation.ScrubbablePredictiveBackHandler
 import com.example.hello.ui.navigation.predictiveSheetDismiss
@@ -39,8 +43,60 @@ import com.example.hello.ui.navigation.resolveSheetScrimAlpha
 import com.example.hello.ui.quickaction.components.FlowAAddContactCard
 import com.example.hello.ui.quickaction.components.FlowBLogEncounterSheet
 import com.example.hello.ui.quickaction.components.LocationExplainerDialog
-import com.example.hello.ui.quickaction.components.QuickActionChoiceContent
+import com.example.hello.ui.quickaction.components.QuickCaptureComposerCard
 import com.example.hello.ui.theme.HelloTheme
+import com.example.hello.ui.theme.MotionTokens
+
+internal fun hasForegroundLocationPermission(context: Context): Boolean {
+    val fineGranted = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    val coarseGranted = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    return fineGranted || coarseGranted
+}
+
+@Composable
+internal fun ForegroundLocationPermissionHandler(
+    showExplainer: Boolean,
+    onPermissionResult: (Boolean) -> Unit,
+    onDismissExplainer: () -> Unit
+) {
+    val context = LocalContext.current
+    val currentOnPermissionResult by rememberUpdatedState(onPermissionResult)
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        currentOnPermissionResult(granted)
+    }
+
+    val hasLocationPermission = showExplainer && hasForegroundLocationPermission(context)
+
+    LaunchedEffect(showExplainer) {
+        if (showExplainer && hasForegroundLocationPermission(context)) {
+            currentOnPermissionResult(true)
+        }
+    }
+
+    if (showExplainer && !hasLocationPermission) {
+        LocationExplainerDialog(
+            onAllowClick = {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            },
+            onDismissClick = onDismissExplainer
+        )
+    }
+}
 
 @Composable
 fun QuickActionSheetHost(
@@ -48,17 +104,16 @@ fun QuickActionSheetHost(
     onEvent: (QuickActionUiEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Foreground Location In-App Explainer Dialog
-    if (uiState.showLocationExplainer) {
-        LocationExplainerDialog(
-            onAllowClick = {
-                onEvent(QuickActionUiEvent.OnLocationPermissionResult(granted = true))
-            },
-            onDismissClick = {
-                onEvent(QuickActionUiEvent.OnDismissLocationExplainer)
-            }
-        )
-    }
+    // Foreground Location In-App Explainer Dialog & Runtime Permission Launcher
+    ForegroundLocationPermissionHandler(
+        showExplainer = uiState.showLocationExplainer,
+        onPermissionResult = { granted ->
+            onEvent(QuickActionUiEvent.OnLocationPermissionResult(granted = granted))
+        },
+        onDismissExplainer = {
+            onEvent(QuickActionUiEvent.OnDismissLocationExplainer)
+        }
+    )
 
     val isReducedMotion = LocalReducedMotion.current
     var innerStepBackProgress by remember { mutableFloatStateOf(0f) }
@@ -73,29 +128,27 @@ fun QuickActionSheetHost(
         }
     }
 
-    val isInnerStep = (uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0) ||
-        (uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null)
+    val hasOpenComposerSubOverlay = uiState.isCustomizeQuickAddOpen ||
+        uiState.isPlusPopoverOpen ||
+        uiState.activeDetailTray != null
 
-    // Scrub inner step crossfade when stepping back, or dismiss sheet vertically at step 0
+    // Collapse sub-overlay (Customize -> '+' popover -> inline detail tray) before dismissing sheet
     ScrubbablePredictiveBackHandler(
-        enabled = uiState.isOpen && isInnerStep,
+        enabled = uiState.isOpen && hasOpenComposerSubOverlay,
         isReducedMotion = isReducedMotion,
         onProgressChanged = { innerStepBackProgress = it },
         finishOnCommit = false,
         onCommit = {
             when {
-                uiState.currentMode == QuickActionMode.FLOW_A_ADD_CONTACT && uiState.currentStepIndex > 0 -> {
-                    onEvent(QuickActionUiEvent.OnPreviousStep)
-                }
-                uiState.currentMode == QuickActionMode.FLOW_B_LOG_ENCOUNTER && uiState.selectedContact != null -> {
-                    onEvent(QuickActionUiEvent.OnClearSelectedContact)
-                }
+                uiState.isCustomizeQuickAddOpen -> onEvent(QuickActionUiEvent.OnToggleCustomizeQuickAdd(false))
+                uiState.isPlusPopoverOpen -> onEvent(QuickActionUiEvent.OnTogglePlusPopover(false))
+                uiState.activeDetailTray != null -> onEvent(QuickActionUiEvent.OnToggleDetailTray(null))
             }
         }
     )
 
     ScrubbablePredictiveBackHandler(
-        enabled = uiState.isOpen && !isInnerStep,
+        enabled = uiState.isOpen && !hasOpenComposerSubOverlay,
         isReducedMotion = isReducedMotion,
         onProgressChanged = { sheetDismissProgress = it },
         finishOnCommit = true,
@@ -109,87 +162,60 @@ fun QuickActionSheetHost(
     Box(modifier = modifier.fillMaxSize()) {
         // Scrim backdrop
         AnimatedVisibility(
-            visible = uiState.isOpen,
-            enter = fadeIn(tween(120)),
-            exit = if (isPredictiveDismissing || isReducedMotion) ExitTransition.None else fadeOut(tween(100))
+            visible = uiState.isOpen && uiState.currentMode != QuickActionMode.CHOICE,
+            enter = fadeIn(tween(if (isReducedMotion) 0 else 140)),
+            exit = if (isPredictiveDismissing || isReducedMotion) ExitTransition.None else fadeOut(tween(120))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = resolveSheetScrimAlpha(sheetDismissProgress, maxAlpha = 0.32f)))
+                    .background(Color.Black.copy(alpha = resolveSheetScrimAlpha(sheetDismissProgress, maxAlpha = 0.36f)))
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
                     ) {
-                        onEvent(QuickActionUiEvent.OnDismiss)
+                        when {
+                            uiState.isCustomizeQuickAddOpen -> onEvent(QuickActionUiEvent.OnToggleCustomizeQuickAdd(false))
+                            uiState.isPlusPopoverOpen -> onEvent(QuickActionUiEvent.OnTogglePlusPopover(false))
+                            uiState.activeDetailTray != null -> onEvent(QuickActionUiEvent.OnToggleDetailTray(null))
+                            else -> onEvent(QuickActionUiEvent.OnDismiss)
+                        }
                     }
             )
         }
 
-        // In-hierarchy bottom-anchored sheet (zero DialogWindow lag, synchronized with IME)
+        // Unified Single-Surface Floating Capture Card (Add Contact & Met Again, ADR-0040, Emil Kowalski StrongEaseOut)
         AnimatedVisibility(
-            visible = uiState.isOpen,
-            enter = slideInVertically(
-                initialOffsetY = { it / 2 },
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = 700f)
-            ) + fadeIn(tween(90)),
-            exit = if (isPredictiveDismissing || isReducedMotion) {
+            visible = uiState.isOpen && uiState.currentMode != QuickActionMode.CHOICE,
+            enter = if (isReducedMotion) {
+                fadeIn(tween(120))
+            } else {
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = tween(190, easing = MotionTokens.StrongEaseOut)
+                ) + fadeIn(tween(150, easing = MotionTokens.StrongEaseOut))
+            },
+            exit = if (isPredictiveDismissing) {
                 ExitTransition.None
+            } else if (isReducedMotion) {
+                fadeOut(tween(90))
             } else {
                 slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(120)
-                ) + fadeOut(tween(90))
+                    targetOffsetY = { it / 2 },
+                    animationSpec = tween(130, easing = MotionTokens.StrongEaseOut)
+                ) + fadeOut(tween(110, easing = MotionTokens.StrongEaseOut))
             },
-            modifier = Modifier.align(Alignment.BottomCenter)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .predictiveSheetDismiss { sheetDismissProgress }
+                .navigationBarsPadding()
+                .imePadding()
         ) {
-            Surface(
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = MaterialTheme.colorScheme.background,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .predictiveSheetDismiss { sheetDismissProgress }
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { /* Consume taps on sheet surface */ }
-                    .navigationBarsPadding()
-                    .imePadding()
-            ) {
-                when (uiState.currentMode) {
-                    QuickActionMode.CHOICE -> {
-                        QuickActionChoiceContent(
-                            onSelectAddContact = {
-                                onEvent(QuickActionUiEvent.OnSelectAddContact)
-                            },
-                            onSelectLogEncounter = {
-                                onEvent(QuickActionUiEvent.OnSelectLogEncounter)
-                            },
-                            onDismiss = {
-                                onEvent(QuickActionUiEvent.OnDismiss)
-                            }
-                        )
-                    }
-
-                    QuickActionMode.FLOW_A_ADD_CONTACT -> {
-                        FlowAAddContactCard(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            predictiveBackProgress = innerStepBackProgress
-                        )
-                    }
-
-                    QuickActionMode.FLOW_B_LOG_ENCOUNTER -> {
-                        FlowBLogEncounterSheet(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            predictiveBackProgress = innerStepBackProgress
-                        )
-                    }
-                }
-            }
+            QuickCaptureComposerCard(
+                uiState = uiState,
+                onEvent = onEvent
+            )
         }
     }
 }

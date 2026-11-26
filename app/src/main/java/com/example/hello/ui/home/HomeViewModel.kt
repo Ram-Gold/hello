@@ -222,61 +222,8 @@ class HomeViewModel(
                 subtitle = "Specialty Coffee, Gravel Bikes"
             )
 
-            val upcoming = listOf(
-                UpcomingAlert.BirthdayAlert(
-                    id = "alert-1",
-                    contactName = "Maya Patel",
-                    dateText = "Tomorrow"
-                ),
-                UpcomingAlert.FollowUpReminder(
-                    id = "alert-2",
-                    contactName = "Alex R.",
-                    taskDescription = "Send design feedback from hackathon",
-                    dueText = "In 3 days"
-                ),
-                UpcomingAlert.SerendipityPrompt(
-                    id = "alert-3",
-                    contactName = "Sarah L.",
-                    daysSinceLastMet = 45,
-                    contextText = "Last met 6 weeks ago",
-                    contactId = "c-8"
-                )
-            )
-
-            val contacts = listOf(
-                ContactSummary(
-                    id = "c-1",
-                    name = "Maya Patel",
-                    contextSubtitle = "CS '27, met yesterday at Hackathon",
-                    avatarInitials = "MP",
-                    avatarBgIndex = 0,
-                    lastEncounterText = "Met yesterday"
-                ),
-                ContactSummary(
-                    id = "c-2",
-                    name = "Marcus Vance",
-                    contextSubtitle = "Founder @ Studio Arc, met at Coffee Lab",
-                    avatarInitials = "MV",
-                    avatarBgIndex = 1,
-                    lastEncounterText = "4 days ago"
-                ),
-                ContactSummary(
-                    id = "c-3",
-                    name = "Elena Rostova",
-                    contextSubtitle = "Neighbor & Botanist, exchanged plants last Sunday",
-                    avatarInitials = "ER",
-                    avatarBgIndex = 2,
-                    lastEncounterText = "Last Sunday"
-                ),
-                ContactSummary(
-                    id = "c-4",
-                    name = "David Kim",
-                    contextSubtitle = "Mobile Dev, discussed Compose gestures & spring physics",
-                    avatarInitials = "DK",
-                    avatarBgIndex = 3,
-                    lastEncounterText = "10 days ago"
-                )
-            )
+            val upcoming = com.example.hello.domain.mock.SeedDataFactory.createInitialUpcomingAlerts()
+            val contacts = com.example.hello.domain.mock.SeedDataFactory.createInitialRecentContacts()
 
             return HomeUiState(
                 userName = "Alex",

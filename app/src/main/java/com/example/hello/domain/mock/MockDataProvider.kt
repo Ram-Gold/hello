@@ -88,15 +88,6 @@ object MockDataProvider {
         tagUni
     )
 
-    val placeBlueBottle = Place(
-        id = "place-blue-bottle",
-        label = "Blue Bottle Coffee",
-        latitude = 37.7825,
-        longitude = -122.4075,
-        useCount = 4,
-        lastUsedAt = Instant.now().minus(1, ChronoUnit.DAYS)
-    )
-
     val placeMoscone = Place(
         id = "place-moscone",
         label = "Moscone Convention Center",
@@ -115,7 +106,7 @@ object MockDataProvider {
         lastUsedAt = Instant.now().minus(30, ChronoUnit.DAYS)
     )
 
-    val places: List<Place> = listOf(placeBlueBottle, placeMoscone, placeSightglass)
+    val places: List<Place> = listOf(placeMoscone, placeSightglass)
 
     val contactSarah = Contact(
         id = "contact-sarah-lin",
@@ -187,9 +178,9 @@ object MockDataProvider {
         id = "enc-sarah-3",
         contactId = contactSarah.id,
         occurredAt = Instant.now().minus(1, ChronoUnit.DAYS),
-        placeId = placeBlueBottle.id,
-        latitude = 37.7825,
-        longitude = -122.4075,
+        placeId = placeSightglass.id,
+        latitude = 37.7773,
+        longitude = -122.4085,
         eventLabel = "Quick Catch-up",
         notes = "Caught up on Android 15 edge-to-edge guidelines and Compose performance."
     )
@@ -198,9 +189,9 @@ object MockDataProvider {
         id = "enc-alex-1",
         contactId = contactAlex.id,
         occurredAt = Instant.now().minus(5, ChronoUnit.DAYS),
-        placeId = placeBlueBottle.id,
-        latitude = 37.7825,
-        longitude = -122.4075,
+        placeId = placeSightglass.id,
+        latitude = 37.7773,
+        longitude = -122.4085,
         eventLabel = "Coffee Chat",
         notes = "Reviewed tactile design tokens and squircle border radius animations."
     )

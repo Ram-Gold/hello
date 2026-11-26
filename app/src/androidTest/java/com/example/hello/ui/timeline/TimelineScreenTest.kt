@@ -3,13 +3,10 @@ package com.example.hello.ui.timeline
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.unit.height
 import com.example.hello.ui.theme.HelloTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -21,8 +18,9 @@ class TimelineScreenTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun filterPills_updateSelectionStateOnTap_andMatchDesignSystemGeometryAndSpacing() {
+    fun calendarHeader_displaysSelectedDate_stepsDays_andShowsTodayReturnPill() {
         val viewModel = TimelineViewModel()
+        val today = viewModel.uiState.value.today
 
         composeTestRule.setContent {
             HelloTheme(darkTheme = false) {
@@ -37,37 +35,22 @@ class TimelineScreenTest {
             }
         }
 
-        val allPill = composeTestRule.onNodeWithText("All")
-        val futurePill = composeTestRule.onNodeWithText("Future")
-        val pastPill = composeTestRule.onNodeWithText("Past")
+        val initialTitle = TimelineViewModel.formatCalendarHeaderTitle(today, today)
+        composeTestRule.onNodeWithText(initialTitle).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Today").assertDoesNotExist()
 
-        allPill.assertIsDisplayed().assertIsSelected()
-        futurePill.assertIsDisplayed().assertIsNotSelected()
-        pastPill.assertIsDisplayed().assertIsNotSelected()
-
-        val allBounds = allPill.getUnclippedBoundsInRoot()
-        val futureBounds = futurePill.getUnclippedBoundsInRoot()
-        val pastBounds = pastPill.getUnclippedBoundsInRoot()
-
-        assertEquals(28f, allBounds.height.value, 0.5f)
-        assertEquals(28f, futureBounds.height.value, 0.5f)
-        assertEquals(28f, pastBounds.height.value, 0.5f)
-
-        val gapAllToFuture = (futureBounds.left - allBounds.right).value
-        val gapFutureToPast = (pastBounds.left - futureBounds.right).value
-        assertEquals(8f, gapAllToFuture, 0.5f)
-        assertEquals(8f, gapFutureToPast, 0.5f)
-
-        futurePill.performClick()
+        val otherDayInWeek = if (today.dayOfWeek == java.time.DayOfWeek.SATURDAY) {
+            today.minusDays(1)
+        } else {
+            today.plusDays(1)
+        }
+        composeTestRule.onNodeWithText(otherDayInWeek.dayOfMonth.toString()).performClick()
         composeTestRule.waitForIdle()
-        futurePill.assertIsSelected()
-        allPill.assertIsNotSelected()
-        pastPill.assertIsNotSelected()
+        assertEquals(otherDayInWeek, viewModel.uiState.value.selectedDate)
+        composeTestRule.onNodeWithText("Today").assertIsDisplayed()
 
-        pastPill.performClick()
+        composeTestRule.onNodeWithText("Today").performClick()
         composeTestRule.waitForIdle()
-        pastPill.assertIsSelected()
-        allPill.assertIsNotSelected()
-        futurePill.assertIsNotSelected()
+        assertEquals(today, viewModel.uiState.value.selectedDate)
     }
 }

@@ -1,8 +1,11 @@
 package com.example.hello.ui
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.snap
@@ -11,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,6 +22,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +38,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -57,15 +61,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import com.example.hello.ui.components.AnimatedHelloMark
+import com.example.hello.ui.components.HelloMarkAnimationMode
 import com.example.hello.ui.components.HelloToastDefaults
 import com.example.hello.ui.components.HelloToastHost
 import com.example.hello.ui.components.LocalReducedMotion
 import com.example.hello.ui.components.TOAST_DURATION_ACTIONABLE_MS
 import com.example.hello.ui.components.TOAST_DURATION_INFORMATIONAL_MS
+import com.example.hello.ui.components.shouldPlayLaunchMarkAnimation
 import com.example.hello.ui.components.showHelloToast
+import kotlinx.coroutines.delay
 import com.example.hello.ui.haptics.HelloHaptics
 import com.example.hello.ui.haptics.LocalHelloHaptics
 import com.example.hello.ui.haptics.SemanticHapticType
@@ -80,6 +90,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import androidx.navigation.navArgument
 import androidx.work.WorkManager
+import com.example.hello.HelloApplication
 import com.example.hello.data.local.HelloDatabase
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.UserPreferencesRepository
@@ -103,6 +114,8 @@ import com.example.hello.ui.contacts.ArchivedContactsScreen
 import com.example.hello.ui.contacts.ContactsViewModel
 import com.example.hello.ui.detail.PersonDetailScreen
 import com.example.hello.ui.detail.PersonDetailViewModel
+import com.example.hello.ui.detail.components.ProfileReminderOverlayPayload
+import com.example.hello.ui.detail.components.ProfileReminderSheetOverlay
 import com.example.hello.ui.edit.PersonEditScreen
 import com.example.hello.ui.edit.PersonEditUiEvent
 import com.example.hello.ui.edit.PersonEditViewModel
@@ -180,6 +193,11 @@ import com.example.hello.ui.timeline.TimelineUiEvent
 import com.example.hello.ui.timeline.TimelineViewModel
 import kotlinx.coroutines.launch
 
+private object HelloLaunchSessionGate {
+    @Volatile
+    var hasPlayedColdLaunch: Boolean = false
+}
+
 @Composable
 fun MainAppShell(
     preferencesRepository: UserPreferencesRepository? = null,
@@ -191,36 +209,95 @@ fun MainAppShell(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val resolvedPreferencesRepository = remember(preferencesRepository, context) {
-        preferencesRepository ?: DataStoreUserPreferencesRepository(context.helloDataStore)
+    val app = remember(context) { HelloApplication.from(context) }
+    val resolvedPreferencesRepository = remember(preferencesRepository, app, context) {
+        preferencesRepository
+            ?: app?.userPreferencesRepository
+            ?: DataStoreUserPreferencesRepository(context.helloDataStore)
     }
-    val repository = remember(contactRepository) {
-        contactRepository ?: ContactRepository(
-            database = HelloDatabase.getInstance(context),
-            alarmScheduler = FollowUpAlarmScheduler(context)
-        )
+    val repository = remember(contactRepository, app, context) {
+        contactRepository
+            ?: app?.contactRepository
+            ?: ContactRepository(
+                database = HelloDatabase.getInstance(context),
+                alarmScheduler = FollowUpAlarmScheduler(context)
+            )
     }
-    val quickActionViewModel = remember(initialQuickActionViewModel, repository, resolvedPreferencesRepository) {
-        initialQuickActionViewModel ?: QuickActionViewModel(
-            repository = repository,
-            locationService = LocationService(context),
-            preferencesRepository = resolvedPreferencesRepository
-        )
+    val viewModelStoreOwner = remember(context, contactRepository) {
+        if (contactRepository == null) context.findViewModelStoreOwner() else null
     }
-    val homeViewModel = remember(initialHomeViewModel, repository, resolvedPreferencesRepository) {
-        initialHomeViewModel ?: HomeViewModel(
-            repository = repository,
-            preferencesRepository = resolvedPreferencesRepository
-        )
+    val quickActionViewModel = remember(initialQuickActionViewModel, viewModelStoreOwner, repository, resolvedPreferencesRepository, app) {
+        initialQuickActionViewModel ?: if (viewModelStoreOwner != null) {
+            ViewModelProvider(
+                viewModelStoreOwner,
+                singleViewModelFactory {
+                    QuickActionViewModel(
+                        repository = repository,
+                        locationService = app?.locationService ?: LocationService(context.applicationContext),
+                        captureFlowRepository = app?.captureFlowRepository,
+                        preferencesRepository = resolvedPreferencesRepository
+                    )
+                }
+            )[QuickActionViewModel::class.java]
+        } else {
+            QuickActionViewModel(
+                repository = repository,
+                locationService = app?.locationService ?: LocationService(context.applicationContext),
+                captureFlowRepository = app?.captureFlowRepository,
+                preferencesRepository = resolvedPreferencesRepository
+            )
+        }
     }
-    val timelineViewModel = remember(repository) {
-        TimelineViewModel(repository = repository)
+    val homeViewModel = remember(initialHomeViewModel, viewModelStoreOwner, repository, resolvedPreferencesRepository) {
+        initialHomeViewModel ?: if (viewModelStoreOwner != null) {
+            ViewModelProvider(
+                viewModelStoreOwner,
+                singleViewModelFactory {
+                    HomeViewModel(
+                        repository = repository,
+                        preferencesRepository = resolvedPreferencesRepository
+                    )
+                }
+            )[HomeViewModel::class.java]
+        } else {
+            HomeViewModel(
+                repository = repository,
+                preferencesRepository = resolvedPreferencesRepository
+            )
+        }
     }
-    val contactsViewModel = remember(initialContactsViewModel, repository) {
-        initialContactsViewModel ?: ContactsViewModel(repository = repository)
+    val timelineViewModel = remember(viewModelStoreOwner, repository, resolvedPreferencesRepository) {
+        if (viewModelStoreOwner != null) {
+            ViewModelProvider(
+                viewModelStoreOwner,
+                singleViewModelFactory {
+                    TimelineViewModel(
+                        repository = repository,
+                        preferencesRepository = resolvedPreferencesRepository
+                    )
+                }
+            )[TimelineViewModel::class.java]
+        } else {
+            TimelineViewModel(
+                repository = repository,
+                preferencesRepository = resolvedPreferencesRepository
+            )
+        }
+    }
+    val contactsViewModel = remember(initialContactsViewModel, viewModelStoreOwner, repository) {
+        initialContactsViewModel ?: if (viewModelStoreOwner != null) {
+            ViewModelProvider(
+                viewModelStoreOwner,
+                singleViewModelFactory {
+                    ContactsViewModel(repository = repository)
+                }
+            )[ContactsViewModel::class.java]
+        } else {
+            ContactsViewModel(repository = repository)
+        }
     }
 
-    val userPreferences by resolvedPreferencesRepository.userPreferencesFlow.collectAsState(initial = null)
+    val userPreferences by resolvedPreferencesRepository.userPreferencesFlow.collectAsStateWithLifecycle(initialValue = null)
 
     // ADR 0005: Zero-flicker cold start gating (<50ms). Render solid warm surface while DataStore initial == null
     if (userPreferences == null) {
@@ -305,11 +382,11 @@ fun MainAppShell(
 
     val isContactsSelectionMode by remember(contactsViewModel) {
         contactsViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
-    }.collectAsState(initial = false)
+    }.collectAsStateWithLifecycle(initialValue = false)
 
     val isTimelineSelectionMode by remember(timelineViewModel) {
         timelineViewModel.uiState.map { it.isSelectionMode }.distinctUntilChanged()
-    }.collectAsState(initial = false)
+    }.collectAsStateWithLifecycle(initialValue = false)
 
     // Hide floating dock vertically on non-root/non-detail destinations or when the active surface is in selection mode.
     // On PersonDetailRoute (outside Timeline Selection Mode), the dock stays vertically stationary and morphs in place
@@ -340,6 +417,7 @@ fun MainAppShell(
     var isProfileMorphReversing by remember { mutableStateOf(false) }
     var profileReminderTrigger by remember { mutableStateOf<(() -> Unit)?>(null) }
     var profileReminderSavedEventId by remember { mutableLongStateOf(0L) }
+    var profileReminderOverlayPayload by remember { mutableStateOf<ProfileReminderOverlayPayload?>(null) }
 
     val effectiveSelectionBackProgress = maxOf(selectionBackProgress, detailSelectionBackProgress).coerceIn(0f, 1f)
     val isProfileToRootBackScrub =
@@ -502,24 +580,38 @@ fun MainAppShell(
     val restingToastBottomPadding = maxOf(navBarBottomPadding, restingDockHeight) + HelloToastDefaults.BOTTOM_MARGIN_DP
     val hiddenToastDeltaDp = (restingDockHeight - navBarBottomPadding).coerceAtLeast(0.dp)
 
+    var showLaunchOverlay by remember {
+        val shouldPlay = shouldPlayLaunchMarkAnimation(
+            hasPlayedInProcess = HelloLaunchSessionGate.hasPlayedColdLaunch,
+            hasCompletedOnboarding = hasCompletedOnboarding,
+            hasInitialDeepLink = !initialContactId.isNullOrBlank(),
+            isReducedMotion = isReducedMotion
+        )
+        if (shouldPlay) {
+            HelloLaunchSessionGate.hasPlayedColdLaunch = true
+        }
+        mutableStateOf(shouldPlay)
+    }
+
     CompositionLocalProvider(
         LocalHelloHaptics provides helloHaptics,
         LocalReducedMotion provides isReducedMotion
     ) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = {
-                HelloToastHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier
-                        .padding(bottom = restingToastBottomPadding)
-                        .graphicsLayer {
-                            translationY = (hiddenToastDeltaDp * (1f - dockVisibilityProgressState.value)).toPx()
-                        }
-                )
-            }
-        ) { innerPadding ->
+        Box(modifier = modifier.fillMaxSize()) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = MaterialTheme.colorScheme.background,
+                snackbarHost = {
+                    HelloToastHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier
+                            .padding(bottom = restingToastBottomPadding)
+                            .graphicsLayer {
+                                translationY = (hiddenToastDeltaDp * (1f - dockVisibilityProgressState.value)).toPx()
+                            }
+                    )
+                }
+            ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -562,7 +654,8 @@ fun MainAppShell(
                     onDetailSelectionModeChanged = { isDetailSelectionMode = it },
                     onDetailSelectionBackProgress = { detailSelectionBackProgress = it },
                     onRegisterProfileReminderTrigger = { profileReminderTrigger = it },
-                    onProfileReminderSaved = { profileReminderSavedEventId += 1L }
+                    onProfileReminderSaved = { profileReminderSavedEventId += 1L },
+                    onProfileReminderOverlayChanged = { profileReminderOverlayPayload = it }
                 )
 
                 RootTabBackCoordinator(
@@ -630,7 +723,57 @@ fun MainAppShell(
 
                 // Quick Action Sheet Host (Flow A: Add Contact card flow, Flow B: Met Again encounter sheet)
                 QuickActionSheetHostContainer(quickActionViewModel = quickActionViewModel)
+
+                // Profile Reminder In-Hierarchy Sheet Overlay (RAM-61: synchronized with IME, above FloatingDockOverlay)
+                ProfileReminderSheetOverlay(payload = profileReminderOverlayPayload)
             }
+        }
+
+            // Cold-start Hello Mark Motion overlay (ADR-0041): mark-only 0.65s draw-on, tap skips immediately
+            HelloLaunchOverlay(
+                visible = showLaunchOverlay,
+                onDismiss = { showLaunchOverlay = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun HelloLaunchOverlay(
+    visible: Boolean,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    AnimatedVisibility(
+        visible = visible,
+        enter = EnterTransition.None,
+        exit = fadeOut(
+            animationSpec = tween(
+                durationMillis = MotionTokens.HelloMarkMotion.LAUNCH_EXIT_FADE_MS,
+                easing = MotionTokens.StrongEaseOut
+            )
+        ),
+        modifier = Modifier.zIndex(100f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .pointerInput(Unit) {
+                    detectTapGestures { onDismiss() }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedHelloMark(
+                mode = HelloMarkAnimationMode.LAUNCH,
+                width = 124.dp,
+                onFinished = {
+                    scope.launch {
+                        delay(MotionTokens.HelloMarkMotion.LAUNCH_HOLD_MS.toLong())
+                        onDismiss()
+                    }
+                }
+            )
         }
     }
 }
@@ -884,7 +1027,7 @@ private fun TimelineTabDestination(
     onLogEncounterClick: () -> Unit,
     selectionBackProgress: Float = 0f
 ) {
-    val timelineUiState by timelineViewModel.uiState.collectAsState()
+    val timelineUiState by timelineViewModel.uiState.collectAsStateWithLifecycle()
     ScreenDepthWrapper(isDepthVisible = false) {
         TimelineScreen(
             uiState = timelineUiState,
@@ -909,7 +1052,7 @@ private fun HomeTabDestination(
     onAddContactClick: () -> Unit,
     terminology: RelationshipTerminology
 ) {
-    val homeUiState by homeViewModel.uiState.collectAsState()
+    val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     ScreenDepthWrapper(isDepthVisible = false) {
         HomeScreen(
             uiState = homeUiState,
@@ -937,7 +1080,7 @@ private fun PeopleTabDestination(
     isReducedMotion: Boolean = false,
     selectionBackProgress: Float = 0f
 ) {
-    val contactsUiState by contactsViewModel.uiState.collectAsState()
+    val contactsUiState by contactsViewModel.uiState.collectAsStateWithLifecycle()
     ScreenDepthWrapper(isDepthVisible = false) {
         ContactsScreen(
             uiState = contactsUiState,
@@ -972,7 +1115,8 @@ private fun MainAppNavHost(
     onDetailSelectionModeChanged: (Boolean) -> Unit,
     onDetailSelectionBackProgress: (Float) -> Unit,
     onRegisterProfileReminderTrigger: ((() -> Unit)?) -> Unit = {},
-    onProfileReminderSaved: () -> Unit = {}
+    onProfileReminderSaved: () -> Unit = {},
+    onProfileReminderOverlayChanged: (ProfileReminderOverlayPayload?) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -982,9 +1126,14 @@ private fun MainAppNavHost(
     val useRootBridgeState = rememberUpdatedState(useRootBridgeForCurrentRoute)
     val deeperBackProgressState = rememberUpdatedState(deeperRouteBackProgress)
 
-    val settingsViewModel = remember {
-        val wm = try { WorkManager.getInstance(context) } catch (_: Exception) { null }
-        SettingsViewModel(preferencesRepository, quickActionViewModel.repository, wm)
+    val settingsViewModel = remember(preferencesRepository, quickActionViewModel) {
+        val wm = try { WorkManager.getInstance(context.applicationContext) } catch (_: Exception) { null }
+        SettingsViewModel(
+            preferencesRepository = preferencesRepository,
+            contactRepository = quickActionViewModel.repository,
+            workManager = wm,
+            captureFlowRepository = quickActionViewModel.captureFlowRepository
+        )
     }
 
     val navGraph = remember(navController, startDestination, isReducedMotion) {
@@ -1001,7 +1150,7 @@ private fun MainAppNavHost(
                         isReplay = false
                     )
                 }
-                val onboardingUiState by onboardingViewModel.uiState.collectAsState()
+                val onboardingUiState by onboardingViewModel.uiState.collectAsStateWithLifecycle()
 
                 OnboardingScreen(
                     uiState = onboardingUiState,
@@ -1027,7 +1176,7 @@ private fun MainAppNavHost(
                         isReplay = true
                     )
                 }
-                val onboardingUiState by onboardingViewModel.uiState.collectAsState()
+                val onboardingUiState by onboardingViewModel.uiState.collectAsStateWithLifecycle()
 
                 OnboardingScreen(
                     uiState = onboardingUiState,
@@ -1147,7 +1296,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1171,7 +1320,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsFlowsScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1188,7 +1337,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsTerminologyScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1205,7 +1354,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsTagsScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1222,7 +1371,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsDataScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1239,7 +1388,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsAppearanceScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1256,7 +1405,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val settingsUiState by settingsViewModel.uiState.collectAsState()
+                val settingsUiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
                 SettingsPreferencesScreen(
                     uiState = settingsUiState,
                     onEvent = settingsViewModel::onEvent,
@@ -1303,7 +1452,7 @@ private fun MainAppNavHost(
                 onDeeperBackProgress = onDeeperRouteBackProgress,
                 onDeeperBackCommit = onDeeperRouteBackCommit
             ) {
-                val contactsUiState by contactsViewModel.uiState.collectAsState()
+                val contactsUiState by contactsViewModel.uiState.collectAsStateWithLifecycle()
                 ArchivedContactsScreen(
                     contacts = contactsUiState.archivedContacts,
                     onRestoreContact = { contactsViewModel.onEvent(ContactsUiEvent.OnRestoreContact(it)) },
@@ -1332,7 +1481,7 @@ private fun MainAppNavHost(
                         preferencesRepository = preferencesRepository
                     )
                 }
-                val detailUiState by detailViewModel.uiState.collectAsState()
+                val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
                 var lastReportedReminderSaveId by remember(backStackEntry.id) {
                     mutableLongStateOf(detailUiState.reminderSavedEventId)
                 }
@@ -1355,6 +1504,7 @@ private fun MainAppNavHost(
                     }
                     onDispose {
                         onRegisterProfileReminderTrigger(null)
+                        onProfileReminderOverlayChanged(null)
                         onDetailSelectionModeChanged(false)
                         onDetailSelectionBackProgress(0f)
                     }
@@ -1388,6 +1538,7 @@ private fun MainAppNavHost(
                             },
                             externalSnackbarHostState = snackbarHostState,
                             onSelectionBackProgressChanged = onDetailSelectionBackProgress,
+                            onReminderOverlayChanged = onProfileReminderOverlayChanged,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .zIndex(PersonDetailMotionConfig.DETAIL_Z_INDEX)
@@ -1433,7 +1584,7 @@ private fun MainAppNavHost(
                                 }
                             )[PersonEditViewModel::class.java]
                         }
-                        val editUiState by editViewModel.uiState.collectAsState()
+                        val editUiState by editViewModel.uiState.collectAsStateWithLifecycle()
 
                         PersonEditScreen(
                             uiState = editUiState,
@@ -1537,7 +1688,7 @@ private fun MainAppNavHost(
                                 }
                             )[AvatarPlaygroundViewModel::class.java]
                         }
-                        val playgroundUiState by playgroundViewModel.uiState.collectAsState()
+                        val playgroundUiState by playgroundViewModel.uiState.collectAsStateWithLifecycle()
 
                         AvatarPlaygroundScreen(
                             uiState = playgroundUiState,
@@ -1709,9 +1860,9 @@ private fun FloatingDockOverlay(
     preferredTerminology: RelationshipTerminology,
     modifier: Modifier = Modifier
 ) {
-    val homeUiState by homeViewModel.uiState.collectAsState()
+    val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val isSpeedDialOpen = homeUiState.isSpeedDialOpen
-    val allFollowUps by quickActionViewModel.repository.followUps.collectAsState()
+    val allFollowUps by quickActionViewModel.repository.followUps.collectAsStateWithLifecycle()
     val pendingReminderCount = remember(activeDetailContactId, allFollowUps) {
         if (activeDetailContactId.isNullOrBlank()) {
             0
@@ -1802,7 +1953,7 @@ private fun FloatingDockOverlay(
 private fun QuickActionSheetHostContainer(
     quickActionViewModel: QuickActionViewModel
 ) {
-    val quickActionUiState by quickActionViewModel.uiState.collectAsState()
+    val quickActionUiState by quickActionViewModel.uiState.collectAsStateWithLifecycle()
     QuickActionSheetHost(
         uiState = quickActionUiState,
         onEvent = quickActionViewModel::onEvent
@@ -1819,10 +1970,10 @@ private fun SnackbarFeedbackCollector(
     terminology: RelationshipTerminology = RelationshipTerminology.DEFAULT,
     helloHaptics: HelloHaptics = LocalHelloHaptics.current
 ) {
-    val homeUiState by homeViewModel.uiState.collectAsState()
-    val timelineUiState by timelineViewModel.uiState.collectAsState()
-    val contactsUiState by contactsViewModel.uiState.collectAsState()
-    val quickActionUiState by quickActionViewModel.uiState.collectAsState()
+    val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val timelineUiState by timelineViewModel.uiState.collectAsStateWithLifecycle()
+    val contactsUiState by contactsViewModel.uiState.collectAsStateWithLifecycle()
+    val quickActionUiState by quickActionViewModel.uiState.collectAsStateWithLifecycle()
     val toastScope = rememberCoroutineScope()
     val activeToastJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
 
@@ -1908,7 +2059,9 @@ private fun SnackbarFeedbackCollector(
         val msg = timelineUiState.userMessage ?: return@LaunchedEffect
         timelineViewModel.onEvent(TimelineUiEvent.OnDismissUserMessage)
         launchToast {
-            val hasUndo = msg.startsWith("Deleted", ignoreCase = true)
+            val isFollowUpDone = msg.equals("Reminder completed", ignoreCase = true) ||
+                msg.equals("Follow-up marked as done!", ignoreCase = true)
+            val hasUndo = msg.startsWith("Deleted", ignoreCase = true) || isFollowUpDone
             val result = if (hasUndo) {
                 snackbarHostState.showHelloToast(
                     message = msg,
@@ -1923,11 +2076,27 @@ private fun SnackbarFeedbackCollector(
             }
             if (result == SnackbarResult.ActionPerformed) {
                 helloHaptics.perform(SemanticHapticType.SUCCESS_CONFIRMATION)
-                if (quickActionViewModel.repository.undoLastDeleteEncounters()) {
-                    snackbarHostState.showHelloToast(
-                        message = "Encounter restored",
-                        durationMs = TOAST_DURATION_INFORMATIONAL_MS
-                    )
+                if (isFollowUpDone) {
+                    if (quickActionViewModel.repository.undoLastFollowUpMutation()) {
+                        snackbarHostState.showHelloToast(
+                            message = "Reminder restored",
+                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                        )
+                    }
+                } else {
+                    val restoredEncounter = quickActionViewModel.repository.undoLastDeleteEncounters()
+                    val restoredFollowUp = quickActionViewModel.repository.undoLastFollowUpMutation()
+                    if (restoredEncounter || restoredFollowUp) {
+                        val restoredMsg = when {
+                            restoredEncounter && restoredFollowUp -> "Items restored"
+                            restoredFollowUp -> "Reminder restored"
+                            else -> "Encounter restored"
+                        }
+                        snackbarHostState.showHelloToast(
+                            message = restoredMsg,
+                            durationMs = TOAST_DURATION_INFORMATIONAL_MS
+                        )
+                    }
                 }
             }
         }
@@ -1943,6 +2112,19 @@ private fun SnackbarFeedbackCollector(
             snackbarHostState.showHelloToast(msg, durationMs = TOAST_DURATION_INFORMATIONAL_MS)
         }
     }
+}
+
+private tailrec fun Context.findViewModelStoreOwner(): ViewModelStoreOwner? = when (this) {
+    is ViewModelStoreOwner -> this
+    is ContextWrapper -> baseContext.findViewModelStoreOwner()
+    else -> null
+}
+
+private inline fun <VM : ViewModel> singleViewModelFactory(
+    crossinline createVm: () -> VM
+): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = createVm() as T
 }
 
 @Preview(name = "App Shell Light", showBackground = true, widthDp = 390, heightDp = 844)
@@ -1967,7 +2149,7 @@ fun MainAppShellLightPreview() {
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
-                    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
+                    override suspend fun setCheckInDigestFrequency(frequency: com.example.hello.data.preferences.CheckInDigestFrequency) {}
                     override suspend fun setActiveFlowPresetId(presetId: String) {}
                 }
             }
@@ -1997,7 +2179,7 @@ fun MainAppShellDarkPreview() {
                     override suspend fun setDynamicColor(enabled: Boolean) {}
                     override suspend fun setReduceAnimations(enabled: Boolean) {}
                     override suspend fun setNotificationTime(hour: Int, minute: Int) {}
-                    override suspend fun setDefaultIncludeLocation(enabled: Boolean) {}
+                    override suspend fun setCheckInDigestFrequency(frequency: com.example.hello.data.preferences.CheckInDigestFrequency) {}
                     override suspend fun setActiveFlowPresetId(presetId: String) {}
                 }
             }

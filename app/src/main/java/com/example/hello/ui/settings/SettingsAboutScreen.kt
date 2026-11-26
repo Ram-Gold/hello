@@ -1,5 +1,7 @@
 package com.example.hello.ui.settings
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.hello.ui.components.HelloHorizontalLogo
+import com.example.hello.ui.components.AnimatedHelloHorizontalLogo
+import com.example.hello.ui.haptics.LocalHelloHaptics
+import com.example.hello.ui.haptics.SemanticHapticType
 
 @Composable
 fun SettingsAboutScreen(
@@ -72,13 +77,27 @@ fun SettingsAboutScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
+                val haptics = LocalHelloHaptics.current
+                var logoReplayKey by remember { mutableIntStateOf(0) }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClickLabel = "Replay Hello mark animation"
+                        ) {
+                            haptics.perform(SemanticHapticType.MODE_TOGGLE)
+                            logoReplayKey += 1
+                        }
                         .padding(vertical = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    HelloHorizontalLogo(width = 180.dp)
+                    AnimatedHelloHorizontalLogo(
+                        width = 180.dp,
+                        playKey = logoReplayKey
+                    )
                 }
             }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.Contact
 import com.example.hello.platform.avatar.AvatarStorageManager
+import com.example.hello.ui.components.PhoneInputUtils
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -142,10 +143,12 @@ class PersonEditViewModel(
                 }
             }
             is PersonEditUiEvent.OnPhoneChange -> {
+                val sanitized = PhoneInputUtils.sanitizeInput(event.phone)
                 _uiState.update { current ->
-                    val isMod = checkModified(current.copy(phone = event.phone))
+                    val isMod = checkModified(current.copy(phone = sanitized))
                     current.copy(
-                        phone = event.phone,
+                        phone = sanitized,
+                        phoneError = null,
                         isModified = isMod
                     )
                 }
@@ -320,7 +323,7 @@ class PersonEditViewModel(
         val base = initialContact ?: return true
         val sameName = current.name.trim() == base.name.trim()
         val sameAliases = current.aliases == base.aliases
-        val samePhone = current.phone.trim() == (base.phone ?: "").trim()
+        val samePhone = PhoneInputUtils.normalizeForStorage(current.phone) == PhoneInputUtils.normalizeForStorage(base.phone)
         val sameEmail = current.email.trim() == (base.email ?: "").trim()
         val sameNotes = current.notes.trim() == base.notes.trim()
         val samePhoto = current.photoUri == base.photoUri
@@ -338,6 +341,12 @@ class PersonEditViewModel(
         val cleanName = current.name.trim()
         if (cleanName.isBlank()) return
 
+        val phoneValidationError = PhoneInputUtils.validateInput(current.phone)
+        if (phoneValidationError != null) {
+            _uiState.update { it.copy(phoneError = phoneValidationError) }
+            return
+        }
+
         val base = initialContact
         val committedPhotoUri = if (avatarStorage != null) {
             avatarStorage.commitStagedAvatar(
@@ -349,6 +358,7 @@ class PersonEditViewModel(
             current.photoUri
         }
         val committedNotionistConfig = if (committedPhotoUri != null) current.notionistConfig else null
+        val normalizedPhone = PhoneInputUtils.normalizeForStorage(current.phone)
         val updated = Contact(
             id = contactId,
             name = cleanName,
@@ -356,7 +366,7 @@ class PersonEditViewModel(
             role = current.role.trim().ifEmpty { null },
             company = current.company.trim().ifEmpty { null },
             birthday = current.birthday,
-            phone = current.phone.trim().ifEmpty { null },
+            phone = normalizedPhone,
             email = current.email.trim().ifEmpty { null },
             tagIds = current.selectedTagIds.toList(),
             notes = current.notes.trim(),
@@ -375,6 +385,8 @@ class PersonEditViewModel(
         initialContact = updated
         _uiState.update {
             it.copy(
+                phone = normalizedPhone.orEmpty(),
+                phoneError = null,
                 photoUri = committedPhotoUri,
                 notionistConfig = committedNotionistConfig,
                 isModified = false,

@@ -4,8 +4,6 @@ import android.content.Context
 import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.local.entity.toEntity
 import com.example.hello.data.repository.ContactRepository
-import com.example.hello.data.repository.FollowUpRepository
-import com.example.hello.data.repository.RoomFollowUpRepository
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.ui.home.HomeUiEvent
 import com.example.hello.ui.home.HomeViewModel
@@ -38,7 +36,6 @@ class FollowUpPersistenceRemindersTest {
 
     private lateinit var context: Context
     private lateinit var database: HelloDatabase
-    private lateinit var followUpRepository: FollowUpRepository
     private lateinit var testDispatcher: kotlinx.coroutines.test.TestDispatcher
 
     @Before
@@ -48,7 +45,6 @@ class FollowUpPersistenceRemindersTest {
         Dispatchers.setMain(dispatcher)
         context = createMockContext()
         database = HelloDatabase.createInMemory(context)
-        followUpRepository = RoomFollowUpRepository(database)
     }
 
     @After
@@ -95,18 +91,18 @@ class FollowUpPersistenceRemindersTest {
             note = "Pending Task 2"
         )
 
-        followUpRepository.saveFollowUp(pending1)
-        followUpRepository.saveFollowUp(pending2)
+        database.followUpDao().insertFollowUp(pending1.toEntity())
+        database.followUpDao().insertFollowUp(pending2.toEntity())
 
         // Initially both are pending
-        val initialPending = followUpRepository.getPendingFollowUpsFlow().first()
+        val initialPending = database.followUpDao().getPendingFollowUpsFlow().first()
         assertEquals(2, initialPending.size)
 
         // Mark pending1 done
-        followUpRepository.markDone("fu-pending-1", doneAt = now)
+        database.followUpDao().markDone("fu-pending-1", doneAt = now)
 
         // Only pending2 remains in pending stream
-        val updatedPending = followUpRepository.getPendingFollowUpsFlow().first()
+        val updatedPending = database.followUpDao().getPendingFollowUpsFlow().first()
         assertEquals(1, updatedPending.size)
         assertEquals("fu-pending-2", updatedPending.first().id)
     }
@@ -120,16 +116,16 @@ class FollowUpPersistenceRemindersTest {
             dueAt = originalDueAt,
             note = "Review proposal"
         )
-        followUpRepository.saveFollowUp(followUp)
+        database.followUpDao().insertFollowUp(followUp.toEntity())
 
         val newDueAt = originalDueAt.plus(3, ChronoUnit.DAYS)
 
         // Measure snooze ACID commit execution time
         val startNanos = System.nanoTime()
-        followUpRepository.snooze("fu-snooze-1", newDueAt)
+        database.followUpDao().snooze("fu-snooze-1", newDueAt)
         val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000.0
 
-        val retrieved = followUpRepository.getPendingFollowUpsFlow().first().first { it.id == "fu-snooze-1" }
+        val retrieved = database.followUpDao().getPendingFollowUpsFlow().first().first { it.id == "fu-snooze-1" }
         assertEquals(newDueAt, retrieved.dueAt)
         assertTrue("Snooze ACID update took $elapsedMs ms, must commit promptly", elapsedMs < 50.0)
     }
@@ -158,7 +154,7 @@ class FollowUpPersistenceRemindersTest {
                 dueAt = Instant.now().plus(2, ChronoUnit.DAYS),
                 note = "Verify feedback"
             )
-            repository.followUpRepository?.saveFollowUp(followUp)
+            database.followUpDao().insertFollowUp(followUp.toEntity())
             testScope.advanceUntilIdle()
 
             // User marks reminder done on Home screen
@@ -176,7 +172,7 @@ class FollowUpPersistenceRemindersTest {
                 dueAt = Instant.now().plus(1, ChronoUnit.DAYS),
                 note = "Follow up on design review"
             )
-            repository.followUpRepository?.saveFollowUp(snoozeFollowUp)
+            database.followUpDao().insertFollowUp(snoozeFollowUp.toEntity())
             testScope.advanceUntilIdle()
 
             homeViewModel.onEvent(HomeUiEvent.OnReminderSnooze("fu-snooze-ui"))

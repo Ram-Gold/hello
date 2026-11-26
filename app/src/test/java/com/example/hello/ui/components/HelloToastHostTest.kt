@@ -34,12 +34,20 @@ class HelloToastHostTest {
         assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("Failed to save contact"))
         assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("No phone number available"))
         assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("An error occurred"))
+        assertEquals(ToastSemanticType.ALERT, resolveToastSemanticType("Please enter a name first"))
 
-        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Contact updated"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Saved Alice & logged encounter!"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Logged encounter with Alice!"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Added Alice to contacts!"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Contact updated"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Contact updated!"))
+        assertEquals(ToastSemanticType.SAVED, resolveToastSemanticType("Reminder saved"))
+
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Contact restored"))
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Marked as done!"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Reminder completed"))
         assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Export finished"))
-        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Reminder saved"))
+        assertEquals(ToastSemanticType.SUCCESS, resolveToastSemanticType("Design theme updated to Monochrome"))
     }
 
     @Test
@@ -120,6 +128,7 @@ class HelloToastHostTest {
         assertEquals(ToastProgressTone.ERROR, resolveProgressTone(ToastSemanticType.DELETE))
         assertEquals(ToastProgressTone.ERROR, resolveProgressTone(ToastSemanticType.ALERT))
         assertEquals(ToastProgressTone.SECONDARY, resolveProgressTone(ToastSemanticType.ARCHIVE))
+        assertEquals(ToastProgressTone.PRIMARY, resolveProgressTone(ToastSemanticType.SAVED))
         assertEquals(ToastProgressTone.PRIMARY, resolveProgressTone(ToastSemanticType.SUCCESS))
         assertEquals(ToastProgressTone.PRIMARY, resolveProgressTone(ToastSemanticType.FAVORITE))
     }
@@ -135,6 +144,7 @@ class HelloToastHostTest {
         assertEquals(testScheme.error, resolveProgressColor(ToastSemanticType.DELETE, testScheme))
         assertEquals(testScheme.error, resolveProgressColor(ToastSemanticType.ALERT, testScheme))
         assertEquals(testScheme.secondary, resolveProgressColor(ToastSemanticType.ARCHIVE, testScheme))
+        assertEquals(testScheme.primary, resolveProgressColor(ToastSemanticType.SAVED, testScheme))
         assertEquals(testScheme.primary, resolveProgressColor(ToastSemanticType.SUCCESS, testScheme))
         assertEquals(testScheme.primary, resolveProgressColor(ToastSemanticType.FAVORITE, testScheme))
     }

@@ -32,10 +32,16 @@ class ExportDataWorker(
             val db = HelloDatabase.getInstance(applicationContext)
 
             val contacts = db.contactDao().getAllContactsFlow().firstOrNull().orEmpty().map { it.toDomain() }
-            val encounters = db.encounterDao().getAllEncountersFlow().firstOrNull().orEmpty().map { it.toDomain() }
+            val encounterParticipants = db.encounterDao().getAllPersonEncounters()
+                .groupBy({ it.encounterId }, { it.contactId })
+            val encounters = db.encounterDao().getAllEncountersFlow().firstOrNull().orEmpty()
+                .map { it.toDomain(encounterParticipants[it.id].orEmpty()) }
             val places = db.placeDao().getAllPlacesFlow().firstOrNull().orEmpty().map { it.toDomain() }
             val tags = db.tagDao().getAllTagsFlow().firstOrNull().orEmpty().map { it.toDomain() }
-            val followUps = db.followUpDao().getAllFollowUps().map { it.toDomain() }
+            val followUpParticipants = db.followUpDao().getAllPersonFollowUps()
+                .groupBy({ it.followUpId }, { it.contactId })
+            val followUps = db.followUpDao().getAllFollowUps()
+                .map { it.toDomain(followUpParticipants[it.id].orEmpty()) }
 
             val uriString = inputData.getString(KEY_OUTPUT_URI)
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))

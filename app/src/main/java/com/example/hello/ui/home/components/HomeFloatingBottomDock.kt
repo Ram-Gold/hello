@@ -50,6 +50,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -103,6 +104,25 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+
+private const val BLUR_QUANTIZATION_STEP_PX = 0.25f
+private const val BLUR_CACHE_MAX_ENTRIES = 128
+
+private val decalBlurEffectCache = object : LinkedHashMap<Int, BlurEffect>(32, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, BlurEffect>?): Boolean {
+        return size > BLUR_CACHE_MAX_ENTRIES
+    }
+}
+
+private fun cachedDecalBlurEffect(blurPx: Float): BlurEffect {
+    val bucket = (blurPx / BLUR_QUANTIZATION_STEP_PX).roundToInt().coerceAtLeast(1)
+    synchronized(decalBlurEffectCache) {
+        return decalBlurEffectCache.getOrPut(bucket) {
+            val quantizedPx = bucket * BLUR_QUANTIZATION_STEP_PX
+            BlurEffect(quantizedPx, quantizedPx, TileMode.Decal)
+        }
+    }
+}
 
 @Composable
 fun HomeFloatingBottomDock(
@@ -479,7 +499,7 @@ fun HomeFloatingBottomDock(
                                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                         val blurPx = morphState.navPillBlurDp.dp.toPx()
                                         renderEffect = if (blurPx > 0.25f) {
-                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                            cachedDecalBlurEffect(blurPx)
                                         } else {
                                             null
                                         }
@@ -610,7 +630,7 @@ fun HomeFloatingBottomDock(
                                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                         val blurPx = morphState.reminderPillBlurDp.dp.toPx()
                                         renderEffect = if (blurPx > 0.25f) {
-                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                            cachedDecalBlurEffect(blurPx)
                                         } else {
                                             null
                                         }
@@ -620,8 +640,8 @@ fun HomeFloatingBottomDock(
                             ) {
                                 ProfileReminderPillContent(
                                     hasActiveReminders = pendingReminderCount > 0,
-                                    savedTransitionProgress = savedTransition.value,
-                                    bellRotationDeg = bellRotation.value,
+                                    savedTransitionProvider = { savedTransition.value },
+                                    bellRotationProvider = { bellRotation.value },
                                     contentColor = reminderContentColor,
                                     surfaceCutoutColor = reminderSurfaceColor,
                                     activeDotColor = MaterialTheme.colorScheme.primary,
@@ -843,15 +863,15 @@ private fun FeatheredRevealLabel(
 @Composable
 private fun ProfileReminderPillContent(
     hasActiveReminders: Boolean,
-    savedTransitionProgress: Float,
-    bellRotationDeg: Float,
+    savedTransitionProvider: () -> Float,
+    bellRotationProvider: () -> Float,
     contentColor: Color,
     surfaceCutoutColor: Color,
     activeDotColor: Color,
     isReducedMotion: Boolean,
     labelStateProvider: () -> Triple<Float, Float, Float> = { Triple(1f, 1f, 0f) }
 ) {
-    val activeProgress by animateFloatAsState(
+    val activeProgressState = animateFloatAsState(
         targetValue = if (hasActiveReminders) 1f else 0f,
         animationSpec = tween(
             durationMillis = if (isReducedMotion) 120 else 180,
@@ -859,54 +879,60 @@ private fun ProfileReminderPillContent(
         ),
         label = "profileReminderActiveProgress"
     )
-    val t = savedTransitionProgress.coerceIn(0f, 1f)
-    val swapBlurDp = if (isReducedMotion) {
-        0f
-    } else {
-        DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(t * PI).toFloat()
+    val showRemind by remember(savedTransitionProvider) {
+        derivedStateOf {
+            val t = savedTransitionProvider().coerceIn(0f, 1f)
+            (1f - (t * 1.25f)).coerceIn(0f, 1f) > 0.001f
+        }
     }
-    val remindAlpha = (1f - (t * 1.25f)).coerceIn(0f, 1f)
-    val remindScale = if (isReducedMotion) 1f else (1f - 0.06f * t)
-    val savedAlpha = ((t - 0.15f) / 0.85f).coerceIn(0f, 1f)
-    val savedScale = if (isReducedMotion) 1f else (0.94f + 0.06f * t)
+    val showSaved by remember(savedTransitionProvider) {
+        derivedStateOf {
+            val t = savedTransitionProvider().coerceIn(0f, 1f)
+            ((t - 0.15f) / 0.85f).coerceIn(0f, 1f) > 0.001f
+        }
+    }
+    val showOutlineBell by remember {
+        derivedStateOf { activeProgressState.value < 0.999f }
+    }
+    val showFilledBell by remember {
+        derivedStateOf { activeProgressState.value > 0.001f }
+    }
 
     Box(contentAlignment = Alignment.Center) {
-        if (remindAlpha > 0.001f) {
+        if (showRemind) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.graphicsLayer {
+                    val t = savedTransitionProvider().coerceIn(0f, 1f)
+                    val remindAlpha = (1f - (t * 1.25f)).coerceIn(0f, 1f)
+                    val remindScale = if (isReducedMotion) 1f else (1f - 0.06f * t)
                     alpha = remindAlpha
                     scaleX = remindScale
                     scaleY = remindScale
                     clip = false
                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val swapBlurDp = DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(t * PI).toFloat()
                         val blurPx = swapBlurDp.dp.toPx()
                         renderEffect = if (blurPx > 0.2f) {
-                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                            cachedDecalBlurEffect(blurPx)
                         } else {
                             null
                         }
                     }
                 }
             ) {
-                val bellSwapBlurDp = if (isReducedMotion) {
-                    0f
-                } else {
-                    DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(activeProgress * PI).toFloat()
-                }
                 Box(
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer {
                             transformOrigin = TransformOrigin(0.5f, 0.15f)
-                            rotationZ = if (isReducedMotion) 0f else bellRotationDeg
+                            rotationZ = if (isReducedMotion) 0f else bellRotationProvider()
                             clip = false
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (activeProgress < 0.999f) {
-                        val outlineScale = if (isReducedMotion) 1f else (1f - 0.06f * activeProgress)
+                    if (showOutlineBell) {
                         Icon(
                             imageVector = Icons.Rounded.NotificationsNone,
                             contentDescription = null,
@@ -914,14 +940,17 @@ private fun ProfileReminderPillContent(
                             modifier = Modifier
                                 .size(20.dp)
                                 .graphicsLayer {
+                                    val activeProgress = activeProgressState.value
+                                    val outlineScale = if (isReducedMotion) 1f else (1f - 0.06f * activeProgress)
                                     alpha = (1f - activeProgress).coerceIn(0f, 1f)
                                     scaleX = outlineScale
                                     scaleY = outlineScale
                                     clip = false
                                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        val bellSwapBlurDp = DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(activeProgress * PI).toFloat()
                                         val blurPx = bellSwapBlurDp.dp.toPx()
                                         renderEffect = if (blurPx > 0.2f) {
-                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                            cachedDecalBlurEffect(blurPx)
                                         } else {
                                             null
                                         }
@@ -929,8 +958,7 @@ private fun ProfileReminderPillContent(
                                 }
                         )
                     }
-                    if (activeProgress > 0.001f) {
-                        val filledScale = if (isReducedMotion) 1f else (0.94f + 0.06f * activeProgress)
+                    if (showFilledBell) {
                         Icon(
                             imageVector = Icons.Rounded.NotificationsActive,
                             contentDescription = null,
@@ -938,27 +966,31 @@ private fun ProfileReminderPillContent(
                             modifier = Modifier
                                 .size(20.dp)
                                 .graphicsLayer {
+                                    val activeProgress = activeProgressState.value
+                                    val filledScale = if (isReducedMotion) 1f else (0.94f + 0.06f * activeProgress)
                                     alpha = activeProgress.coerceIn(0f, 1f)
                                     scaleX = filledScale
                                     scaleY = filledScale
                                     clip = false
                                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        val bellSwapBlurDp = DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(activeProgress * PI).toFloat()
                                         val blurPx = bellSwapBlurDp.dp.toPx()
                                         renderEffect = if (blurPx > 0.2f) {
-                                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                                            cachedDecalBlurEffect(blurPx)
                                         } else {
                                             null
                                         }
                                     }
                                 }
                         )
-                        val dotScale = if (isReducedMotion) 1f else (0.85f + 0.15f * activeProgress)
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .offset(x = 1.dp, y = (-1).dp)
                                 .size(9.dp)
                                 .graphicsLayer {
+                                    val activeProgress = activeProgressState.value
+                                    val dotScale = if (isReducedMotion) 1f else (0.85f + 0.15f * activeProgress)
                                     alpha = activeProgress.coerceIn(0f, 1f)
                                     scaleX = dotScale
                                     scaleY = dotScale
@@ -978,19 +1010,23 @@ private fun ProfileReminderPillContent(
             }
         }
 
-        if (savedAlpha > 0.001f) {
+        if (showSaved) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.graphicsLayer {
+                    val t = savedTransitionProvider().coerceIn(0f, 1f)
+                    val savedAlpha = ((t - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                    val savedScale = if (isReducedMotion) 1f else (0.94f + 0.06f * t)
                     alpha = savedAlpha
                     scaleX = savedScale
                     scaleY = savedScale
                     clip = false
                     if (!isReducedMotion && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val swapBlurDp = DockMotionConfig.PROFILE_REMINDER_CONTENT_SWAP_BLUR_DP * sin(t * PI).toFloat()
                         val blurPx = swapBlurDp.dp.toPx()
                         renderEffect = if (blurPx > 0.2f) {
-                            BlurEffect(blurPx, blurPx, TileMode.Decal)
+                            cachedDecalBlurEffect(blurPx)
                         } else {
                             null
                         }

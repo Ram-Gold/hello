@@ -299,4 +299,45 @@ class ExportBundleGeneratorTest {
         assertTrue(followUpsJson.contains("\"hasExplicitTime\": true"))
         assertTrue(followUpsJson.contains("\"doneAt\": \"2026-11-22T10:00:00Z\""))
     }
+
+    @Test
+    fun generateExport_includesMultiContactParticipantsInJsonCsvAndMarkdown() {
+        val bob = sampleContact.copy(id = "c-456", name = "Bob Builder")
+        val groupEncounter = sampleEncounter.copy(
+            id = "enc-group",
+            contactId = sampleContact.id,
+            participantIds = listOf(sampleContact.id, bob.id),
+            notes = "Group brainstorm"
+        )
+        val groupFollowUp = sampleFollowUp.copy(
+            id = "fu-group",
+            contactId = sampleContact.id,
+            participantIds = listOf(sampleContact.id, bob.id)
+        )
+
+        val jsonFiles = ExportBundleGenerator.generateJsonFiles(
+            contacts = listOf(sampleContact, bob),
+            encounters = listOf(groupEncounter),
+            places = listOf(samplePlace),
+            tags = listOf(sampleTag),
+            followUps = listOf(groupFollowUp)
+        )
+        assertTrue(jsonFiles["encounters.json"]!!.contains("\"participantIds\": [\"c-123\", \"c-456\"]"))
+        assertTrue(jsonFiles["followups.json"]!!.contains("\"participantIds\": [\"c-123\", \"c-456\"]"))
+
+        val mdFiles = ExportBundleGenerator.generateMarkdownNotes(
+            contacts = listOf(sampleContact, bob),
+            encounters = listOf(groupEncounter),
+            places = listOf(samplePlace),
+            tags = listOf(sampleTag)
+        )
+        assertTrue(mdFiles["contacts/Ada Lovelace.md"]!!.contains("(with Bob Builder)"))
+        assertTrue(mdFiles["contacts/Bob Builder.md"]!!.contains("(with Ada Lovelace)"))
+
+        val csvFiles = ExportBundleGenerator.generateCsvFiles(
+            contacts = listOf(sampleContact, bob),
+            encounters = listOf(groupEncounter)
+        )
+        assertTrue(csvFiles["encounters.csv"]!!.contains("c-123;c-456"))
+    }
 }

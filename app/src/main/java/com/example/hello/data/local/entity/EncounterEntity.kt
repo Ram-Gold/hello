@@ -1,11 +1,19 @@
 package com.example.hello.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.hello.domain.model.Encounter
 import java.time.Instant
 
-@Entity(tableName = "encounters")
+@Entity(
+    tableName = "encounters",
+    indices = [
+        Index(value = ["contactId"]),
+        Index(value = ["placeId"]),
+        Index(value = ["occurredAt"])
+    ]
+)
 data class EncounterEntity(
     @PrimaryKey
     val id: String,
@@ -29,9 +37,10 @@ fun Encounter.toEntity(): EncounterEntity = EncounterEntity(
     longitude = longitude
 )
 
-fun EncounterEntity.toDomain(): Encounter = Encounter(
+fun EncounterEntity.toDomain(participantIds: List<String> = emptyList()): Encounter = Encounter(
     id = id,
     contactId = contactId,
+    participantIds = participantIds.distinct(),
     occurredAt = occurredAt,
     placeId = placeId,
     eventLabel = eventLabel,

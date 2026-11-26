@@ -4,19 +4,25 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.example.hello.domain.model.Place
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.Locale
+import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 /**
@@ -29,7 +35,8 @@ sealed interface LocationState {
         val latitude: Double,
         val longitude: Double,
         val accuracy: Float,
-        val nearbyPlaces: List<PlaceDistance>
+        val nearbyPlaces: List<PlaceDistance>,
+        val resolvedLabel: String? = null
     ) : LocationState
     data object TimedOut : LocationState
     data object PermissionDenied : LocationState
@@ -40,10 +47,10 @@ sealed interface LocationState {
  * Native platform LocationService utilizing Android's LocationManager.
  * Strictly adheres to Prime Directive 3 (foreground-only GPS capture, zero background location).
  */
-class LocationService(
-    private val context: Context,
+open class LocationService(
+    private val context: Context?,
     private val locationManager: LocationManager? = try {
-        context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        context?.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
     } catch (_: Throwable) {
         null
     }
@@ -53,12 +60,13 @@ class LocationService(
      * Checks if foreground location permissions are granted.
      */
     fun hasLocationPermission(): Boolean {
+        val ctx = context ?: return false
         val fine = ContextCompat.checkSelfPermission(
-            context,
+            ctx,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val coarse = ContextCompat.checkSelfPermission(
-            context,
+            ctx,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         return fine || coarse
@@ -98,7 +106,7 @@ class LocationService(
      * Non-blocking coroutine flow acquiring a foreground GPS fix within [timeoutMillis].
      * Evaluates offline Place proximity using [HaversineDistanceCalculator] within a 500m radius.
      */
-    fun getLocationFlow(
+    open fun getLocationFlow(
         places: List<Place>,
         timeoutMillis: Long = 5000L,
         radiusMeters: Double = 500.0
@@ -116,41 +124,73 @@ class LocationService(
         emit(LocationState.Searching)
 
         val location = withTimeoutOrNull(timeoutMillis) {
-            suspendCancellableCoroutine<Location?> { cont ->
-                val provider = getBestProvider() ?: LocationManager.PASSIVE_PROVIDER
-                val listener = object : LocationListener {
-                    override fun onLocationChanged(loc: Location) {
-                        locationManager?.removeUpdates(this)
-                        if (cont.isActive) {
-                            cont.resume(loc)
+            val provider = getBestProvider() ?: LocationManager.PASSIVE_PROVIDER
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                suspendCancellableCoroutine<Location?> { cont ->
+                    val cancellationSignal = CancellationSignal()
+                    val executor = context?.let { ContextCompat.getMainExecutor(it) }
+                        ?: Executor { command -> command.run() }
+                    try {
+                        @SuppressLint("MissingPermission")
+                        locationManager?.getCurrentLocation(
+                            provider,
+                            cancellationSignal,
+                            executor
+                        ) { loc ->
+                            if (cont.isActive) {
+                                cont.resume(loc)
+                            }
+                        } ?: run {
+                            if (cont.isActive) cont.resume(null)
                         }
+                    } catch (_: SecurityException) {
+                        if (cont.isActive) cont.resume(null)
+                    } catch (_: Exception) {
+                        if (cont.isActive) cont.resume(null)
                     }
 
-                    @Deprecated("Deprecated in Java")
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-                    override fun onProviderEnabled(provider: String) {}
-                    override fun onProviderDisabled(provider: String) {}
+                    cont.invokeOnCancellation {
+                        cancellationSignal.cancel()
+                    }
                 }
+            } else {
+                suspendCancellableCoroutine<Location?> { cont ->
+                    val listener = object : LocationListener {
+                        override fun onLocationChanged(loc: Location) {
+                            locationManager?.removeUpdates(this)
+                            if (cont.isActive) {
+                                cont.resume(loc)
+                            }
+                        }
 
-                try {
-                    @SuppressLint("MissingPermission")
-                    locationManager?.requestLocationUpdates(
-                        provider,
-                        500L,
-                        0f,
-                        listener,
-                        Looper.getMainLooper()
-                    )
-                } catch (e: SecurityException) {
-                    if (cont.isActive) cont.resume(null)
-                } catch (e: Exception) {
-                    if (cont.isActive) cont.resume(null)
-                }
+                        @Deprecated("Deprecated in Java")
+                        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                        override fun onProviderEnabled(provider: String) {}
+                        override fun onProviderDisabled(provider: String) {}
+                    }
 
-                cont.invokeOnCancellation {
                     try {
-                        locationManager?.removeUpdates(listener)
-                    } catch (_: Exception) {}
+                        @SuppressLint("MissingPermission")
+                        locationManager?.requestLocationUpdates(
+                            provider,
+                            500L,
+                            0f,
+                            listener,
+                            Looper.getMainLooper()
+                        ) ?: run {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    } catch (_: SecurityException) {
+                        if (cont.isActive) cont.resume(null)
+                    } catch (_: Exception) {
+                        if (cont.isActive) cont.resume(null)
+                    }
+
+                    cont.invokeOnCancellation {
+                        try {
+                            locationManager?.removeUpdates(listener)
+                        } catch (_: Exception) {}
+                    }
                 }
             }
         }
@@ -164,16 +204,74 @@ class LocationService(
                 longitude = resolvedLocation.longitude,
                 radiusMeters = radiusMeters
             )
+            val resolvedLabel = if (nearby.isEmpty()) {
+                reverseGeocodeLabel(resolvedLocation.latitude, resolvedLocation.longitude)
+                    ?: formatCoordinates(resolvedLocation.latitude, resolvedLocation.longitude)
+            } else {
+                nearby.first().place.label
+            }
             emit(
                 LocationState.Success(
                     latitude = resolvedLocation.latitude,
                     longitude = resolvedLocation.longitude,
                     accuracy = resolvedLocation.accuracy,
-                    nearbyPlaces = nearby
+                    nearbyPlaces = nearby,
+                    resolvedLabel = resolvedLabel
                 )
             )
         } else {
             emit(LocationState.TimedOut)
+        }
+    }
+
+    /**
+     * Resolves a concise human-readable label via Android's Geocoder when available,
+     * returning null offline or on error so callers can fall back to formatted coordinates.
+     */
+    private suspend fun reverseGeocodeLabel(latitude: Double, longitude: Double): String? {
+        val ctx = context ?: return null
+        if (!Geocoder.isPresent()) return null
+        return withTimeoutOrNull(2500L) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val geocoder = Geocoder(ctx, Locale.getDefault())
+                    val address: Address? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        suspendCancellableCoroutine { cont ->
+                            geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
+                                override fun onGeocode(addresses: MutableList<Address>) {
+                                    if (cont.isActive) cont.resume(addresses.firstOrNull())
+                                }
+
+                                override fun onError(errorMessage: String?) {
+                                    if (cont.isActive) cont.resume(null)
+                                }
+                            })
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        geocoder.getFromLocation(latitude, longitude, 1)?.firstOrNull()
+                    }
+                    formatAddressLabel(address)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
+    }
+
+    companion object {
+        fun formatCoordinates(latitude: Double, longitude: Double): String =
+            String.format(Locale.US, "%.4f, %.4f", latitude, longitude)
+
+        fun formatAddressLabel(address: Address?): String? {
+            if (address == null) return null
+            val parts = listOfNotNull(
+                address.subLocality?.takeIf { it.isNotBlank() }
+                    ?: address.thoroughfare?.takeIf { it.isNotBlank() }
+                    ?: address.featureName?.takeIf { it.isNotBlank() && !it.all { ch -> ch.isDigit() } },
+                address.locality?.takeIf { it.isNotBlank() }
+            ).distinct()
+            return parts.take(2).joinToString(", ").ifBlank { null }
         }
     }
 

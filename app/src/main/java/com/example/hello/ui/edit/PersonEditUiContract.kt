@@ -12,6 +12,7 @@ data class PersonEditUiState(
     val company: String = "",
     val birthday: LocalDate? = null,
     val phone: String = "",
+    val phoneError: String? = null,
     val email: String = "",
     val notes: String = "",
     val photoUri: String? = null,

@@ -165,6 +165,7 @@ class ContactPersistenceReactiveTest {
             coroutineScope = backgroundScope
         )
 
+        repository.contacts.first { it.isNotEmpty() }
         advanceUntilIdle()
 
         val homeViewModel = HomeViewModel(repository)
@@ -208,9 +209,10 @@ class ContactPersistenceReactiveTest {
             ioDispatcher = testDispatcher,
             coroutineScope = backgroundScope
         )
+        val initialContacts = repository1.contacts.first { it.isNotEmpty() }
         advanceUntilIdle()
 
-        val targetId = repository1.contacts.value.first().id
+        val targetId = initialContacts.first().id
 
         repository1.toggleFavorite(targetId)
         advanceUntilIdle()
@@ -329,7 +331,8 @@ class ContactPersistenceReactiveTest {
         )
         advanceUntilIdle()
 
-        // Wait for initial Room seeding to complete on Room's query executor
+        // Wait for initial Room seeding and repository hydration to complete
+        repository.contacts.first { it.size >= 10 }
         val initialContacts = database.contactDao().getAllContactsFlow().first { it.size >= 10 }
         val allIds = initialContacts.map { it.id }.toSet()
 

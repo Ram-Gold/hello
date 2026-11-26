@@ -5,6 +5,7 @@ import com.example.hello.domain.model.Encounter
 import com.example.hello.domain.model.FollowUp
 import com.example.hello.domain.model.Place
 import com.example.hello.domain.model.Tag
+import com.example.hello.domain.model.formatWithOthersLabel
 import com.example.hello.platform.avatar.AvatarStorageManager
 import java.io.File
 import java.io.OutputStream
@@ -70,6 +71,7 @@ object ExportBundleGenerator {
                 append("  {\n")
                 append("    \"id\": ${quoteJson(e.id)},\n")
                 append("    \"contactId\": ${quoteJson(e.contactId)},\n")
+                append("    \"participantIds\": [${e.resolvedParticipantIds().joinToString(", ") { quoteJson(it) }}],\n")
                 append("    \"occurredAt\": ${quoteJson(e.occurredAt.toString())},\n")
                 append("    \"placeId\": ${quoteJson(e.placeId)},\n")
                 append("    \"latitude\": ${e.latitude ?: "null"},\n")
@@ -119,6 +121,7 @@ object ExportBundleGenerator {
                 append("  {\n")
                 append("    \"id\": ${quoteJson(fu.id)},\n")
                 append("    \"contactId\": ${quoteJson(fu.contactId)},\n")
+                append("    \"participantIds\": [${fu.resolvedParticipantIds().joinToString(", ") { quoteJson(it) }}],\n")
                 append("    \"dueAt\": ${quoteJson(fu.dueAt.toString())},\n")
                 append("    \"note\": ${quoteJson(fu.note)},\n")
                 append("    \"hasExplicitTime\": ${fu.hasExplicitTime},\n")
@@ -141,13 +144,14 @@ object ExportBundleGenerator {
         places: List<Place>,
         tags: List<Tag>
     ): Map<String, String> {
+        val contactNameMap = contacts.associate { it.id to it.name }
         val tagMap = tags.associate { it.id to it.name.trim().removePrefix("#") }
         val placeMap = places.associate { it.id to it.label }
         val notesMap = mutableMapOf<String, String>()
 
         contacts.forEach { contact ->
             val contactEncounters = encounters
-                .filter { it.contactId == contact.id }
+                .filter { contact.id in it.resolvedParticipantIds() }
                 .sortedByDescending { it.occurredAt }
 
             val resolvedTags = contact.tagIds.mapNotNull { tagMap[it] }
@@ -207,7 +211,11 @@ object ExportBundleGenerator {
                     contactEncounters.forEach { encounter ->
                         val dateStr = DateTimeFormatter.ISO_INSTANT.format(encounter.occurredAt).take(10)
                         val placeLabel = encounter.placeId?.let { placeMap[it] } ?: encounter.eventLabel
-                        val header = if (placeLabel != null) "### $dateStr - $placeLabel" else "### $dateStr"
+                        val otherNames = encounter.resolvedParticipantIds()
+                            .filterNot { it == contact.id }
+                            .mapNotNull { contactNameMap[it] }
+                        val withSuffix = formatWithOthersLabel(otherNames)?.let { " ($it)" }.orEmpty()
+                        val header = if (placeLabel != null) "### $dateStr - $placeLabel$withSuffix" else "### $dateStr$withSuffix"
                         append("$header\n")
                         if (encounter.notes.isNotBlank()) {
                             append("${encounter.notes.trim()}\n")
@@ -253,7 +261,7 @@ object ExportBundleGenerator {
 
         // encounters.csv
         files["encounters.csv"] = buildString {
-            append("id,contact_id,occurred_at,event_label,notes,latitude,longitude\n")
+            append("id,contact_id,occurred_at,event_label,notes,latitude,longitude,participant_ids\n")
             encounters.forEach { e ->
                 append("${escapeCsv(e.id)},")
                 append("${escapeCsv(e.contactId)},")
@@ -261,7 +269,8 @@ object ExportBundleGenerator {
                 append("${escapeCsv(e.eventLabel.orEmpty())},")
                 append("${escapeCsv(e.notes)},")
                 append("${e.latitude ?: ""},")
-                append("${e.longitude ?: ""}\n")
+                append("${e.longitude ?: ""},")
+                append("${escapeCsv(e.resolvedParticipantIds().joinToString(";"))}\n")
             }
         }
 

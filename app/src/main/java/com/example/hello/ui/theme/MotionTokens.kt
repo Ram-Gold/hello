@@ -89,6 +89,50 @@ object MotionTokens {
     // Emil Kowalski Smooth Deceleration curve
     val EaseOutDecelerate = CubicBezierEasing(0.16f, 1.0f, 0.3f, 1.0f)
 
+    // Brand-mark handwriting easing (ADR-0041): calm, zero-bounce ease-in-out
+    // matching cubic-bezier(0.4, 0.0, 0.2, 1.0) for Hello Mark Motion strokes
+    val BrandMarkEasing = FastOutSlowInEasing
+
+    /**
+     * Timing and choreography tokens for Hello Mark Motion ("Writing it down", ADR-0041).
+     */
+    object HelloMarkMotion {
+        // App launch (0.65 s mark-only)
+        const val LAUNCH_BAND_DELAY_MS = 0
+        const val LAUNCH_BAND_DURATION_MS = 160
+        const val LAUNCH_OUTLINE_DELAY_MS = 100
+        const val LAUNCH_OUTLINE_DURATION_MS = 280
+        const val LAUNCH_SQUIGGLE_DELAY_MS = 260
+        const val LAUNCH_SQUIGGLE_DURATION_MS = 420
+        const val LAUNCH_TOTAL_DURATION_MS = LAUNCH_SQUIGGLE_DELAY_MS + LAUNCH_SQUIGGLE_DURATION_MS
+        const val LAUNCH_HOLD_MS = 120
+        const val LAUNCH_EXIT_FADE_MS = 150
+
+        // Welcome / About Hello (1.9 s horizontal mark + "hello" wordmark)
+        const val WELCOME_BAND_DELAY_MS = 0
+        const val WELCOME_BAND_DURATION_MS = 220
+        const val WELCOME_OUTLINE_DELAY_MS = 140
+        const val WELCOME_OUTLINE_DURATION_MS = 420
+        const val WELCOME_SQUIGGLE_DELAY_MS = 380
+        const val WELCOME_SQUIGGLE_DURATION_MS = 700
+        const val WELCOME_LETTER_BASE_DELAY_MS = 1050
+        const val WELCOME_LETTER_STAGGER_MS = 90
+        const val WELCOME_LETTER_DURATION_MS = 260
+        const val WELCOME_LETTER_COUNT = 5
+        const val WELCOME_TOTAL_DURATION_MS =
+            WELCOME_LETTER_BASE_DELAY_MS + (WELCOME_LETTER_COUNT - 1) * WELCOME_LETTER_STAGGER_MS + WELCOME_LETTER_DURATION_MS
+
+        // Save confirmation inside Toast Pill (0.4 s squiggle re-write)
+        const val SAVED_SQUIGGLE_DELAY_MS = 0
+        const val SAVED_SQUIGGLE_DURATION_MS = 400
+        const val SAVED_TOTAL_DURATION_MS = SAVED_SQUIGGLE_DELAY_MS + SAVED_SQUIGGLE_DURATION_MS
+
+        // Shared stroke & reduced-motion parameters
+        const val BAND_DROP_OFFSET_Y_UNITS = 10f
+        const val STROKE_ALPHA_RAMP_FRACTION = 0.03f
+        const val REDUCED_MOTION_FADE_MS = 120
+    }
+
     // Pre-allocated static TweenSpec instances to prevent per-navigation allocations on low-end hardware
     val MAIN_ROOT_TRANSITION_SPEC: TweenSpec<IntOffset> = tween(
         durationMillis = BOTTOM_NAV_TRANSITION_DURATION,

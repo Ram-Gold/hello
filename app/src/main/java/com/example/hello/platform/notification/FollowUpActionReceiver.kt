@@ -9,6 +9,7 @@ import com.example.hello.data.local.entity.toDomain
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.helloDataStore
 import com.example.hello.domain.model.FollowUp
+import com.example.hello.domain.model.formatParticipantNames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,13 +51,13 @@ class FollowUpActionReceiver : BroadcastReceiver() {
                     ACTION_SNOOZE -> {
                         val existing = db.followUpDao().getFollowUpById(followUpId) ?: return@launch
                         if (existing.doneAt != null) return@launch
-                        val contact = db.contactDao().getContactById(existing.contactId)
-                        if (contact == null || contact.isArchived) return@launch
+                        val activeContacts = FollowUpNotificationHelper.resolveActiveContactsForFollowUp(db, existing)
+                        if (activeContacts.isEmpty()) return@launch
 
                         val prefs = DataStoreUserPreferencesRepository(appContext.helloDataStore)
                             .userPreferencesFlow.first()
                         val newDueAt = FollowUp.computeSnoozedDueAt(
-                            followUp = existing.toDomain(),
+                            followUp = existing.toDomain(activeContacts.map { it.id }),
                             days = 3L,
                             defaultHour = prefs.notificationHour,
                             defaultMinute = prefs.notificationMinute
@@ -64,8 +65,8 @@ class FollowUpActionReceiver : BroadcastReceiver() {
                         db.followUpDao().snooze(followUpId, newDueAt)
                         scheduler.scheduleAlarm(
                             followUpId = followUpId,
-                            contactId = contact.id,
-                            contactName = contact.name,
+                            contactId = activeContacts.first().id,
+                            contactName = formatParticipantNames(activeContacts.map { it.name }),
                             note = existing.note,
                             dueAt = newDueAt
                         )

@@ -397,3 +397,11 @@ fun DesignDivider(modifier: Modifier = Modifier) {
 2. **Density Independence:** All dimensions, padding, margins, borders, and icon dimensions must use `dp`. All text sizes and line heights must use `sp`. Never use raw `px`.
 3. **Touch Targets:** Maintain minimum touch targets of `48.dp` for all interactive elements in accordance with Android accessibility guidelines.
 4. **Seamlessness & Consistency:** Design for ease of use and seamlessness. Keep decorative elements minimal and prefer soft tonal background fills over structural 1dp borders. Tags and selectable chips must remain strictly borderless (`0.dp` border), pill-shaped (`CircleShape`) when unselected, morphing to an `8.dp` squircle when selected, with uniform `28.dp` height and `12.dp × 6.dp` padding everywhere.
+5. **Motion Philosophy — Everything moves with a purpose in animation and motion design:**
+   - Every animation must answer *"why does this move?"* (spatial continuity, state change, foreground focus, or tactile press confirmation). Never animate for decoration on high-frequency actions.
+   - Use Emil Kowalski's custom curves from `MotionTokens` (`StrongEaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)` for entrances/exits and `StrongEaseInOut` for on-screen morphs). Never use `ease-in` on UI transitions.
+   - Keep UI transitions under `300ms` with **asymmetric enter/exit timing** (faster exits than entrances, e.g., `180ms` enter / `130ms` exit).
+   - Popovers must be **origin-aware** (`TransformOrigin` anchored to their trigger) and never scale from `0f` (start at `0.94f` + opacity).
+   - Use **subtle blur (`2.dp–3.dp`, API 31+ `BlurEffect` in `graphicsLayer`)** purposefully to bridge state crossfades or establish depth behind floating popovers — never heavy blur.
+   - Every pressable primary/action button provides tactile `0.96f` press feedback in `graphicsLayer` (GPU-only `transform`/`alpha`).
+   - Respect `LocalReducedMotion`: remove positional/scale/blur motion while keeping gentle opacity/color transitions for comprehension.

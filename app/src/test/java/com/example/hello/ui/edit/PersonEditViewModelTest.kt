@@ -113,8 +113,55 @@ class PersonEditViewModelTest {
         val updated = repository.getContact("c-1")
         assertNotNull(updated)
         assertEquals("Alex Updated", updated?.name)
-        assertEquals("+1 (555) 000-1111", updated?.phone)
+        assertEquals("+15550001111", updated?.phone)
         assertTrue(viewModel.uiState.value.isSaved)
+    }
+
+    @Test
+    fun messyPhoneInput_sanitizesOnChange_ignoresFormattingOnlyEdits_normalizesOnSave_andDropsSymbolOnly() = runTest {
+        val viewModel = PersonEditViewModel(contactId = "c-1", repository = repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Formatting-only edit of "+1 (555) 876-5432" must not dirty isModified
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange("+1 555 876 5432"))
+        assertEquals("+1 555 876 5432", viewModel.uiState.value.phone)
+        assertFalse(viewModel.uiState.value.isModified)
+
+        // Messy pasted phone input is sanitized immediately and marks modified
+        val messyPaste = "\u202A\uFF0B\uFF16\uFF13\u00A0\uFF19\uFF11\uFF17\u2013\uFF11\uFF12\uFF13\u2014\uFF14\uFF15\uFF16\uFF17 tel\u202C"
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange(messyPaste))
+        assertEquals("+63 917-123-4567 ", viewModel.uiState.value.phone)
+        assertTrue(viewModel.uiState.value.isModified)
+
+        // Saving stores canonical dialable phone and updates uiState cleanly
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("+639171234567", repository.getContact("c-1")?.phone)
+        assertEquals("+639171234567", viewModel.uiState.value.phone)
+        assertNull(viewModel.uiState.value.phoneError)
+        assertFalse(viewModel.uiState.value.isModified)
+
+        // Too-short or symbol-only phone blocks save with inline error, cleared when edited
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange("12345"))
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Phone number is too short (at least 7 digits)", viewModel.uiState.value.phoneError)
+        assertEquals("+639171234567", repository.getContact("c-1")?.phone)
+
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange("---"))
+        assertNull(viewModel.uiState.value.phoneError)
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Enter a valid phone number", viewModel.uiState.value.phoneError)
+        assertEquals("+639171234567", repository.getContact("c-1")?.phone)
+
+        // Clearing phone removes error and persists null
+        viewModel.onEvent(PersonEditUiEvent.OnPhoneChange(""))
+        assertNull(viewModel.uiState.value.phoneError)
+        viewModel.onEvent(PersonEditUiEvent.OnSaveClick)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertNull(repository.getContact("c-1")?.phone)
+        assertEquals("", viewModel.uiState.value.phone)
     }
 
     @Test

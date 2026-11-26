@@ -1,17 +1,15 @@
 package com.example.hello.ui.timeline
 
+import com.example.hello.data.preferences.WeekStartDay
+import com.example.hello.ui.components.ParticipantAvatar
 import java.time.Instant
 import java.time.LocalDate
-
-enum class TimelineFilter(val label: String) {
-    ALL("All"),
-    FUTURE("Future"),
-    PAST("Past")
-}
+import java.time.MonthDay
 
 enum class PastEncounterBadge(val label: String) {
     FIRST_MET("First Met"),
-    MET_AGAIN("Met Again")
+    MET_AGAIN("Met Again"),
+    COMPLETED_REMINDER("Completed")
 }
 
 sealed interface FutureTimelineNode {
@@ -36,7 +34,8 @@ sealed interface FutureTimelineNode {
         val followUpId: String,
         val note: String,
         override val photoUri: String? = null,
-        override val targetDate: LocalDate = LocalDate.now().plusDays(daysUntil.coerceAtLeast(0L))
+        override val targetDate: LocalDate = LocalDate.now().plusDays(daysUntil.coerceAtLeast(0L)),
+        val participants: List<ParticipantAvatar> = emptyList()
     ) : FutureTimelineNode
 
     data class BirthdayNode(
@@ -65,8 +64,12 @@ data class PastTimelineNode(
     val notes: String,
     val badge: PastEncounterBadge,
     val photoUri: String? = null,
-    val timeLabel: String = ""
-)
+    val timeLabel: String = "",
+    val participants: List<ParticipantAvatar> = emptyList(),
+    val followUpId: String? = null
+) {
+    val isCompletedReminder: Boolean get() = followUpId != null
+}
 
 data class TimelineDayGroup<T>(
     val date: LocalDate,
@@ -75,11 +78,18 @@ data class TimelineDayGroup<T>(
 )
 
 data class TimelineUiState(
-    val selectedFilter: TimelineFilter = TimelineFilter.ALL,
+    val today: LocalDate = LocalDate.now(),
+    val selectedDate: LocalDate = today,
+    val firstDayOfWeek: WeekStartDay = WeekStartDay.MONDAY,
+    val isDatePickerOpen: Boolean = false,
+    val scrollRequestId: Long = 0L,
     val futureNodes: List<FutureTimelineNode> = emptyList(),
     val pastNodes: List<PastTimelineNode> = emptyList(),
     val futureDayGroups: List<TimelineDayGroup<FutureTimelineNode>> = emptyList(),
     val pastDayGroups: List<TimelineDayGroup<PastTimelineNode>> = emptyList(),
+    val pastBirthdaysByDate: Map<LocalDate, List<FutureTimelineNode.BirthdayNode>> = emptyMap(),
+    val activeEntryDates: Set<LocalDate> = emptySet(),
+    val recurringBirthdayMonthDays: Set<MonthDay> = emptySet(),
     val todayLabel: String = "TODAY",
     val userMessage: String? = null,
     val selectedNodeIds: Set<String> = emptySet(),
@@ -89,8 +99,14 @@ data class TimelineUiState(
 }
 
 sealed interface TimelineUiEvent {
-    data class OnSelectFilter(val filter: TimelineFilter) : TimelineUiEvent
+    data class OnSelectDate(val date: LocalDate, val fromScroll: Boolean = false) : TimelineUiEvent
+    data class OnStepDay(val deltaDays: Long) : TimelineUiEvent
+    data class OnStepWeek(val deltaWeeks: Long) : TimelineUiEvent
+    data object OnJumpToToday : TimelineUiEvent
+    data object OnOpenDatePicker : TimelineUiEvent
+    data object OnDismissDatePicker : TimelineUiEvent
     data class OnMarkFollowUpDone(val followUpId: String) : TimelineUiEvent
+    data class OnReopenFollowUp(val followUpId: String) : TimelineUiEvent
     data class OnSnoozeFollowUp(val followUpId: String) : TimelineUiEvent
     data object OnDismissUserMessage : TimelineUiEvent
     data class OnNodeLongClick(val nodeId: String) : TimelineUiEvent

@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.example.hello.data.preferences.CheckInDigestFrequency
 import com.example.hello.data.preferences.UserPreferencesRepository
+import com.example.hello.platform.notification.CheckInDigestScheduler
 import com.example.hello.data.repository.CaptureFlowRepository
 import com.example.hello.data.repository.ContactRepository
 import com.example.hello.domain.model.CaptureComponent
@@ -47,7 +49,7 @@ class SettingsViewModel(
                         reduceAnimations = prefs.reduceAnimations,
                         notificationHour = prefs.notificationHour,
                         notificationMinute = prefs.notificationMinute,
-                        defaultIncludeLocation = prefs.defaultIncludeLocation,
+                        checkInDigestFrequency = prefs.checkInDigestFrequency,
                         activeFlowPresetId = prefs.activeFlowPresetId,
                         selectedEditingPresetId = prefs.activeFlowPresetId
                     )
@@ -301,15 +303,43 @@ class SettingsViewModel(
                 viewModelScope.launch {
                     preferencesRepository.setNotificationTime(event.hour, event.minute)
                     contactRepository.rescheduleDateOnlyFollowUps(event.hour, event.minute)
+                    val digestFreq = _uiState.value.checkInDigestFrequency
+                    if (workManager != null && digestFreq != CheckInDigestFrequency.OFF) {
+                        CheckInDigestScheduler.syncSchedule(
+                            workManager = workManager,
+                            frequency = digestFreq,
+                            preferredHour = event.hour,
+                            preferredMinute = event.minute
+                        )
+                    }
                     _uiState.update {
                         it.copy(userMessage = "Reminder delivery time updated")
                     }
                 }
             }
 
-            is SettingsUiEvent.OnToggleDefaultIncludeLocation -> {
+            is SettingsUiEvent.OnSelectCheckInDigestFrequency -> {
                 viewModelScope.launch {
-                    preferencesRepository.setDefaultIncludeLocation(event.enabled)
+                    preferencesRepository.setCheckInDigestFrequency(event.frequency)
+                    val state = _uiState.value
+                    if (workManager != null) {
+                        CheckInDigestScheduler.syncSchedule(
+                            workManager = workManager,
+                            frequency = event.frequency,
+                            preferredHour = state.notificationHour,
+                            preferredMinute = state.notificationMinute
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            checkInDigestFrequency = event.frequency,
+                            userMessage = when (event.frequency) {
+                                CheckInDigestFrequency.OFF -> "Check-in digest turned off"
+                                CheckInDigestFrequency.WEEKLY -> "Weekly check-in digest enabled"
+                                CheckInDigestFrequency.BIWEEKLY -> "Biweekly check-in digest enabled"
+                            }
+                        )
+                    }
                 }
             }
 

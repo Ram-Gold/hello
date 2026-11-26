@@ -21,8 +21,10 @@ data class PersonDetailUiState(
     val contactSummary: ContactSummary? = null,
     val encounters: List<Encounter> = emptyList(),
     val reminders: List<FollowUp> = emptyList(),
+    val completedReminders: List<FollowUp> = emptyList(),
     val placesMap: Map<String, Place> = emptyMap(),
     val tagsList: List<Tag> = emptyList(),
+    val allContacts: List<ContactSummary> = emptyList(),
     val defaultNotificationHour: Int = 9,
     val defaultNotificationMinute: Int = 0,
     val isCreateReminderSheetOpen: Boolean = false,
@@ -61,16 +63,19 @@ sealed interface PersonDetailUiEvent {
         val dueDate: LocalDate,
         val note: String,
         val hasExplicitTime: Boolean = false,
-        val explicitTime: LocalTime? = null
+        val explicitTime: LocalTime? = null,
+        val participantIds: List<String> = emptyList()
     ) : PersonDetailUiEvent
     data class OnUpdateReminder(
         val followUpId: String,
         val dueDate: LocalDate,
         val note: String,
         val hasExplicitTime: Boolean = false,
-        val explicitTime: LocalTime? = null
+        val explicitTime: LocalTime? = null,
+        val participantIds: List<String> = emptyList()
     ) : PersonDetailUiEvent
     data class OnMarkReminderDone(val followUpId: String) : PersonDetailUiEvent
+    data class OnReopenReminder(val followUpId: String) : PersonDetailUiEvent
     data class OnSnoozeReminder(val followUpId: String) : PersonDetailUiEvent
     data class OnDeleteReminder(val followUpId: String) : PersonDetailUiEvent
     data object OnUndoReminderMutation : PersonDetailUiEvent

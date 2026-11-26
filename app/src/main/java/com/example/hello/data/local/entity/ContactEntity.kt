@@ -1,6 +1,7 @@
 package com.example.hello.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.hello.domain.model.Contact
 import java.time.Instant
@@ -10,7 +11,14 @@ import java.time.LocalDate
  * Room persistence entity for Contact.
  * Domain models remain pure and decoupled per ADR 0002.
  */
-@Entity(tableName = "contacts")
+@Entity(
+    tableName = "contacts",
+    indices = [
+        Index(value = ["isArchived"]),
+        Index(value = ["name"]),
+        Index(value = ["lastMetAt"])
+    ]
+)
 data class ContactEntity(
     @PrimaryKey
     val id: String,

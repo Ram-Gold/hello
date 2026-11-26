@@ -672,10 +672,25 @@ class ContactRepositoryTest {
 
         // Complete + Undo
         repository.markFollowUpDone(created.id)
-        assertTrue(repository.followUps.value.none { it.id == created.id })
+        val completed = repository.followUps.value.firstOrNull { it.id == created.id }
+        assertNotNull("Completed follow-up must remain in followUps stream for timeline", completed)
+        assertTrue(completed?.isDone == true)
+        assertTrue(repository.upcomingAlerts.value.none { it.id == created.id })
         assertTrue(repository.undoLastFollowUpMutation())
-        assertTrue(repository.followUps.value.any { it.id == created.id })
+        val restoredAfterComplete = repository.followUps.value.firstOrNull { it.id == created.id }
+        assertNotNull(restoredAfterComplete)
+        assertFalse(restoredAfterComplete?.isDone == true)
         assertFalse(repository.undoLastFollowUpMutation())
+
+        // Complete + Reopen preserves original dueAt
+        val originalDueAt = restoredAfterComplete!!.dueAt
+        repository.markFollowUpDone(created.id)
+        assertTrue(repository.followUps.value.first { it.id == created.id }.isDone)
+        repository.reopenFollowUp(created.id)
+        val reopened = repository.followUps.value.first { it.id == created.id }
+        assertFalse(reopened.isDone)
+        assertEquals(originalDueAt, reopened.dueAt)
+        assertTrue(repository.upcomingAlerts.value.any { it.id == created.id })
 
         // Delete + Undo
         repository.deleteFollowUp(created.id)
@@ -730,5 +745,69 @@ class ContactRepositoryTest {
 
         repository.archiveContact("c-1", archived = false)
         assertTrue("Restored contact's reminder must return to Upcoming alerts", repository.upcomingAlerts.value.any { it.id == created.id })
+    }
+
+    @Test
+    fun multiContactEncounter_updatesAllParticipants_andReconcilesOnDeleteAndUndo() {
+        val p1 = repository.addContactWithInitialEncounter(
+            name = "Alice Test",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "",
+            followUpDays = null
+        )
+        val p2 = repository.addContactWithInitialEncounter(
+            name = "Bob Test",
+            tagIds = emptySet(),
+            placeId = null,
+            customPlaceName = null,
+            note = "",
+            followUpDays = null
+        )
+        val beforeP1 = repository.fullContacts.value[p1.id]!!.meetCount
+        val beforeP2 = repository.fullContacts.value[p2.id]!!.meetCount
+
+        val shared = repository.logEncounterForContact(
+            contactId = p1.id,
+            date = LocalDate.now(),
+            note = "Group lunch",
+            additionalContactIds = listOf(p2.id)
+        )
+
+        assertEquals(listOf(p1.id, p2.id), shared.resolvedParticipantIds())
+        assertEquals(beforeP1 + 1, repository.fullContacts.value[p1.id]!!.meetCount)
+        assertEquals(beforeP2 + 1, repository.fullContacts.value[p2.id]!!.meetCount)
+
+        repository.deleteEncounters(setOf(shared.id))
+        assertEquals(beforeP1, repository.fullContacts.value[p1.id]!!.meetCount)
+        assertEquals(beforeP2, repository.fullContacts.value[p2.id]!!.meetCount)
+
+        assertTrue(repository.undoLastDeleteEncounters())
+        assertEquals(beforeP1 + 1, repository.fullContacts.value[p1.id]!!.meetCount)
+        assertEquals(beforeP2 + 1, repository.fullContacts.value[p2.id]!!.meetCount)
+    }
+
+    @Test
+    fun multiContactFollowUp_formatsParticipants_andExcludesAllFromSerendipity() {
+        val created = repository.addFollowUp(
+            contactId = "c-1",
+            dueDate = LocalDate.now().plusDays(2),
+            note = "",
+            participantIds = listOf("c-1", "c-2")
+        )
+        assertEquals(listOf("c-1", "c-2"), created.resolvedParticipantIds())
+        assertTrue(created.note.contains("Alex Rivera") && created.note.contains("David Kim"))
+
+        val alert = repository.upcomingAlerts.value.filterIsInstance<com.example.hello.domain.model.UpcomingAlert.FollowUpReminder>()
+            .first { it.id == created.id }
+        assertEquals("Alex Rivera & David Kim", alert.contactName)
+
+        val serendipity = repository.computeSerendipityPrompts(
+            contacts = repository.fullContacts.value.values,
+            encounters = repository.encounters.value,
+            pendingFollowUps = listOf(created)
+        )
+        assertFalse(serendipity.any { it.contactId == "c-1" || it.contactId == "c-2" })
     }
 }

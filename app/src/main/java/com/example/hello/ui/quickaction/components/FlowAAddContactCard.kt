@@ -324,9 +324,13 @@ fun FlowAAddContactCard(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 MinimalSelectableChip(
-                                    label = "Current GPS",
+                                    label = when {
+                                        uiState.isLocatingGps -> "Locating..."
+                                        uiState.capturedLocationLabel != null -> uiState.capturedLocationLabel
+                                        else -> "Current GPS"
+                                    },
                                     leadingIconKey = HelloIconKey.MAP_PIN,
-                                    selected = uiState.isLocationGranted && uiState.selectedPlaceId != null,
+                                    selected = uiState.isLocatingGps || (uiState.capturedLatitude != null && uiState.capturedLongitude != null),
                                     onClick = { onEvent(QuickActionUiEvent.OnRequestLocation) }
                                 )
 
@@ -380,15 +384,25 @@ fun FlowAAddContactCard(
                         }
 
                         CaptureComponentType.PHONE -> {
-                            MinimalFilledTextField(
-                                value = uiState.phone,
-                                onValueChange = { onEvent(QuickActionUiEvent.OnPhoneChange(it)) },
-                                placeholder = "+1 555 123 4567",
-                                focusRequester = focusRequester,
-                                imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
-                                keyboardType = KeyboardType.Phone,
-                                onImeAction = onAdvanceOrSave
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                MinimalFilledTextField(
+                                    value = uiState.phone,
+                                    onValueChange = { onEvent(QuickActionUiEvent.OnPhoneChange(it)) },
+                                    placeholder = "+1 555 123 4567",
+                                    focusRequester = focusRequester,
+                                    imeAction = if (isLastStep) ImeAction.Done else ImeAction.Next,
+                                    keyboardType = KeyboardType.Phone,
+                                    onImeAction = onAdvanceOrSave
+                                )
+                                uiState.phoneError?.let { errorText ->
+                                    Text(
+                                        text = errorText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
+                            }
                         }
 
                         CaptureComponentType.BIRTHDAY -> {

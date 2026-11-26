@@ -1,0 +1,6 @@
+# ADR-0040: Timeline Calendar Header and Monotonic Descending Spine
+
+**Status:** Accepted  
+**Amends:** [ADR-0015](0015-global-living-timeline-and-three-tab-dock.md)
+
+The Timeline Tab replaces its static title, `+ Log Met` header button, and `All | Future | Past` temporal filter pills with an interactive **Timeline Calendar Header** (tappable short abbreviated date heading such as `Thu, Nov 25` opening a modal calendar picker, a `Today` return pill when away from today, and a swipeable 7-day week strip honoring the user's `firstDayOfWeek` preference with entry indicator dots — omitting `<` / `>` day-step arrows to prevent header truncation and preserve monochrome breathing room) synchronized two-way with the continuous Living Timeline. To prevent a chronological discontinuity across the `TODAY` divider during scroll-sync, future day groups above `TODAY` now sort in monotonic descending order (`Furthest Future -> Tomorrow -> Today -> Yesterday -> Past`), anchored at `TODAY` on initial open, with an ephemeral quiet-day placeholder inserted at the selected date's chronological position whenever the chosen date has no entries, and Contact Birthdays materialized across the upcoming 12 months plus any navigated month/year.

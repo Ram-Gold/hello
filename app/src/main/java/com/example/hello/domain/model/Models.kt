@@ -33,13 +33,31 @@ enum class HelloIconKey(val label: String) {
     TAG("Tag");
 }
 
+private val WHITESPACE_REGEX = Regex("\\s+")
+
 fun extractAlphanumericInitials(name: String): String {
     return name.trim()
-        .split(Regex("\\s+"))
+        .split(WHITESPACE_REGEX)
         .mapNotNull { token -> token.firstOrNull { it.isLetterOrDigit() }?.toString() }
         .take(2)
         .joinToString("")
         .uppercase()
+}
+
+fun formatParticipantNames(names: List<String>, fallback: String = "Contact"): String {
+    val clean = names.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    return when (clean.size) {
+        0 -> fallback
+        1 -> clean[0]
+        2 -> "${clean[0]} & ${clean[1]}"
+        3 -> "${clean[0]}, ${clean[1]} & ${clean[2]}"
+        else -> "${clean[0]}, ${clean[1]} & ${clean.size - 2} others"
+    }
+}
+
+fun formatWithOthersLabel(otherNames: List<String>): String? {
+    val clean = otherNames.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    return if (clean.isEmpty()) null else "with ${formatParticipantNames(clean)}"
 }
 
 enum class CardType(val title: String, val iconKey: HelloIconKey) {
@@ -157,7 +175,8 @@ data class ContactSummary(
     val isArchived: Boolean = false,
     val isFavorite: Boolean = false,
     val updatedAt: Instant? = null,
-    val photoUri: String? = null
+    val photoUri: String? = null,
+    val nicknames: List<String> = emptyList()
 )
 
 data class MyCardData(

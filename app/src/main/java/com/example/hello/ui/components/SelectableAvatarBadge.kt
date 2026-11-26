@@ -11,14 +11,19 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -165,6 +170,94 @@ fun SelectableAvatarBadge(
                     contentDescription = contentDescription,
                     tint = badgeContentColor,
                     modifier = Modifier.size(size * 0.48f)
+                )
+            }
+        }
+    }
+}
+
+data class ParticipantAvatar(
+    val contactId: String,
+    val name: String,
+    val initials: String,
+    val bgIndex: Int,
+    val photoUri: String? = null
+)
+
+/**
+ * Renders up to 3 overlapping avatars (+ overflow count badge) when 2+ participants
+ * are linked to an Encounter or FollowUp, falling back to [SelectableAvatarBadge]
+ * when single-participant or selected in Timeline Selection Mode.
+ */
+@Composable
+fun StackedAvatarBadges(
+    participants: List<ParticipantAvatar>,
+    isSelected: Boolean,
+    fallbackInitials: String,
+    fallbackBgIndex: Int,
+    fallbackPhotoUri: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 36.dp,
+    ringColor: Color = MaterialTheme.colorScheme.surfaceContainer
+) {
+    if (participants.size <= 1 || isSelected) {
+        val primary = participants.firstOrNull()
+        SelectableAvatarBadge(
+            isSelected = isSelected,
+            initials = primary?.initials ?: fallbackInitials,
+            bgIndex = primary?.bgIndex ?: fallbackBgIndex,
+            size = size,
+            shape = CircleShape,
+            photoUri = primary?.photoUri ?: fallbackPhotoUri,
+            modifier = modifier
+        )
+        return
+    }
+
+    val visible = participants.take(3)
+    val overflow = (participants.size - visible.size).coerceAtLeast(0)
+    val itemSize = 28.dp
+    val step = 18.dp
+    val badgeCount = visible.size + if (overflow > 0) 1 else 0
+    val totalWidth = itemSize + step * (badgeCount - 1)
+
+    Box(
+        modifier = modifier
+            .width(totalWidth)
+            .size(width = totalWidth, height = size),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        visible.forEachIndexed { index, person ->
+            Box(
+                modifier = Modifier
+                    .offset(x = step * index)
+                    .size(itemSize)
+                    .clip(CircleShape)
+                    .border(1.5.dp, ringColor, CircleShape)
+            ) {
+                DoodleAvatar(
+                    initials = person.initials,
+                    bgIndex = person.bgIndex,
+                    size = itemSize,
+                    shape = CircleShape,
+                    photoUri = person.photoUri
+                )
+            }
+        }
+        if (overflow > 0) {
+            Box(
+                modifier = Modifier
+                    .offset(x = step * visible.size)
+                    .size(itemSize)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .border(1.5.dp, ringColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "+$overflow",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }

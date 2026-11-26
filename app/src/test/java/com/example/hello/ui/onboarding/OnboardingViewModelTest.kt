@@ -48,29 +48,31 @@ class OnboardingViewModelTest {
     fun initialState_startsAtStep0AndNotCompleted() {
         val state = viewModel.uiState.value
         assertEquals(0, state.currentStep)
-        assertEquals(6, state.totalSteps)
+        assertEquals(7, state.totalSteps)
         assertEquals(RelationshipTerminology.PEOPLE, state.selectedTerminology)
         assertEquals(ThemeMode.SYSTEM, state.selectedThemeMode)
         assertEquals(WeekStartDay.MONDAY, state.selectedFirstDayOfWeek)
+        assertFalse(state.isLocationPermissionGranted)
+        assertFalse(state.hasRequestedLocationPermission)
         assertFalse(state.isReplay)
         assertFalse(state.isCompleted)
     }
 
     @Test
     fun stepNavigation_advancesAndRetreatsWithinBounds() {
-        repeat(5) { expectedStep ->
+        repeat(6) { expectedStep ->
             assertEquals(expectedStep, viewModel.uiState.value.currentStep)
             viewModel.onEvent(OnboardingUiEvent.OnNextStep)
         }
-        assertEquals(5, viewModel.uiState.value.currentStep)
+        assertEquals(6, viewModel.uiState.value.currentStep)
         assertTrue(viewModel.uiState.value.isLastStep)
 
-        // Cannot advance past 5
+        // Cannot advance past 6
         viewModel.onEvent(OnboardingUiEvent.OnNextStep)
-        assertEquals(5, viewModel.uiState.value.currentStep)
+        assertEquals(6, viewModel.uiState.value.currentStep)
 
         // Retreat back to 0
-        for (expectedStep in 4 downTo 0) {
+        for (expectedStep in 5 downTo 0) {
             viewModel.onEvent(OnboardingUiEvent.OnPreviousStep)
             assertEquals(expectedStep, viewModel.uiState.value.currentStep)
         }
@@ -78,6 +80,34 @@ class OnboardingViewModelTest {
         // Cannot retreat past 0
         viewModel.onEvent(OnboardingUiEvent.OnPreviousStep)
         assertEquals(0, viewModel.uiState.value.currentStep)
+    }
+
+    @Test
+    fun locationPermissionEvents_updateGrantedAndRequestedStateGracefully() {
+        assertFalse(viewModel.uiState.value.isLocationPermissionGranted)
+        assertFalse(viewModel.uiState.value.hasRequestedLocationPermission)
+
+        viewModel.onEvent(OnboardingUiEvent.OnSyncLocationPermission(true))
+        assertTrue(viewModel.uiState.value.isLocationPermissionGranted)
+        assertFalse(viewModel.uiState.value.hasRequestedLocationPermission)
+
+        viewModel.onEvent(OnboardingUiEvent.OnSyncLocationPermission(false))
+        assertFalse(viewModel.uiState.value.isLocationPermissionGranted)
+        assertFalse(viewModel.uiState.value.hasRequestedLocationPermission)
+
+        viewModel.onEvent(OnboardingUiEvent.OnLocationPermissionResult(false))
+        assertFalse(viewModel.uiState.value.isLocationPermissionGranted)
+        assertTrue(viewModel.uiState.value.hasRequestedLocationPermission)
+
+        // Step navigation remains unrestricted if permission is denied
+        repeat(5) { viewModel.onEvent(OnboardingUiEvent.OnNextStep) }
+        assertEquals(5, viewModel.uiState.value.currentStep)
+        viewModel.onEvent(OnboardingUiEvent.OnNextStep)
+        assertEquals(6, viewModel.uiState.value.currentStep)
+
+        viewModel.onEvent(OnboardingUiEvent.OnLocationPermissionResult(true))
+        assertTrue(viewModel.uiState.value.isLocationPermissionGranted)
+        assertTrue(viewModel.uiState.value.hasRequestedLocationPermission)
     }
 
     @Test

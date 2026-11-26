@@ -6,21 +6,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.WorkManager
+import com.example.hello.data.preferences.CheckInDigestFrequency
 import com.example.hello.data.preferences.DataStoreUserPreferencesRepository
 import com.example.hello.data.preferences.ThemeMode
 import com.example.hello.data.preferences.ThemeStyle
 import com.example.hello.data.preferences.helloDataStore
+import com.example.hello.platform.notification.CheckInDigestScheduler
 import com.example.hello.platform.notification.FollowUpAlarmScheduler
 import com.example.hello.platform.notification.FollowUpNotificationHelper
 import com.example.hello.ui.MainAppShell
 import com.example.hello.ui.theme.HelloTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -34,18 +38,33 @@ class MainActivity : ComponentActivity() {
 
         deepLinkContactIdState.value = extractContactDeepLink(intent)
 
-        // Reconcile pending FollowUp alarms off the main thread (handles force-stop / exact-alarm revocation recovery)
+        val app = HelloApplication.from(applicationContext)
+        val preferencesRepository = app?.userPreferencesRepository
+            ?: DataStoreUserPreferencesRepository(applicationContext.helloDataStore)
+
+        // Reconcile pending FollowUp alarms & Check-in Digest schedule off the main thread
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 FollowUpAlarmScheduler.rescheduleAllPendingFromDatabase(applicationContext)
+                val prefs = preferencesRepository.userPreferencesFlow.first()
+                if (prefs.checkInDigestFrequency != CheckInDigestFrequency.OFF) {
+                    runCatching {
+                        CheckInDigestScheduler.syncSchedule(
+                            workManager = WorkManager.getInstance(applicationContext),
+                            frequency = prefs.checkInDigestFrequency,
+                            preferredHour = prefs.notificationHour,
+                            preferredMinute = prefs.notificationMinute,
+                            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP
+                        )
+                    }
+                }
             } catch (_: Exception) {
                 // Non-critical startup reconciliation
             }
         }
 
         setContent {
-            val preferencesRepository = remember { DataStoreUserPreferencesRepository(applicationContext.helloDataStore) }
-            val userPreferences by preferencesRepository.userPreferencesFlow.collectAsState(initial = null)
+            val userPreferences by preferencesRepository.userPreferencesFlow.collectAsStateWithLifecycle(initialValue = null)
             val isDark = when (userPreferences?.themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
